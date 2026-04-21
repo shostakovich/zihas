@@ -212,7 +212,7 @@ DELETE FROM samples WHERE ts < now() - 7 * 86400;
 | `GET /api/today` | JSON: Zeitreihe Leistung heute (1-min-Buckets aus `samples`, on-the-fly) |
 | `GET /api/history?days=14` | JSON: `daily_totals` der letzten N Tage |
 | `GET /api/today/summary` | JSON: `produced_wh_today`, `consumed_wh_today`, `savings_eur_today` |
-| `GET /public/*` | Statische Assets (htmx.min.js, chart.min.js, app.css) |
+| `GET /htmx.min.js`, `GET /chart.min.js`, `GET /app.css` | Statische Assets (Sinatra serviert `public/` direkt am Root) |
 
 HTMX pollt `/api/live` und `/api/today/summary` alle 5 s; Chart.js holt `/api/today` alle 60 s und `/api/history` beim Laden.
 
