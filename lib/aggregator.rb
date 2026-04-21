@@ -1,0 +1,77 @@
+require "date"
+require "set"
+require "time"
+
+class Aggregator
+  def initialize(db:, timezone:, raw_retention_days:)
+    @db = db
+    @tz = timezone
+    @raw_retention_days = raw_retention_days
+  end
+
+  def aggregate_day(date_s)
+    start_ts = @tz.local_to_utc(Time.parse("#{date_s} 00:00:00")).to_i
+    end_ts   = start_ts + 86_400
+
+    @db.transaction do
+      @db[:samples_5min]
+        .where(bucket_ts: start_ts..(end_ts - 1))
+        .delete
+      @db[:daily_totals].where(date: date_s).delete
+
+      sql_5min = <<~SQL
+        INSERT INTO samples_5min (plug_id, bucket_ts, avg_power_w, energy_delta_wh, sample_count)
+        SELECT plug_id,
+               (ts / 300) * 300                       AS bucket_ts,
+               AVG(apower_w)                          AS avg_power_w,
+               MAX(aenergy_wh) - MIN(aenergy_wh)      AS energy_delta_wh,
+               COUNT(*)                               AS sample_count
+          FROM samples
+         WHERE ts >= ? AND ts < ?
+         GROUP BY plug_id, bucket_ts
+      SQL
+
+      sql_daily = <<~SQL
+        INSERT INTO daily_totals (plug_id, date, energy_wh)
+        SELECT plug_id, ?,
+               MAX(aenergy_wh) - MIN(aenergy_wh) AS energy_wh
+          FROM samples
+         WHERE ts >= ? AND ts < ?
+         GROUP BY plug_id
+      SQL
+
+      @db.synchronize do |conn|
+        conn.execute(sql_5min, [start_ts, end_ts])
+        conn.execute(sql_daily, [date_s, start_ts, end_ts])
+      end
+    end
+  end
+
+  def purge_old_raw!
+    cutoff = Time.now.to_i - @raw_retention_days * 86_400
+    @db[:samples].where { ts < cutoff }.delete
+  end
+
+  # Aggregate any finished day not yet in daily_totals, then purge.
+  def run_once(today: Date.today)
+    existing = @db[:daily_totals].select_map(:date).uniq.to_set
+    earliest = earliest_sample_date
+    return if earliest.nil?
+
+    (earliest..(today - 1)).each do |d|
+      date_s = d.to_s
+      next if existing.include?(date_s)
+      aggregate_day(date_s)
+    end
+
+    purge_old_raw!
+  end
+
+  private
+
+  def earliest_sample_date
+    min_ts = @db[:samples].min(:ts)
+    return nil if min_ts.nil?
+    Time.at(min_ts).utc.to_date
+  end
+end
