@@ -1,4 +1,5 @@
 require "date"
+require "fileutils"
 require "set"
 require "time"
 
@@ -52,6 +53,16 @@ class Aggregator
     @db[:samples].where { ts < cutoff }.delete
   end
 
+  def backup!(backup_dir, today: Date.today, keep: 7)
+    FileUtils.mkdir_p(backup_dir)
+    filename = File.join(backup_dir, "ziwoas-#{today}.db")
+    File.delete(filename) if File.exist?(filename)
+
+    @db.synchronize { |c| c.execute("VACUUM INTO ?", [filename]) }
+
+    prune_old_backups(backup_dir, keep)
+  end
+
   # Aggregate any finished day not yet in daily_totals, then purge.
   def run_once(today: Date.today)
     existing = @db[:daily_totals].select_map(:date).uniq.to_set
@@ -73,5 +84,10 @@ class Aggregator
     min_ts = @db[:samples].min(:ts)
     return nil if min_ts.nil?
     Time.at(min_ts).utc.to_date
+  end
+
+  def prune_old_backups(dir, keep)
+    files = Dir.glob("#{dir}/ziwoas-*.db").sort_by { |f| File.mtime(f) }
+    (files.length - keep).times { File.delete(files.shift) } if files.length > keep
   end
 end

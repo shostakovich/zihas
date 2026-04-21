@@ -2,6 +2,8 @@ require "test_helper"
 require "aggregator"
 require "db"
 require "tzinfo"
+require "fileutils"
+require "tmpdir"
 
 class AggregatorTest < Minitest::Test
   def setup
@@ -71,5 +73,53 @@ class AggregatorTest < Minitest::Test
   def test_ignores_days_with_no_samples
     @aggregator.aggregate_day("1999-01-01") # must not raise
     assert_equal 0, @db[:daily_totals].count
+  end
+
+  def test_backup_creates_sqlite_file
+    Dir.mktmpdir do |tmp|
+      # switch DB to a file so .backup has something real
+      file_db = File.join(tmp, "live.db")
+      db = DB.connect(file_db)
+      DB.migrate!(db)
+      db[:samples].insert(plug_id: "bkw", ts: 1, apower_w: 0, aenergy_wh: 0)
+
+      agg = Aggregator.new(db: db, timezone: @tz, raw_retention_days: 7)
+      backup_dir = File.join(tmp, "backup")
+      agg.backup!(backup_dir)
+
+      files = Dir.glob("#{backup_dir}/*.db")
+      assert_equal 1, files.length
+      assert_match(/ziwoas-\d{4}-\d{2}-\d{2}\.db\z/, files.first)
+      assert File.size(files.first) > 0
+
+      # Backup file is itself a valid SQLite DB
+      restored = DB.connect(files.first)
+      assert_equal 1, restored[:samples].count
+    end
+  end
+
+  def test_backup_keeps_only_7_most_recent
+    Dir.mktmpdir do |tmp|
+      file_db = File.join(tmp, "live.db")
+      db = DB.connect(file_db)
+      DB.migrate!(db)
+      backup_dir = File.join(tmp, "backup")
+      FileUtils.mkdir_p(backup_dir)
+
+      # Pre-seed 10 fake snapshots with staggered mtimes
+      10.times do |i|
+        path = File.join(backup_dir, "ziwoas-2026-04-#{format('%02d', i + 1)}.db")
+        File.write(path, "fake#{i}")
+        File.utime(Time.now - (10 - i) * 86_400, Time.now - (10 - i) * 86_400, path)
+      end
+
+      agg = Aggregator.new(db: db, timezone: @tz, raw_retention_days: 7)
+      agg.backup!(backup_dir)
+
+      remaining = Dir.glob("#{backup_dir}/*.db").map { |f| File.basename(f) }.sort
+      assert_equal 7, remaining.length
+      # 6 pre-seeded + 1 fresh snapshot from this run
+      assert(remaining.any? { |f| f.include?(Date.today.to_s) })
+    end
   end
 end
