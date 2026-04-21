@@ -125,4 +125,11 @@ class WebTest < Minitest::Test
     assert_equal 5, bkw["points"].length
     assert bkw["points"].first["date"] < bkw["points"].last["date"]  # sorted ascending
   end
+
+  def test_root_serves_dashboard_html
+    get "/"
+    assert_equal 200, last_response.status
+    assert_match(/Zipfelmaus/, last_response.body)
+    assert_match(/id="today-chart"/, last_response.body)
+  end
 end

@@ -9,6 +9,9 @@ require "time"
 
 class Web < Sinatra::Base
   configure do
+    set :views,  File.expand_path("views", __dir__)
+    set :public_folder, File.expand_path("../public", __dir__)
+
     config_path   = ENV.fetch("CONFIG_PATH")
     database_path = ENV.fetch("DATABASE_PATH")
 
@@ -58,6 +61,10 @@ class Web < Sinatra::Base
         .all
       rows.sum { |r| r[:delta] || 0 }.to_f
     end
+  end
+
+  get "/" do
+    erb :dashboard
   end
 
   get "/api/today" do
