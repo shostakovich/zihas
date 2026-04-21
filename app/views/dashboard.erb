@@ -111,6 +111,8 @@
         type: "line",
         data: { datasets },
         options: {
+          responsive: true,
+          maintainAspectRatio: false,
           scales: {
             x: {
               type: "linear",
@@ -148,6 +150,8 @@
           datasets: [{ label: "kWh/Tag", data: values, backgroundColor: "#f59f00" }],
         },
         options: {
+          responsive: true,
+          maintainAspectRatio: false,
           scales: { y: { beginAtZero: true, title: { display: true, text: "kWh" } } },
           plugins: { legend: { display: false } },
           animation: false,
