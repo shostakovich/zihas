@@ -1,0 +1,24 @@
+# Copy to config/ziwoas.yml and edit to your setup.
+electricity_price_eur_per_kwh: 0.32
+timezone: Europe/Berlin
+
+poll:
+  interval_seconds: 5
+  timeout_seconds: 2
+  circuit_breaker_threshold: 3
+  circuit_breaker_probe_seconds: 30
+
+aggregator:
+  run_at: "03:15"
+  raw_retention_days: 7
+
+plugs:
+  - id: bkw
+    name: Balkonkraftwerk
+    role: producer
+    host: 192.168.1.192
+
+  # - id: kuehlschrank
+  #   name: Kühlschrank
+  #   role: consumer
+  #   host: 192.168.1.201

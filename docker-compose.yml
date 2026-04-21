@@ -1,0 +1,13 @@
+services:
+  ziwoas:
+    build: .
+    image: ziwoas:latest
+    container_name: ziwoas
+    restart: unless-stopped
+    ports:
+      - "4567:4567"
+    environment:
+      TZ: Europe/Berlin
+    volumes:
+      - ./data:/data
+      - ./config/ziwoas.yml:/app/config/ziwoas.yml:ro
