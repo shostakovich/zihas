@@ -35,7 +35,7 @@ h1 { font-size: 18px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
 .hero-value { font-size: 56px; font-weight: 700; line-height: 1.1; margin-top: 4px; }
 .hero-unit  { font-size: 24px; font-weight: 500; color: #7c5e00; }
 
-.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
 .tile {
   background: var(--card);
   border: 1px solid var(--border);
@@ -69,7 +69,10 @@ h1 { font-size: 18px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--online); }
 .dot.offline { background: var(--offline); }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
+  .tiles { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 380px) {
   .tiles { grid-template-columns: 1fr; }
   .hero-value { font-size: 44px; }
 }

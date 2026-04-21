@@ -21,6 +21,10 @@
     <div class="tile-value" id="tile-produced">—</div>
   </div>
   <div class="tile">
+    <div class="tile-label">Heute verbraucht</div>
+    <div class="tile-value" id="tile-consumed">—</div>
+  </div>
+  <div class="tile">
     <div class="tile-label">Heute gespart</div>
     <div class="tile-value" id="tile-savings">—</div>
   </div>
@@ -67,13 +71,19 @@
     } catch (e) { console.error(e); }
   }
 
+  function fmtDE(num, digits = 2) {
+    return num.toFixed(digits).replace(".", ",");
+  }
+
   function updateSummary(evt) {
     try {
       const data = JSON.parse(evt.detail.xhr.responseText);
       document.getElementById("tile-produced").textContent =
-        (data.produced_wh_today / 1000).toFixed(2) + " kWh";
+        fmtDE(data.produced_wh_today / 1000) + " kWh";
+      document.getElementById("tile-consumed").textContent =
+        fmtDE(data.consumed_wh_today / 1000) + " kWh";
       document.getElementById("tile-savings").textContent =
-        data.savings_eur_today.toFixed(2).replace(".", ",") + " €";
+        fmtDE(data.savings_eur_today) + " €";
     } catch (e) { console.error(e); }
   }
 
