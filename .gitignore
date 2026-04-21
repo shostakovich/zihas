@@ -1,0 +1,10 @@
+/.superpowers/
+/data/
+/tmp/
+/log/
+*.log
+.bundle/
+/vendor/bundle/
+.DS_Store
+*.swp
+.idea/
