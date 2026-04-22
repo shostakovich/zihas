@@ -68,7 +68,8 @@ class Web < Sinatra::Base
   end
 
   get "/api/today" do
-    start_ts, end_ts, _today = today_bounds_utc
+    end_ts   = Time.now.to_i
+    start_ts = end_ts - 86_400
 
     grouped = settings.db[:samples]
       .where(ts: start_ts..(end_ts - 1))

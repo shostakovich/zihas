@@ -74,12 +74,10 @@ class WebTest < Minitest::Test
   end
 
   def test_api_today_returns_per_minute_series_per_plug
-    tz        = TZInfo::Timezone.get("Europe/Berlin")
-    today_utc = tz.local_to_utc(Time.now).to_date  # crude but fine for the test
-    midnight  = tz.local_to_utc(Time.parse("#{Date.today} 00:00:00")).to_i
-    Web.settings.db[:samples].insert(plug_id: "bkw", ts: midnight + 120,
+    now = Time.now.to_i
+    Web.settings.db[:samples].insert(plug_id: "bkw", ts: now - 3600,
                                      apower_w: 200.0, aenergy_wh: 100.0)
-    Web.settings.db[:samples].insert(plug_id: "bkw", ts: midnight + 180,
+    Web.settings.db[:samples].insert(plug_id: "bkw", ts: now - 3540,
                                      apower_w: 300.0, aenergy_wh: 110.0)
 
     get "/api/today"
