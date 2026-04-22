@@ -104,8 +104,6 @@
     }
   }
 
-  Chart.register(Chart.Colors);
-
   let todayChart, historyChart;
 
   function loadTodayChart() {
@@ -180,6 +178,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
+    Chart.register(Chart.Colors);
     loadTodayChart();
     loadHistoryChart();
     setInterval(loadTodayChart, 60_000);
