@@ -12,13 +12,27 @@ aggregator:
   run_at: "03:15"
   raw_retention_days: 7
 
+# Required when any plug uses driver: fritz_dect.
+# fritz_box:
+#   host: 192.168.178.1
+#   user: fritz6584       # Fritz!Box username
+#   password: secret      # Fritz!Box password
+
 plugs:
   - id: bkw
     name: Balkonkraftwerk
     role: producer
-    host: 192.168.1.192
+    host: 192.168.1.192   # Shelly plug (driver defaults to shelly)
 
+  # Shelly consumer example:
   # - id: kuehlschrank
   #   name: Kühlschrank
   #   role: consumer
   #   host: 192.168.1.201
+
+  # Fritz!DECT consumer example (AIN from Fritz!Box device list):
+  # - id: krabbencomputer
+  #   name: Krabbencomputer
+  #   role: consumer
+  #   driver: fritz_dect
+  #   ain: "11630 0206224"
