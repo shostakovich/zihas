@@ -164,6 +164,8 @@
         scales: {
           x: {
             type: "linear",
+            min: Date.now() - 86_400_000,
+            max: Date.now(),
             title: { display: true, text: "Uhrzeit" },
             ticks: {
               callback: (v) => {
@@ -171,8 +173,7 @@
                 return d.getHours().toString().padStart(2,"0") + ":" +
                        d.getMinutes().toString().padStart(2,"0");
               },
-              stepSize: 3_600_000,
-              maxTicksLimit: 9,
+              stepSize: 3 * 3_600_000,
             },
           },
           y: { beginAtZero: true, title: { display: true, text: "Watt" } },
