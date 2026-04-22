@@ -32,6 +32,10 @@
     <div class="tile-label">Verbrauch jetzt</div>
     <div class="tile-value" id="tile-consumption">—</div>
   </div>
+  <div class="tile">
+    <div class="tile-label">Gesamtbilanz</div>
+    <div class="tile-value" id="tile-netbalance">—</div>
+  </div>
 </div>
 
 <!-- Plug chips -->
@@ -72,6 +76,11 @@
       const consumers = data.plugs.filter(p => p.role === "consumer");
       const sum = consumers.reduce((s, p) => s + (p.online ? p.apower_w : 0), 0);
       document.getElementById("tile-consumption").textContent = sum.toFixed(0) + " W";
+
+      const producedW = producer && producer.online ? Math.abs(producer.apower_w) : 0;
+      const net = producedW - sum;
+      const netEl = document.getElementById("tile-netbalance");
+      netEl.textContent = (net >= 0 ? "+" : "") + net.toFixed(0) + " W";
 
       renderPlugChips(data.plugs, data.now_ts);
     } catch (e) { console.error(e); }
