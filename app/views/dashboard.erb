@@ -60,7 +60,7 @@
       lastLive = data;
       const producer = data.plugs.find(p => p.role === "producer");
       document.getElementById("hero-value").innerHTML =
-        (producer && producer.online ? producer.apower_w.toFixed(0) : "—") +
+        (producer && producer.online ? Math.abs(producer.apower_w).toFixed(0) : "—") +
         ' <span class="hero-unit">W</span>';
 
       const consumers = data.plugs.filter(p => p.role === "consumer");
@@ -110,11 +110,12 @@
     fetch("/api/today").then(r => r.json()).then(data => {
       const datasets = data.series.map(s => ({
         label: s.name,
-        data: s.points.map(pt => ({ x: pt.ts * 1000, y: pt.avg_power_w })),
+        data: s.points.map(pt => ({ x: pt.ts * 1000, y: s.role === "producer" ? Math.abs(pt.avg_power_w) : pt.avg_power_w })),
         tension: 0.2,
         borderColor: s.role === "producer" ? "#f59f00" : "#228be6",
         backgroundColor: s.role === "producer" ? "rgba(245,159,0,0.12)" : "rgba(34,139,230,0.08)",
         fill: s.role === "producer",
+        pointRadius: 0,
       }));
       if (todayChart) todayChart.destroy();
       todayChart = new Chart(document.getElementById("today-chart"), {
