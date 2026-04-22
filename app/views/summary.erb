@@ -1,0 +1,18 @@
+<div class="tiles">
+  <div class="tile">
+    <div class="tile-label">Heute erzeugt</div>
+    <div class="tile-value"><%= fmt_de(@summary[:produced_wh] / 1000.0) %> kWh</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Heute verbraucht</div>
+    <div class="tile-value"><%= fmt_de(@summary[:consumed_wh] / 1000.0) %> kWh</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Heute gespart</div>
+    <div class="tile-value"><%= fmt_de(@summary[:savings_eur]) %> €</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Verbrauch jetzt</div>
+    <div class="tile-value"><%= @summary[:consumption_w].round %> W</div>
+  </div>
+</div>

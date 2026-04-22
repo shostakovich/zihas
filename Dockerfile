@@ -4,6 +4,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential \
       libsqlite3-dev \
       tzdata \
+      imagemagick \
+      libmagickwand-dev \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

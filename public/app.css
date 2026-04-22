@@ -52,7 +52,7 @@ h1 { font-size: 18px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
   padding: 12px;
   margin-bottom: 12px;
 }
-.chart-card canvas { width: 100% !important; height: 220px !important; }
+.chart-card img { width: 100%; height: auto; display: block; }
 
 .plugs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
 .plug-chip {

@@ -1,179 +1,36 @@
 <h1>Zipfelmaus — Stromübersicht</h1>
 
-<!-- Hero: BKW live -->
-<div class="hero"
-     hx-get="/api/live"
-     hx-trigger="load, every 5s"
-     hx-swap="none"
-     hx-on::after-request="updateHero(event)">
-  <div class="hero-label">Balkonkraftwerk gerade</div>
-  <div class="hero-value" id="hero-value">— <span class="hero-unit">W</span></div>
+<div id="live-zone">
+  <%= erb :live, layout: false %>
 </div>
 
-<!-- Tiles: today's numbers -->
-<div class="tiles"
-     hx-get="/api/today/summary"
-     hx-trigger="load, every 10s"
-     hx-swap="none"
-     hx-on::after-request="updateSummary(event)">
-  <div class="tile">
-    <div class="tile-label">Heute erzeugt</div>
-    <div class="tile-value" id="tile-produced">—</div>
-  </div>
-  <div class="tile">
-    <div class="tile-label">Heute verbraucht</div>
-    <div class="tile-value" id="tile-consumed">—</div>
-  </div>
-  <div class="tile">
-    <div class="tile-label">Heute gespart</div>
-    <div class="tile-value" id="tile-savings">—</div>
-  </div>
-  <div class="tile">
-    <div class="tile-label">Verbrauch jetzt</div>
-    <div class="tile-value" id="tile-consumption">—</div>
-  </div>
+<div id="summary-zone">
+  <%= erb :summary, layout: false %>
 </div>
 
-<!-- Plug chips -->
-<div class="section-label">Steckdosen</div>
-<div id="plug-list" class="plugs">—</div>
-
-<!-- Today chart -->
 <div class="section-label">Heute — Leistung über Zeit</div>
 <div class="chart-card">
-  <canvas id="today-chart"></canvas>
+  <img id="today-chart" src="/charts/today.png" alt="Leistung heute">
 </div>
 
-<!-- History chart -->
 <div class="section-label">Letzte 14 Tage — Tages-Ertrag</div>
 <div class="chart-card">
-  <canvas id="history-chart"></canvas>
+  <img id="history-chart" src="/charts/history.png" alt="14-Tage-Verlauf">
 </div>
 
 <script>
-  // Keep latest /api/live response cached so updateHero and the plug list share data
-  let lastLive = null;
-
-  function updateHero(evt) {
-    try {
-      const data = JSON.parse(evt.detail.xhr.responseText);
-      lastLive = data;
-      const producer = data.plugs.find(p => p.role === "producer");
-      document.getElementById("hero-value").innerHTML =
-        (producer && producer.online ? producer.apower_w.toFixed(0) : "—") +
-        ' <span class="hero-unit">W</span>';
-
-      const consumers = data.plugs.filter(p => p.role === "consumer");
-      const sum = consumers.reduce((s, p) => s + (p.online ? p.apower_w : 0), 0);
-      document.getElementById("tile-consumption").textContent = sum.toFixed(0) + " W";
-
-      renderPlugChips(data.plugs, data.now_ts);
-    } catch (e) { console.error(e); }
+  function poll(id, url, ms) {
+    const el = document.getElementById(id);
+    const run = () => fetch(url).then(r => r.text()).then(html => { el.innerHTML = html; }).catch(console.error);
+    setInterval(run, ms);
   }
 
-  function fmtDE(num, digits = 2) {
-    return num.toFixed(digits).replace(".", ",");
+  function refreshChart(id, url, ms) {
+    setInterval(() => { document.getElementById(id).src = url + "?" + Date.now(); }, ms);
   }
 
-  function updateSummary(evt) {
-    try {
-      const data = JSON.parse(evt.detail.xhr.responseText);
-      document.getElementById("tile-produced").textContent =
-        fmtDE(data.produced_wh_today / 1000) + " kWh";
-      document.getElementById("tile-consumed").textContent =
-        fmtDE(data.consumed_wh_today / 1000) + " kWh";
-      document.getElementById("tile-savings").textContent =
-        fmtDE(data.savings_eur_today) + " €";
-    } catch (e) { console.error(e); }
-  }
-
-  function renderPlugChips(plugs, nowTs) {
-    const el = document.getElementById("plug-list");
-    el.innerHTML = "";
-    for (const p of plugs) {
-      const chip = document.createElement("span");
-      chip.className = "plug-chip" + (p.online ? "" : " offline");
-      const dot = document.createElement("span");
-      dot.className = "dot" + (p.online ? "" : " offline");
-      chip.appendChild(dot);
-      const label = p.online
-        ? `${p.name} · ${p.apower_w.toFixed(0)} W`
-        : `${p.name} · offline`;
-      chip.appendChild(document.createTextNode(label));
-      el.appendChild(chip);
-    }
-  }
-
-  let todayChart, historyChart;
-
-  function loadTodayChart() {
-    fetch("/api/today").then(r => r.json()).then(data => {
-      const datasets = data.series.map(s => ({
-        label: s.name,
-        data: s.points.map(pt => ({ x: pt.ts * 1000, y: pt.avg_power_w })),
-        tension: 0.2,
-        borderColor: s.role === "producer" ? "#f59f00" : "#228be6",
-        backgroundColor: s.role === "producer" ? "rgba(245,159,0,0.12)" : "rgba(34,139,230,0.08)",
-        fill: s.role === "producer",
-      }));
-      if (todayChart) todayChart.destroy();
-      todayChart = new Chart(document.getElementById("today-chart"), {
-        type: "line",
-        data: { datasets },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            x: {
-              type: "linear",
-              title: { display: true, text: "Uhrzeit" },
-              ticks: {
-                callback: (v) => {
-                  const d = new Date(v);
-                  return d.getHours().toString().padStart(2,"0") + ":" +
-                         d.getMinutes().toString().padStart(2,"0");
-                },
-                stepSize: 3_600_000,
-                maxTicksLimit: 9,
-              },
-            },
-            y: { beginAtZero: true, title: { display: true, text: "Watt" } },
-          },
-          plugins: { legend: { position: "bottom" } },
-          animation: false,
-        },
-      });
-    });
-  }
-
-  function loadHistoryChart() {
-    fetch("/api/history?days=14").then(r => r.json()).then(data => {
-      const producer = data.series.find(s => s.role === "producer");
-      if (!producer) return;
-      const labels = producer.points.map(p => p.date);
-      const values = producer.points.map(p => p.energy_wh / 1000);
-      if (historyChart) historyChart.destroy();
-      historyChart = new Chart(document.getElementById("history-chart"), {
-        type: "bar",
-        data: {
-          labels,
-          datasets: [{ label: "kWh/Tag", data: values, backgroundColor: "#f59f00" }],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: { y: { beginAtZero: true, title: { display: true, text: "kWh" } } },
-          plugins: { legend: { display: false } },
-          animation: false,
-        },
-      });
-    });
-  }
-
-  document.addEventListener("DOMContentLoaded", () => {
-    loadTodayChart();
-    loadHistoryChart();
-    setInterval(loadTodayChart, 60_000);
-    setInterval(loadHistoryChart, 3_600_000);
-  });
+  poll("live-zone",    "/fragments/live",    5_000);
+  poll("summary-zone", "/fragments/summary", 10_000);
+  refreshChart("today-chart",   "/charts/today.png",   60_000);
+  refreshChart("history-chart", "/charts/history.png", 3_600_000);
 </script>

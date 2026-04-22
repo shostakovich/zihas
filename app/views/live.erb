@@ -1,0 +1,21 @@
+<% producer  = @live[:plugs].find  { |p| p[:role] == :producer } %>
+<% consumers = @live[:plugs].select { |p| p[:role] == :consumer } %>
+<div class="hero">
+  <div class="hero-label">Balkonkraftwerk gerade</div>
+  <div class="hero-value">
+    <% if producer&.[](:online) %>
+      <%= producer[:apower_w].round %> <span class="hero-unit">W</span>
+    <% else %>
+      — <span class="hero-unit">W</span>
+    <% end %>
+  </div>
+</div>
+<div class="section-label">Steckdosen</div>
+<div class="plugs">
+  <% @live[:plugs].each do |plug| %>
+    <span class="plug-chip<%= plug[:online] ? '' : ' offline' %>">
+      <span class="dot<%= plug[:online] ? '' : ' offline' %>"></span>
+      <%= plug[:name] %> · <%= plug[:online] ? "#{plug[:apower_w].round} W" : "offline" %>
+    </span>
+  <% end %>
+</div>

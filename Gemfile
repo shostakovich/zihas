@@ -11,6 +11,7 @@ gem "rackup",   "~> 2.2"
 gem "logger"                 # stdlib-extracted in Ruby 3.5+
 gem "tzinfo",   "~> 2.0"
 gem "tzinfo-data"            # safe for containers without system tzdata
+gem "gruff",    "~> 0.21"
 
 group :test do
   gem "minitest",   "~> 5.25"
