@@ -1,11 +1,12 @@
 require "shelly_client"
+require "fritz_dect_client"
 require "circuit_breaker"
 
 class Poller
-  def initialize(plugs:, db:, client:, logger:, breaker_opts:, clock: -> { Time.now.to_f })
+  def initialize(plugs:, db:, clients:, logger:, breaker_opts:, clock: -> { Time.now.to_f })
     @plugs    = plugs
     @db       = db
-    @client   = client
+    @clients  = clients
     @logger   = logger
     @clock    = clock
     @breakers = plugs.to_h do |plug|
@@ -21,7 +22,7 @@ class Poller
       next if breaker.skip?
 
       begin
-        reading = @client.fetch(plug.host)
+        reading = @clients[plug.id].fetch(plug)
         @db[:samples].insert(
           plug_id:    plug.id,
           ts:         ts,
@@ -29,7 +30,7 @@ class Poller
           aenergy_wh: reading.aenergy_wh,
         )
         breaker.record_success
-      rescue ShellyClient::Error => e
+      rescue ShellyClient::Error, FritzDectClient::Error => e
         breaker.record_failure
         @logger.debug("plug #{plug.id} poll failed: #{e.message}")
       rescue Sequel::UniqueConstraintViolation
