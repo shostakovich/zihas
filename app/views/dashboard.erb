@@ -29,6 +29,10 @@
     <div class="tile-value" id="tile-savings">—</div>
   </div>
   <div class="tile">
+    <div class="tile-label">Bilanz Heute</div>
+    <div class="tile-value" id="tile-nettoday">—</div>
+  </div>
+  <div class="tile">
     <div class="tile-label">Verbrauch jetzt</div>
     <div class="tile-value" id="tile-consumption">—</div>
   </div>
@@ -99,6 +103,9 @@
         fmtDE(data.consumed_wh_today / 1000) + " kWh";
       document.getElementById("tile-savings").textContent =
         fmtDE(data.savings_eur_today) + " €";
+      const netKwh = (data.produced_wh_today - data.consumed_wh_today) / 1000;
+      document.getElementById("tile-nettoday").textContent =
+        (netKwh >= 0 ? "+" : "") + fmtDE(netKwh) + " kWh";
     } catch (e) { console.error(e); }
   }
 
