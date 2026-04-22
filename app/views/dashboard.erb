@@ -104,10 +104,16 @@
     }
   }
 
+  const CONSUMER_COLORS = [
+    "#3b82f6", "#10b981", "#8b5cf6", "#ef4444", "#06b6d4",
+    "#ec4899", "#84cc16", "#6366f1", "#14b8a6", "#f43f5e",
+  ];
+
   let todayChart, historyChart;
 
   function loadTodayChart() {
     fetch("/api/today").then(r => r.json()).then(data => {
+      let consumerIdx = 0;
       const datasets = data.series.map(s => {
         const isProducer = s.role === "producer";
         const dataset = {
@@ -120,6 +126,10 @@
         if (isProducer) {
           dataset.borderColor = "#f59f00";
           dataset.backgroundColor = "rgba(245,159,0,0.12)";
+        } else {
+          const color = CONSUMER_COLORS[consumerIdx++ % CONSUMER_COLORS.length];
+          dataset.borderColor = color;
+          dataset.backgroundColor = color;
         }
         return dataset;
       });
@@ -178,7 +188,6 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    Chart.register(Chart.Colors);
     loadTodayChart();
     loadHistoryChart();
     setInterval(loadTodayChart, 60_000);
