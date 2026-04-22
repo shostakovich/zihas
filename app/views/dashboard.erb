@@ -108,15 +108,21 @@
 
   function loadTodayChart() {
     fetch("/api/today").then(r => r.json()).then(data => {
-      const datasets = data.series.map(s => ({
-        label: s.name,
-        data: s.points.map(pt => ({ x: pt.ts * 1000, y: s.role === "producer" ? Math.abs(pt.avg_power_w) : pt.avg_power_w })),
-        tension: 0.2,
-        borderColor: s.role === "producer" ? "#f59f00" : "#228be6",
-        backgroundColor: s.role === "producer" ? "rgba(245,159,0,0.12)" : "rgba(34,139,230,0.08)",
-        fill: s.role === "producer",
-        pointRadius: 0,
-      }));
+      const datasets = data.series.map(s => {
+        const isProducer = s.role === "producer";
+        const dataset = {
+          label: s.name,
+          data: s.points.map(pt => ({ x: pt.ts * 1000, y: isProducer ? Math.abs(pt.avg_power_w) : pt.avg_power_w })),
+          tension: 0.2,
+          fill: isProducer,
+          pointRadius: 0,
+        };
+        if (isProducer) {
+          dataset.borderColor = "#f59f00";
+          dataset.backgroundColor = "rgba(245,159,0,0.12)";
+        }
+        return dataset;
+      });
       if (todayChart) todayChart.destroy();
       todayChart = new Chart(document.getElementById("today-chart"), {
         type: "line",
