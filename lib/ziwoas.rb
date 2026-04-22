@@ -3,6 +3,7 @@ require "tzinfo"
 require "config_loader"
 require "db"
 require "shelly_client"
+require "fritz_dect_client"
 require "poller"
 require "aggregator"
 
@@ -25,10 +26,24 @@ module Ziwoas
 
     def start_threads!
       tz = TZInfo::Timezone.get(@config.timezone)
+
+      shelly_client = ShellyClient.new(timeout: @config.poll.timeout_seconds)
+      fritz_client  = if @config.fritz_box
+                        FritzDectClient.new(
+                          host:     @config.fritz_box.host,
+                          user:     @config.fritz_box.user,
+                          password: @config.fritz_box.password,
+                          timeout:  @config.poll.timeout_seconds,
+                        )
+                      end
+      clients = @config.plugs.to_h do |plug|
+        [plug.id, plug.driver == :fritz_dect ? fritz_client : shelly_client]
+      end
+
       @poller = Poller.new(
         plugs:        @config.plugs,
         db:           @db,
-        client:       ShellyClient.new(timeout: @config.poll.timeout_seconds),
+        clients:      clients,
         logger:       @logger,
         breaker_opts: {
           threshold:     @config.poll.circuit_breaker_threshold,
