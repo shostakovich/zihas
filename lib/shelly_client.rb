@@ -17,7 +17,8 @@ class ShellyClient
     @timeout = timeout
   end
 
-  def fetch(host)
+  def fetch(plug)
+    host = plug.host
     uri = URI("http://#{host}/rpc/Switch.GetStatus?id=0")
     response = get(uri)
     raise Error, "HTTP #{response.code} from #{host}" unless response.is_a?(Net::HTTPSuccess)

@@ -4,7 +4,7 @@ require "tzinfo"
 class ConfigLoader
   class Error < StandardError; end
 
-  PlugCfg     = Struct.new(:id, :name, :role, :host, keyword_init: true)
+  PlugCfg     = Struct.new(:id, :name, :role, :host, :ain, :driver, keyword_init: true)
   PollCfg     = Struct.new(:interval_seconds, :timeout_seconds,
                            :circuit_breaker_threshold, :circuit_breaker_probe_seconds,
                            keyword_init: true)
