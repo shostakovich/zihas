@@ -9,11 +9,13 @@ class ConfigLoader
                            :circuit_breaker_threshold, :circuit_breaker_probe_seconds,
                            keyword_init: true)
   AggCfg      = Struct.new(:run_at, :raw_retention_days, keyword_init: true)
+  FritzBoxCfg = Struct.new(:host, :user, :password, keyword_init: true)
   Config      = Struct.new(:electricity_price_eur_per_kwh, :timezone,
-                           :poll, :aggregator, :plugs, keyword_init: true)
+                           :poll, :aggregator, :plugs, :fritz_box, keyword_init: true)
 
-  VALID_ROLES = %i[producer consumer].freeze
-  ID_REGEX    = /\A[a-z0-9_]+\z/
+  VALID_ROLES   = %i[producer consumer].freeze
+  VALID_DRIVERS = %i[shelly fritz_dect].freeze
+  ID_REGEX      = /\A[a-z0-9_]+\z/
 
   def self.load(path)
     raw = YAML.safe_load_file(path)
@@ -37,7 +39,12 @@ class ConfigLoader
 
     poll       = build_poll(@raw["poll"])
     aggregator = build_aggregator(@raw["aggregator"])
+    fritz_box  = build_fritz_box(@raw["fritz_box"])
     plugs      = build_plugs(@raw["plugs"])
+
+    if plugs.any? { |p| p.driver == :fritz_dect } && fritz_box.nil?
+      raise Error, "fritz_box config required when using driver: fritz_dect"
+    end
 
     Config.new(
       electricity_price_eur_per_kwh: price,
@@ -45,6 +52,7 @@ class ConfigLoader
       poll: poll,
       aggregator: aggregator,
       plugs: plugs,
+      fritz_box: fritz_box,
     )
   end
 
@@ -70,13 +78,23 @@ class ConfigLoader
     )
   end
 
+  def build_fritz_box(h)
+    return nil if h.nil?
+    h = require_hash(h, "fritz_box")
+    FritzBoxCfg.new(
+      host:     require_string(h["host"],     "fritz_box.host"),
+      user:     require_string(h["user"],     "fritz_box.user"),
+      password: require_string(h["password"], "fritz_box.password"),
+    )
+  end
+
   def build_plugs(list)
     raise Error, "plugs must be a non-empty list" unless list.is_a?(Array) && !list.empty?
 
     ids = []
     plugs = list.map.with_index do |h, i|
       raise Error, "plugs[#{i}] must be a mapping" unless h.is_a?(Hash)
-      id   = require_string(h["id"], "plugs[#{i}].id")
+      id = require_string(h["id"], "plugs[#{i}].id")
       raise Error, "plug id '#{id}' must match #{ID_REGEX.source}" unless id =~ ID_REGEX
       raise Error, "duplicate plug id '#{id}'" if ids.include?(id)
       ids << id
@@ -84,12 +102,20 @@ class ConfigLoader
       role = require_string(h["role"], "plugs[#{i}].role").to_sym
       raise Error, "plug '#{id}' role must be one of #{VALID_ROLES}" unless VALID_ROLES.include?(role)
 
-      PlugCfg.new(
-        id:   id,
-        name: require_string(h["name"], "plugs[#{i}].name"),
-        role: role,
-        host: require_string(h["host"], "plugs[#{i}].host"),
-      )
+      driver = (h["driver"] || "shelly").to_sym
+      raise Error, "plug '#{id}' driver must be one of #{VALID_DRIVERS}" unless VALID_DRIVERS.include?(driver)
+
+      name = require_string(h["name"], "plugs[#{i}].name")
+
+      if driver == :shelly
+        raise Error, "plugs[#{i}].host is required for driver: shelly" if h["host"].nil? || h["host"].to_s.empty?
+        raise Error, "plugs[#{i}].ain must not be set for driver: shelly" if h["ain"]
+        PlugCfg.new(id: id, name: name, role: role, driver: :shelly, host: h["host"].to_s, ain: nil)
+      else
+        raise Error, "plugs[#{i}].ain is required for driver: fritz_dect" if h["ain"].nil? || h["ain"].to_s.empty?
+        raise Error, "plugs[#{i}].host must not be set for driver: fritz_dect" if h["host"]
+        PlugCfg.new(id: id, name: name, role: role, driver: :fritz_dect, ain: h["ain"].to_s, host: nil)
+      end
     end
 
     unless plugs.any? { |p| p.role == :producer }
