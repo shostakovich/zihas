@@ -50,6 +50,12 @@
   <canvas id="history-chart"></canvas>
 </div>
 
+<!-- Energy chart -->
+<div class="section-label">Gesamtenergie — Letzte 24 h</div>
+<div class="chart-card">
+  <canvas id="energy-chart"></canvas>
+</div>
+
 <script>
   // Keep latest /api/live response cached so updateHero and the plug list share data
   let lastLive = null;
@@ -109,57 +115,103 @@
     "#ec4899", "#84cc16", "#6366f1", "#14b8a6", "#f43f5e",
   ];
 
-  let todayChart, historyChart;
+  let todayChart, historyChart, energyChart;
+
+  function renderTodayChart(data) {
+    let consumerIdx = 0;
+    const datasets = data.series.map(s => {
+      const isProducer = s.role === "producer";
+      const dataset = {
+        label: s.name,
+        data: s.points.map(pt => ({ x: pt.ts * 1000, y: isProducer ? Math.abs(pt.avg_power_w) : pt.avg_power_w })),
+        tension: 0.2,
+        fill: isProducer,
+        pointRadius: 0,
+      };
+      if (isProducer) {
+        dataset.borderColor = "#f59f00";
+        dataset.backgroundColor = "rgba(245,159,0,0.12)";
+      } else {
+        const color = CONSUMER_COLORS[consumerIdx++ % CONSUMER_COLORS.length];
+        dataset.borderColor = color;
+        dataset.backgroundColor = color;
+      }
+      return dataset;
+    });
+    if (todayChart) todayChart.destroy();
+    todayChart = new Chart(document.getElementById("today-chart"), {
+      type: "line",
+      data: { datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            type: "linear",
+            title: { display: true, text: "Uhrzeit" },
+            ticks: {
+              callback: (v) => {
+                const d = new Date(v);
+                return d.getHours().toString().padStart(2,"0") + ":" +
+                       d.getMinutes().toString().padStart(2,"0");
+              },
+              stepSize: 3_600_000,
+              maxTicksLimit: 9,
+            },
+          },
+          y: { beginAtZero: true, title: { display: true, text: "Watt" } },
+        },
+        plugins: { legend: { position: "bottom" } },
+        animation: false,
+      },
+    });
+  }
+
+  function renderEnergyChart(data) {
+    const buckets = {};
+    for (const series of data.series) {
+      for (const pt of series.points) {
+        const hourKey = Math.floor(pt.ts / 3600) * 3600;
+        const wh = Math.abs(pt.avg_power_w) / 60;
+        if (!buckets[hourKey]) buckets[hourKey] = { produced: 0, consumed: 0 };
+        if (series.role === "producer") {
+          buckets[hourKey].produced += wh;
+        } else {
+          buckets[hourKey].consumed += wh;
+        }
+      }
+    }
+    const sorted = Object.keys(buckets).map(Number).sort((a, b) => a - b);
+    const labels = sorted.map(ts => {
+      const d = new Date(ts * 1000);
+      return d.getHours().toString().padStart(2, "0") + ":00";
+    });
+    const produced = sorted.map(ts => +(buckets[ts].produced / 1000).toFixed(3));
+    const consumed = sorted.map(ts => +(buckets[ts].consumed / 1000).toFixed(3));
+    if (energyChart) energyChart.destroy();
+    energyChart = new Chart(document.getElementById("energy-chart"), {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [
+          { label: "Erzeugt",    data: produced, backgroundColor: "#f59f00" },
+          { label: "Verbraucht", data: consumed,  backgroundColor: "#3b82f6" },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true, title: { display: true, text: "kWh" } } },
+        plugins: { legend: { position: "bottom" } },
+        animation: false,
+      },
+    });
+  }
 
   function loadTodayChart() {
     fetch("/api/today").then(r => r.json()).then(data => {
-      let consumerIdx = 0;
-      const datasets = data.series.map(s => {
-        const isProducer = s.role === "producer";
-        const dataset = {
-          label: s.name,
-          data: s.points.map(pt => ({ x: pt.ts * 1000, y: isProducer ? Math.abs(pt.avg_power_w) : pt.avg_power_w })),
-          tension: 0.2,
-          fill: isProducer,
-          pointRadius: 0,
-        };
-        if (isProducer) {
-          dataset.borderColor = "#f59f00";
-          dataset.backgroundColor = "rgba(245,159,0,0.12)";
-        } else {
-          const color = CONSUMER_COLORS[consumerIdx++ % CONSUMER_COLORS.length];
-          dataset.borderColor = color;
-          dataset.backgroundColor = color;
-        }
-        return dataset;
-      });
-      if (todayChart) todayChart.destroy();
-      todayChart = new Chart(document.getElementById("today-chart"), {
-        type: "line",
-        data: { datasets },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            x: {
-              type: "linear",
-              title: { display: true, text: "Uhrzeit" },
-              ticks: {
-                callback: (v) => {
-                  const d = new Date(v);
-                  return d.getHours().toString().padStart(2,"0") + ":" +
-                         d.getMinutes().toString().padStart(2,"0");
-                },
-                stepSize: 3_600_000,
-                maxTicksLimit: 9,
-              },
-            },
-            y: { beginAtZero: true, title: { display: true, text: "Watt" } },
-          },
-          plugins: { legend: { position: "bottom" } },
-          animation: false,
-        },
-      });
+      renderTodayChart(data);
+      renderEnergyChart(data);
     });
   }
 
