@@ -10,6 +10,31 @@
   <div class="hero-value" id="hero-value">— <span class="hero-unit">W</span></div>
 </div>
 
+<!-- Energiefluss -->
+<div class="section-label">Energiefluss</div>
+<div class="chart-card" style="padding:12px 8px">
+  <svg viewBox="0 0 400 244" style="width:100%;height:auto;display:block">
+    <line id="ef-line-v"   x1="200" y1="120" x2="200" y2="175" stroke="#dee2e6" stroke-width="3" stroke-linecap="round"/>
+    <line id="ef-line-h-l" x1="98"  y1="175" x2="200" y2="175" stroke="#dee2e6" stroke-width="3" stroke-linecap="round"/>
+    <line id="ef-line-h-r" x1="200" y1="175" x2="302" y2="175" stroke="#dee2e6" stroke-width="3" stroke-linecap="round"/>
+    <g id="ef-dots-pv-home"></g>
+    <g id="ef-dots-grid-home"></g>
+    <g id="ef-dots-pv-grid"></g>
+    <circle cx="200" cy="80"  r="40" fill="white" stroke="#f59f00" stroke-width="2.5"/>
+    <text x="200" y="74"  text-anchor="middle" dominant-baseline="middle" font-size="16" font-weight="700" fill="#f59f00">PV</text>
+    <text id="ef-pv-w" x="200" y="93"  text-anchor="middle" font-size="12" font-weight="600" fill="#7c5e00">— W</text>
+    <text x="200" y="22"  text-anchor="middle" font-size="11" fill="#6c757d">PV-Anlage</text>
+    <circle cx="58"  cy="175" r="40" fill="white" stroke="#3b82f6" stroke-width="2.5"/>
+    <text x="58"  y="169" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="700" fill="#3b82f6">Netz</text>
+    <text id="ef-grid-w" x="58"  y="188" text-anchor="middle" font-size="12" font-weight="600" fill="#1d4ed8">— W</text>
+    <text x="58"  y="229" text-anchor="middle" font-size="11" fill="#6c757d">Stromnetz</text>
+    <circle cx="342" cy="175" r="40" fill="white" stroke="#10b981" stroke-width="2.5"/>
+    <text x="342" y="169" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="700" fill="#10b981">Haus</text>
+    <text id="ef-consumer-w" x="342" y="188" text-anchor="middle" font-size="12" font-weight="600" fill="#065f46">— W</text>
+    <text x="342" y="229" text-anchor="middle" font-size="11" fill="#6c757d">Verbraucher</text>
+  </svg>
+</div>
+
 <!-- Tiles: today's numbers -->
 <div class="tiles"
      hx-get="/api/today/summary"
@@ -72,6 +97,7 @@
     try {
       const data = JSON.parse(evt.detail.xhr.responseText);
       lastLive = data;
+      updateEnergyFlow(data);
       const producer = data.plugs.find(p => p.role === "producer");
       document.getElementById("hero-value").innerHTML =
         (producer && producer.online ? Math.abs(producer.apower_w).toFixed(0) : "—") +
@@ -254,6 +280,63 @@
         },
       });
     });
+  }
+
+  // Energy flow visualization
+  const EF_PATHS = {
+    pvHome:   "M 200,120 L 200,175 L 302,175",
+    gridHome: "M 98,175 L 302,175",
+    pvGrid:   "M 200,120 L 200,175 L 98,175",
+  };
+
+  function efDur(w) {
+    return w < 1 ? null : Math.max(0.8, Math.min(6, 400 / w));
+  }
+
+  function efSetDots(id, path, color, dur) {
+    const g = document.getElementById(id);
+    if (!g) return;
+    g.innerHTML = "";
+    if (!dur) return;
+    for (let i = 0; i < 3; i++) {
+      const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      c.setAttribute("r", "4.5");
+      c.setAttribute("fill", color);
+      c.style.cssText = `offset-path:path("${path}");animation:flow-dot ${dur}s ${(-(i * dur / 3)).toFixed(3)}s linear infinite;`;
+      g.appendChild(c);
+    }
+  }
+
+  function efLine(id, color) {
+    const el = document.getElementById(id);
+    if (el) el.setAttribute("stroke", color);
+  }
+
+  function updateEnergyFlow(data) {
+    const prod  = data.plugs.find(p => p.role === "producer");
+    const pvW   = prod?.online ? Math.abs(prod.apower_w) : 0;
+    const consW = data.plugs
+      .filter(p => p.role === "consumer")
+      .reduce((s, p) => s + (p.online ? p.apower_w : 0), 0);
+
+    const pvToHome   = Math.min(pvW, consW);
+    const gridToHome = Math.max(0, consW - pvW);
+    const pvToGrid   = Math.max(0, pvW - consW);
+
+    document.getElementById("ef-pv-w").textContent       = pvW.toFixed(0) + " W";
+    document.getElementById("ef-consumer-w").textContent = consW.toFixed(0) + " W";
+    document.getElementById("ef-grid-w").textContent =
+      gridToHome > 0 ? "+" + gridToHome.toFixed(0) + " W" :
+      pvToGrid   > 0 ? "−" + pvToGrid.toFixed(0) + " W" : "0 W";
+
+    efSetDots("ef-dots-pv-home",   EF_PATHS.pvHome,   "#f59f00", efDur(pvToHome));
+    efSetDots("ef-dots-grid-home", EF_PATHS.gridHome, "#3b82f6", efDur(gridToHome));
+    efSetDots("ef-dots-pv-grid",   EF_PATHS.pvGrid,   "#f59f00", efDur(pvToGrid));
+
+    const GRAY = "#dee2e6";
+    efLine("ef-line-v",   pvW > 0        ? "#f59f00" : GRAY);
+    efLine("ef-line-h-r", gridToHome > 0 ? "#3b82f6" : (pvToHome > 0 ? "#f59f00" : GRAY));
+    efLine("ef-line-h-l", gridToHome > 0 ? "#3b82f6" : (pvToGrid > 0 ? "#f59f00" : GRAY));
   }
 
   document.addEventListener("DOMContentLoaded", () => {
