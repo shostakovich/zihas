@@ -16,7 +16,7 @@
   <svg viewBox="0 0 400 244" style="width:100%;height:auto;display:block">
     <line id="ef-line-v"   x1="200" y1="120" x2="200" y2="175" stroke="#dee2e6" stroke-width="3" stroke-linecap="round"/>
     <line id="ef-line-h-l" x1="98"  y1="175" x2="200" y2="175" stroke="#dee2e6" stroke-width="3" stroke-linecap="round"/>
-    <line id="ef-line-h-r" x1="200" y1="175" x2="302" y2="175" stroke="#dee2e6" stroke-width="3" stroke-linecap="round"/>
+    <line id="ef-line-h-r" x1="200" y1="175" x2="298" y2="175" stroke="#dee2e6" stroke-width="3" stroke-linecap="round"/>
     <g id="ef-dots-pv-home"></g>
     <g id="ef-dots-grid-home"></g>
     <g id="ef-dots-pv-grid"></g>
@@ -297,12 +297,12 @@
 
   // Energy flow visualization
   const EF_PATHS = {
-    pvHome:   "M 200,120 L 200,175 L 302,175",
-    gridHome: "M 98,175 L 302,175",
+    pvHome:   "M 200,120 L 200,175 L 298,175",
+    gridHome: "M 98,175 L 298,175",
     pvGrid:   "M 200,120 L 200,175 L 98,175",
   };
   // Actual pixel lengths of each path (vertical + horizontal segments)
-  const EF_LENS = { pvHome: 157, gridHome: 204, pvGrid: 157 };
+  const EF_LENS = { pvHome: 153, gridHome: 200, pvGrid: 157 };
 
   function efDur(w, len) {
     return w < 1 ? null : Math.max(0.5, Math.min(8, len / w));
@@ -314,8 +314,8 @@
     const g = document.getElementById(id);
     if (!g) return;
     const prev = efLastDur[id];
-    const changed = dur === null ? prev !== null
-                                 : prev === null || Math.abs(dur - prev) / prev > 0.05;
+    const changed = dur === null ? prev != null
+                                 : prev == null || Math.abs(dur - prev) / prev > 0.05;
     if (!changed) return;
     efLastDur[id] = dur;
     g.innerHTML = "";
