@@ -76,3 +76,8 @@ h1 { font-size: 18px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
   .tiles { grid-template-columns: 1fr; }
   .hero-value { font-size: 44px; }
 }
+
+@keyframes flow-dot {
+  from { offset-distance: 0%; }
+  to   { offset-distance: 100%; }
+}

@@ -42,6 +42,50 @@
   </div>
 </div>
 
+<!-- Energiefluss -->
+<div class="section-label">Energiefluss</div>
+<div class="chart-card" style="padding:12px 8px">
+  <svg viewBox="0 0 400 244" style="width:100%;height:auto;display:block">
+    <defs>
+      <!-- Clip region: full SVG minus the three node circles (evenodd punches out the circles) -->
+      <clipPath id="ef-clip">
+        <path fill-rule="evenodd" d="M 0,0 H 400 V 244 H 0 Z M 200,40 A 40,40 0 1,0 200,120 A 40,40 0 1,0 200,40 Z M 58,135 A 40,40 0 1,0 58,215 A 40,40 0 1,0 58,135 Z M 342,131 A 44,44 0 1,0 342,219 A 44,44 0 1,0 342,131 Z"/>
+      </clipPath>
+    </defs>
+    <line id="ef-line-v"   x1="200" y1="120" x2="200" y2="175" stroke="#dee2e6" stroke-width="3" stroke-linecap="round"/>
+    <line id="ef-line-h-l" x1="98"  y1="175" x2="200" y2="175" stroke="#dee2e6" stroke-width="3" stroke-linecap="round"/>
+    <line id="ef-line-h-r" x1="200" y1="175" x2="298" y2="175" stroke="#dee2e6" stroke-width="3" stroke-linecap="round"/>
+    <g id="ef-dots-pv-home"   clip-path="url(#ef-clip)"></g>
+    <g id="ef-dots-grid-home" clip-path="url(#ef-clip)"></g>
+    <g id="ef-dots-pv-grid"   clip-path="url(#ef-clip)"></g>
+    <circle cx="200" cy="80"  r="40" fill="white" stroke="#f59f00" stroke-width="2.5"/>
+    <!-- sun icon (MDI weather-sunny) -->
+    <path d="M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7M12,1L12,4M12,20L12,23M1,12L4,12M20,12L23,12M4.22,4.22L6.34,6.34M19.78,4.22L17.66,6.34M17.66,17.66L19.78,19.78M4.22,19.78L6.34,17.66"
+          fill="none" stroke="#f59f00" stroke-width="1.8" stroke-linecap="round"
+          transform="translate(186.8,48.8) scale(1.1)"/>
+    <text id="ef-pv-w" x="200" y="93"  text-anchor="middle" font-size="12" font-weight="600" fill="#7c5e00">— W</text>
+    <text x="200" y="22"  text-anchor="middle" font-size="11" fill="#6c757d">PV-Anlage</text>
+    <circle cx="58"  cy="175" r="40" fill="white" stroke="#3b82f6" stroke-width="2.5"/>
+    <!-- lightning bolt icon (MDI lightning-bolt) -->
+    <path d="M7,2H14L11,9H16L5,22L8,14H4L7,2Z"
+          fill="#3b82f6"
+          transform="translate(47,148.8) scale(1.1)"/>
+    <text id="ef-grid-w" x="58"  y="188" text-anchor="middle" font-size="12" font-weight="600" fill="#1d4ed8">— W</text>
+    <text x="58"  y="229" text-anchor="middle" font-size="11" fill="#6c757d">Stromnetz</text>
+    <!-- Consumer breakdown ring -->
+    <circle cx="342" cy="175" r="44" fill="none" stroke="#e9ecef" stroke-width="2.5"/>
+    <circle id="ef-ring-pv"   cx="342" cy="175" r="44" fill="none" stroke="#f59f00" stroke-width="2.5" stroke-dasharray="0 276.5" transform="rotate(-90,342,175)"/>
+    <circle id="ef-ring-grid" cx="342" cy="175" r="44" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-dasharray="0 276.5" transform="rotate(-90,342,175)"/>
+    <circle cx="342" cy="175" r="40" fill="white" stroke="none"/>
+    <!-- house icon (MDI home) -->
+    <path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"
+          fill="none" stroke="#10b981" stroke-width="1.8" stroke-linejoin="round"
+          transform="translate(328.8,149.35) scale(1.1)"/>
+    <text id="ef-consumer-w" x="342" y="188" text-anchor="middle" font-size="12" font-weight="600" fill="#065f46">— W</text>
+    <text x="342" y="229" text-anchor="middle" font-size="11" fill="#6c757d">Verbraucher</text>
+  </svg>
+</div>
+
 <!-- Plug chips -->
 <div class="section-label">Steckdosen</div>
 <div id="plug-list" class="plugs">—</div>
@@ -72,6 +116,7 @@
     try {
       const data = JSON.parse(evt.detail.xhr.responseText);
       lastLive = data;
+      updateEnergyFlow(data);
       const producer = data.plugs.find(p => p.role === "producer");
       document.getElementById("hero-value").innerHTML =
         (producer && producer.online ? Math.abs(producer.apower_w).toFixed(0) : "—") +
@@ -254,6 +299,80 @@
         },
       });
     });
+  }
+
+  // Energy flow visualization
+  const EF_PATHS = {
+    pvHome:   "M 200,120 L 200,175 L 298,175",
+    gridHome: "M 98,175 L 298,175",
+    pvGrid:   "M 200,120 L 200,175 L 98,175",
+  };
+  // Actual pixel lengths of each path (vertical + horizontal segments)
+  const EF_LENS = { pvHome: 153, gridHome: 200, pvGrid: 157 };
+
+  function efDur(w, len) {
+    return w < 1 ? null : Math.max(0.5, Math.min(8, len / w));
+  }
+
+  const efLastDur = {};
+
+  function efSetDots(id, path, color, dur) {
+    const g = document.getElementById(id);
+    if (!g) return;
+    const prev = efLastDur[id];
+    const changed = dur === null ? prev != null
+                                 : prev == null || Math.abs(dur - prev) / prev > 0.05;
+    if (!changed) return;
+    efLastDur[id] = dur;
+    g.innerHTML = "";
+    if (!dur) return;
+    for (let i = 0; i < 3; i++) {
+      const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      c.setAttribute("r", "4.5");
+      c.setAttribute("fill", color);
+      c.style.cssText = `offset-path:path("${path}");animation:flow-dot ${dur}s ${(-(i * dur / 3)).toFixed(3)}s linear infinite;`;
+      g.appendChild(c);
+    }
+  }
+
+  function efLine(id, color) {
+    const el = document.getElementById(id);
+    if (el) el.setAttribute("stroke", color);
+  }
+
+  function updateEnergyFlow(data) {
+    const prod  = data.plugs.find(p => p.role === "producer");
+    const pvW   = prod?.online ? Math.abs(prod.apower_w) : 0;
+    const consW = data.plugs
+      .filter(p => p.role === "consumer")
+      .reduce((s, p) => s + (p.online ? p.apower_w : 0), 0);
+
+    const pvToHome   = Math.min(pvW, consW);
+    const gridToHome = Math.max(0, consW - pvW);
+    const pvToGrid   = Math.max(0, pvW - consW);
+
+    document.getElementById("ef-pv-w").textContent       = pvW.toFixed(0) + " W";
+    document.getElementById("ef-consumer-w").textContent = consW.toFixed(0) + " W";
+    document.getElementById("ef-grid-w").textContent =
+      gridToHome > 0 ? "+" + gridToHome.toFixed(0) + " W" :
+      pvToGrid   > 0 ? "−" + pvToGrid.toFixed(0) + " W" : "0 W";
+
+    efSetDots("ef-dots-pv-home",   EF_PATHS.pvHome,   "#f59f00", efDur(pvToHome,   EF_LENS.pvHome));
+    efSetDots("ef-dots-grid-home", EF_PATHS.gridHome, "#3b82f6", efDur(gridToHome, EF_LENS.gridHome));
+    efSetDots("ef-dots-pv-grid",   EF_PATHS.pvGrid,   "#f59f00", efDur(pvToGrid,   EF_LENS.pvGrid));
+
+    const GRAY = "#dee2e6";
+    efLine("ef-line-v",   pvW > 0        ? "#f59f00" : GRAY);
+    efLine("ef-line-h-r", gridToHome > 0 ? "#3b82f6" : (pvToHome > 0 ? "#f59f00" : GRAY));
+    efLine("ef-line-h-l", gridToHome > 0 ? "#3b82f6" : (pvToGrid > 0 ? "#f59f00" : GRAY));
+
+    const C = 2 * Math.PI * 44;
+    const pvArc   = consW > 0 ? (pvToHome   / consW) * C : 0;
+    const gridArc = consW > 0 ? (gridToHome / consW) * C : 0;
+    document.getElementById("ef-ring-pv").setAttribute("stroke-dasharray",   `${pvArc} ${C}`);
+    document.getElementById("ef-ring-pv").setAttribute("stroke-dashoffset",  "0");
+    document.getElementById("ef-ring-grid").setAttribute("stroke-dasharray", `${gridArc} ${C}`);
+    document.getElementById("ef-ring-grid").setAttribute("stroke-dashoffset", -pvArc);
   }
 
   document.addEventListener("DOMContentLoaded", () => {
