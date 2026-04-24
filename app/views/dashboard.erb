@@ -35,10 +35,10 @@
     <text id="ef-grid-w" x="58"  y="188" text-anchor="middle" font-size="12" font-weight="600" fill="#1d4ed8">— W</text>
     <text x="58"  y="229" text-anchor="middle" font-size="11" fill="#6c757d">Stromnetz</text>
     <!-- Consumer breakdown ring -->
-    <circle cx="342" cy="175" r="44" fill="none" stroke="#e9ecef" stroke-width="5"/>
-    <circle id="ef-ring-pv"   cx="342" cy="175" r="44" fill="none" stroke="#f59f00" stroke-width="5" stroke-dasharray="0 276.5" transform="rotate(-90,342,175)"/>
-    <circle id="ef-ring-grid" cx="342" cy="175" r="44" fill="none" stroke="#3b82f6" stroke-width="5" stroke-dasharray="0 276.5" transform="rotate(-90,342,175)"/>
-    <circle cx="342" cy="175" r="40" fill="white" stroke="#10b981" stroke-width="2.5"/>
+    <circle cx="342" cy="175" r="44" fill="none" stroke="#e9ecef" stroke-width="2.5"/>
+    <circle id="ef-ring-pv"   cx="342" cy="175" r="44" fill="none" stroke="#f59f00" stroke-width="2.5" stroke-dasharray="0 276.5" transform="rotate(-90,342,175)"/>
+    <circle id="ef-ring-grid" cx="342" cy="175" r="44" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-dasharray="0 276.5" transform="rotate(-90,342,175)"/>
+    <circle cx="342" cy="175" r="40" fill="white" stroke="none"/>
     <!-- house icon (MDI home) -->
     <path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"
           fill="none" stroke="#10b981" stroke-width="1.8" stroke-linejoin="round"
@@ -308,9 +308,16 @@
     return w < 1 ? null : Math.max(0.5, Math.min(8, len / w));
   }
 
+  const efLastDur = {};
+
   function efSetDots(id, path, color, dur) {
     const g = document.getElementById(id);
     if (!g) return;
+    const prev = efLastDur[id];
+    const changed = dur === null ? prev !== null
+                                 : prev === null || Math.abs(dur - prev) / prev > 0.05;
+    if (!changed) return;
+    efLastDur[id] = dur;
     g.innerHTML = "";
     if (!dur) return;
     for (let i = 0; i < 3; i++) {
