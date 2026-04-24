@@ -330,8 +330,12 @@
       const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
       c.setAttribute("r", "4.5");
       c.setAttribute("fill", color);
-      c.style.cssText = `offset-path:path("${path}");animation:flow-dot ${dur}s ${(-(i * dur / 3)).toFixed(3)}s linear infinite;`;
+      c.style.cssText = `offset-path:path("${path}")`;
       g.appendChild(c);
+      c.animate(
+        [{ offsetDistance: "0%" }, { offsetDistance: "100%" }],
+        { duration: dur * 1000, delay: -(i * dur / 3) * 1000, iterations: Infinity, easing: "linear" }
+      );
     }
   }
 
@@ -374,6 +378,20 @@
     document.getElementById("ef-ring-grid").setAttribute("stroke-dasharray", `${gridArc} ${C}`);
     document.getElementById("ef-ring-grid").setAttribute("stroke-dashoffset", -pvArc);
   }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && lastLive) {
+      Object.keys(efLastDur).forEach(k => delete efLastDur[k]);
+      updateEnergyFlow(lastLive);
+    }
+  });
+
+  window.addEventListener("pageshow", (e) => {
+    if (e.persisted && lastLive) {
+      Object.keys(efLastDur).forEach(k => delete efLastDur[k]);
+      updateEnergyFlow(lastLive);
+    }
+  });
 
   document.addEventListener("DOMContentLoaded", () => {
     loadTodayChart();
