@@ -10,6 +10,38 @@
   <div class="hero-value" id="hero-value">— <span class="hero-unit">W</span></div>
 </div>
 
+<!-- Tiles: today's numbers -->
+<div class="tiles"
+     hx-get="/api/today/summary"
+     hx-trigger="load, every 10s"
+     hx-swap="none"
+     hx-on::after-request="updateSummary(event)">
+  <div class="tile">
+    <div class="tile-label">Erzeugt heute</div>
+    <div class="tile-value" id="tile-produced">—</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Verbraucht heute</div>
+    <div class="tile-value" id="tile-consumed">—</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Gespart heute</div>
+    <div class="tile-value" id="tile-savings">—</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Bilanz heute</div>
+    <div class="tile-value" id="tile-nettoday">—</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Verbrauch jetzt</div>
+    <div class="tile-value" id="tile-consumption">—</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Bilanz jetzt</div>
+    <div class="tile-value" id="tile-netbalance">—</div>
+  </div>
+</div>
+
 <!-- Energiefluss -->
 <div class="section-label">Energiefluss</div>
 <div class="chart-card" style="padding:12px 8px">
@@ -46,38 +78,6 @@
     <text id="ef-consumer-w" x="342" y="188" text-anchor="middle" font-size="12" font-weight="600" fill="#065f46">— W</text>
     <text x="342" y="229" text-anchor="middle" font-size="11" fill="#6c757d">Verbraucher</text>
   </svg>
-</div>
-
-<!-- Tiles: today's numbers -->
-<div class="tiles"
-     hx-get="/api/today/summary"
-     hx-trigger="load, every 10s"
-     hx-swap="none"
-     hx-on::after-request="updateSummary(event)">
-  <div class="tile">
-    <div class="tile-label">Erzeugt heute</div>
-    <div class="tile-value" id="tile-produced">—</div>
-  </div>
-  <div class="tile">
-    <div class="tile-label">Verbraucht heute</div>
-    <div class="tile-value" id="tile-consumed">—</div>
-  </div>
-  <div class="tile">
-    <div class="tile-label">Gespart heute</div>
-    <div class="tile-value" id="tile-savings">—</div>
-  </div>
-  <div class="tile">
-    <div class="tile-label">Bilanz heute</div>
-    <div class="tile-value" id="tile-nettoday">—</div>
-  </div>
-  <div class="tile">
-    <div class="tile-label">Verbrauch jetzt</div>
-    <div class="tile-value" id="tile-consumption">—</div>
-  </div>
-  <div class="tile">
-    <div class="tile-label">Bilanz jetzt</div>
-    <div class="tile-value" id="tile-netbalance">—</div>
-  </div>
 </div>
 
 <!-- Plug chips -->
