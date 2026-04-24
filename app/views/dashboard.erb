@@ -301,9 +301,11 @@
     gridHome: "M 98,175 L 302,175",
     pvGrid:   "M 200,120 L 200,175 L 98,175",
   };
+  // Actual pixel lengths of each path (vertical + horizontal segments)
+  const EF_LENS = { pvHome: 157, gridHome: 204, pvGrid: 157 };
 
-  function efDur(w) {
-    return w < 1 ? null : Math.max(0.8, Math.min(6, 400 / w));
+  function efDur(w, len) {
+    return w < 1 ? null : Math.max(0.5, Math.min(8, len / w));
   }
 
   function efSetDots(id, path, color, dur) {
@@ -342,9 +344,9 @@
       gridToHome > 0 ? "+" + gridToHome.toFixed(0) + " W" :
       pvToGrid   > 0 ? "−" + pvToGrid.toFixed(0) + " W" : "0 W";
 
-    efSetDots("ef-dots-pv-home",   EF_PATHS.pvHome,   "#f59f00", efDur(pvToHome));
-    efSetDots("ef-dots-grid-home", EF_PATHS.gridHome, "#3b82f6", efDur(gridToHome));
-    efSetDots("ef-dots-pv-grid",   EF_PATHS.pvGrid,   "#f59f00", efDur(pvToGrid));
+    efSetDots("ef-dots-pv-home",   EF_PATHS.pvHome,   "#f59f00", efDur(pvToHome,   EF_LENS.pvHome));
+    efSetDots("ef-dots-grid-home", EF_PATHS.gridHome, "#3b82f6", efDur(gridToHome, EF_LENS.gridHome));
+    efSetDots("ef-dots-pv-grid",   EF_PATHS.pvGrid,   "#f59f00", efDur(pvToGrid,   EF_LENS.pvGrid));
 
     const GRAY = "#dee2e6";
     efLine("ef-line-v",   pvW > 0        ? "#f59f00" : GRAY);
