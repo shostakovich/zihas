@@ -46,12 +46,18 @@
 <div class="section-label">Energiefluss</div>
 <div class="chart-card" style="padding:12px 8px">
   <svg viewBox="0 0 400 244" style="width:100%;height:auto;display:block">
+    <defs>
+      <!-- Clip region: full SVG minus the three node circles (evenodd punches out the circles) -->
+      <clipPath id="ef-clip">
+        <path fill-rule="evenodd" d="M 0,0 H 400 V 244 H 0 Z M 200,40 A 40,40 0 1,0 200,120 A 40,40 0 1,0 200,40 Z M 58,135 A 40,40 0 1,0 58,215 A 40,40 0 1,0 58,135 Z M 342,131 A 44,44 0 1,0 342,219 A 44,44 0 1,0 342,131 Z"/>
+      </clipPath>
+    </defs>
     <line id="ef-line-v"   x1="200" y1="120" x2="200" y2="175" stroke="#dee2e6" stroke-width="3" stroke-linecap="round"/>
     <line id="ef-line-h-l" x1="98"  y1="175" x2="200" y2="175" stroke="#dee2e6" stroke-width="3" stroke-linecap="round"/>
     <line id="ef-line-h-r" x1="200" y1="175" x2="298" y2="175" stroke="#dee2e6" stroke-width="3" stroke-linecap="round"/>
-    <g id="ef-dots-pv-home"></g>
-    <g id="ef-dots-grid-home"></g>
-    <g id="ef-dots-pv-grid"></g>
+    <g id="ef-dots-pv-home"   clip-path="url(#ef-clip)"></g>
+    <g id="ef-dots-grid-home" clip-path="url(#ef-clip)"></g>
+    <g id="ef-dots-pv-grid"   clip-path="url(#ef-clip)"></g>
     <circle cx="200" cy="80"  r="40" fill="white" stroke="#f59f00" stroke-width="2.5"/>
     <!-- sun icon (MDI weather-sunny) -->
     <path d="M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7M12,1L12,4M12,20L12,23M1,12L4,12M20,12L23,12M4.22,4.22L6.34,6.34M19.78,4.22L17.66,6.34M17.66,17.66L19.78,19.78M4.22,19.78L6.34,17.66"
