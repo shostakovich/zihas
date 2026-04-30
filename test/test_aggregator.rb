@@ -70,6 +70,19 @@ class AggregatorTest < Minitest::Test
     assert_equal [fresh_ts], remaining_ts
   end
 
+  def test_daily_total_ignores_glitch_zero_then_jump_back
+    # Fritz!DECT briefly returns 0 for getswitchenergy and then snaps back
+    # to the real lifetime cumulative; the jump must not inflate the total.
+    start_ts = berlin_midnight_utc("2026-04-10")
+    @db[:samples].insert(plug_id: "bkw", ts: start_ts,        apower_w: 145, aenergy_wh: 425_000.0)
+    @db[:samples].insert(plug_id: "bkw", ts: start_ts + 5,    apower_w: 145, aenergy_wh: 0.0)
+    @db[:samples].insert(plug_id: "bkw", ts: start_ts + 10,   apower_w: 145, aenergy_wh: 425_005.0)
+    @db[:samples].insert(plug_id: "bkw", ts: start_ts + 15,   apower_w: 145, aenergy_wh: 425_010.0)
+    @aggregator.aggregate_day("2026-04-10")
+    row = @db[:daily_totals].first(plug_id: "bkw", date: "2026-04-10")
+    assert_in_delta 5.0, row[:energy_wh]
+  end
+
   def test_daily_total_handles_meter_reset
     start_ts = berlin_midnight_utc("2026-04-10")
     # Cumulative counter at 424,44 kWh before reset

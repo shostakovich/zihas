@@ -4,6 +4,12 @@ require "set"
 require "time"
 
 class Aggregator
+  # Plausible per-sample power ceiling used to cap energy deltas. 20 kW is
+  # well above any realistic single-circuit load, so genuine consumption
+  # passes through while counter glitches (e.g. 0 -> lifetime-cumulative)
+  # are dropped.
+  MAX_PLAUSIBLE_W = 20_000
+
   def initialize(db:, timezone:, raw_retention_days:)
     @db = db
     @tz = timezone
@@ -20,9 +26,14 @@ class Aggregator
         .delete
       @db[:daily_totals].where(date: date_s).delete
 
+      # Cap each per-sample delta at MAX_PLAUSIBLE_W * dt to discard
+      # implausible counter jumps (e.g. a glitched 0-reading followed by a
+      # snap back to the lifetime cumulative value would otherwise contribute
+      # hundreds of kWh in a single delta).
       sql_5min = <<~SQL
         WITH window_samples AS (
           SELECT plug_id, ts, apower_w, aenergy_wh,
+                 LAG(ts)         OVER (PARTITION BY plug_id ORDER BY ts) AS prev_ts,
                  LAG(aenergy_wh) OVER (PARTITION BY plug_id ORDER BY ts) AS prev_wh
             FROM samples
            WHERE ts >= ? AND ts < ?
@@ -30,9 +41,11 @@ class Aggregator
         deltas AS (
           SELECT plug_id, ts, apower_w,
                  CASE
-                   WHEN prev_wh IS NULL       THEN 0
-                   WHEN aenergy_wh >= prev_wh THEN aenergy_wh - prev_wh
-                   ELSE aenergy_wh
+                   WHEN prev_wh IS NULL      THEN 0
+                   WHEN aenergy_wh < prev_wh THEN 0
+                   WHEN aenergy_wh - prev_wh
+                        > #{MAX_PLAUSIBLE_W}.0 * (ts - prev_ts) / 3600.0 THEN 0
+                   ELSE aenergy_wh - prev_wh
                  END AS delta_wh
             FROM window_samples
         )
@@ -49,6 +62,7 @@ class Aggregator
       sql_daily = <<~SQL
         WITH window_samples AS (
           SELECT plug_id, ts, aenergy_wh,
+                 LAG(ts)         OVER (PARTITION BY plug_id ORDER BY ts) AS prev_ts,
                  LAG(aenergy_wh) OVER (PARTITION BY plug_id ORDER BY ts) AS prev_wh
             FROM samples
            WHERE ts >= ? AND ts < ?
@@ -56,9 +70,11 @@ class Aggregator
         deltas AS (
           SELECT plug_id,
                  CASE
-                   WHEN prev_wh IS NULL       THEN 0
-                   WHEN aenergy_wh >= prev_wh THEN aenergy_wh - prev_wh
-                   ELSE aenergy_wh
+                   WHEN prev_wh IS NULL      THEN 0
+                   WHEN aenergy_wh < prev_wh THEN 0
+                   WHEN aenergy_wh - prev_wh
+                        > #{MAX_PLAUSIBLE_W}.0 * (ts - prev_ts) / 3600.0 THEN 0
+                   ELSE aenergy_wh - prev_wh
                  END AS delta_wh
             FROM window_samples
         )
