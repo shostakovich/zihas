@@ -52,13 +52,28 @@ class Web < Sinatra::Base
 
     def energy_delta_wh(plug_ids, start_ts, end_ts)
       return 0.0 if plug_ids.empty?
-      rows = settings.db[:samples]
-        .where(plug_id: plug_ids, ts: start_ts..(end_ts - 1))
-        .select_group(:plug_id)
-        .select_append(
-          (Sequel.function(:max, :aenergy_wh) - Sequel.function(:min, :aenergy_wh)).as(:delta)
+      placeholders = plug_ids.map { "?" }.join(", ")
+      sql = <<~SQL
+        WITH window_samples AS (
+          SELECT plug_id, aenergy_wh,
+                 LAG(aenergy_wh) OVER (PARTITION BY plug_id ORDER BY ts) AS prev_wh
+            FROM samples
+           WHERE plug_id IN (#{placeholders}) AND ts >= ? AND ts <= ?
+        ),
+        deltas AS (
+          SELECT plug_id,
+                 CASE
+                   WHEN prev_wh IS NULL       THEN 0
+                   WHEN aenergy_wh >= prev_wh THEN aenergy_wh - prev_wh
+                   ELSE aenergy_wh
+                 END AS delta_wh
+            FROM window_samples
         )
-        .all
+        SELECT plug_id, SUM(delta_wh) AS delta
+          FROM deltas
+         GROUP BY plug_id
+      SQL
+      rows = settings.db.fetch(sql, *plug_ids, start_ts, end_ts - 1).all
       rows.sum { |r| r[:delta] || 0 }.to_f
     end
   end

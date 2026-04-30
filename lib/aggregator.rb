@@ -21,29 +21,56 @@ class Aggregator
       @db[:daily_totals].where(date: date_s).delete
 
       sql_5min = <<~SQL
+        WITH window_samples AS (
+          SELECT plug_id, ts, apower_w, aenergy_wh,
+                 LAG(aenergy_wh) OVER (PARTITION BY plug_id ORDER BY ts) AS prev_wh
+            FROM samples
+           WHERE ts >= ? AND ts < ?
+        ),
+        deltas AS (
+          SELECT plug_id, ts, apower_w,
+                 CASE
+                   WHEN prev_wh IS NULL       THEN 0
+                   WHEN aenergy_wh >= prev_wh THEN aenergy_wh - prev_wh
+                   ELSE aenergy_wh
+                 END AS delta_wh
+            FROM window_samples
+        )
         INSERT INTO samples_5min (plug_id, bucket_ts, avg_power_w, energy_delta_wh, sample_count)
         SELECT plug_id,
-               (ts / 300) * 300                       AS bucket_ts,
-               AVG(apower_w)                          AS avg_power_w,
-               MAX(aenergy_wh) - MIN(aenergy_wh)      AS energy_delta_wh,
-               COUNT(*)                               AS sample_count
-          FROM samples
-         WHERE ts >= ? AND ts < ?
+               (ts / 300) * 300   AS bucket_ts,
+               AVG(apower_w)      AS avg_power_w,
+               SUM(delta_wh)      AS energy_delta_wh,
+               COUNT(*)           AS sample_count
+          FROM deltas
          GROUP BY plug_id, bucket_ts
       SQL
 
       sql_daily = <<~SQL
+        WITH window_samples AS (
+          SELECT plug_id, ts, aenergy_wh,
+                 LAG(aenergy_wh) OVER (PARTITION BY plug_id ORDER BY ts) AS prev_wh
+            FROM samples
+           WHERE ts >= ? AND ts < ?
+        ),
+        deltas AS (
+          SELECT plug_id,
+                 CASE
+                   WHEN prev_wh IS NULL       THEN 0
+                   WHEN aenergy_wh >= prev_wh THEN aenergy_wh - prev_wh
+                   ELSE aenergy_wh
+                 END AS delta_wh
+            FROM window_samples
+        )
         INSERT INTO daily_totals (plug_id, date, energy_wh)
-        SELECT plug_id, ?,
-               MAX(aenergy_wh) - MIN(aenergy_wh) AS energy_wh
-          FROM samples
-         WHERE ts >= ? AND ts < ?
+        SELECT plug_id, ?, SUM(delta_wh) AS energy_wh
+          FROM deltas
          GROUP BY plug_id
       SQL
 
       @db.synchronize do |conn|
         conn.execute(sql_5min, [start_ts, end_ts])
-        conn.execute(sql_daily, [date_s, start_ts, end_ts])
+        conn.execute(sql_daily, [start_ts, end_ts, date_s])
       end
     end
   end
