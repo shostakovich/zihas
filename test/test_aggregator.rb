@@ -70,6 +70,19 @@ class AggregatorTest < Minitest::Test
     assert_equal [fresh_ts], remaining_ts
   end
 
+  def test_daily_total_handles_meter_reset
+    start_ts = berlin_midnight_utc("2026-04-10")
+    # Cumulative counter at 424,44 kWh before reset
+    @db[:samples].insert(plug_id: "bkw", ts: start_ts,        apower_w: 0, aenergy_wh: 424_440.0)
+    @db[:samples].insert(plug_id: "bkw", ts: start_ts + 3600, apower_w: 0, aenergy_wh: 424_440.0)
+    # Device resets to 0, then consumes 100 Wh
+    @db[:samples].insert(plug_id: "bkw", ts: start_ts + 7200, apower_w: 0, aenergy_wh: 0.0)
+    @db[:samples].insert(plug_id: "bkw", ts: start_ts + 7260, apower_w: 0, aenergy_wh: 100.0)
+    @aggregator.aggregate_day("2026-04-10")
+    row = @db[:daily_totals].first(plug_id: "bkw", date: "2026-04-10")
+    assert_in_delta 100.0, row[:energy_wh]
+  end
+
   def test_ignores_days_with_no_samples
     @aggregator.aggregate_day("1999-01-01") # must not raise
     assert_equal 0, @db[:daily_totals].count

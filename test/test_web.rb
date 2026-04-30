@@ -110,6 +110,18 @@ class WebTest < Minitest::Test
     assert_in_delta 0.32,   data["savings_eur_today"]
   end
 
+  def test_api_today_summary_handles_meter_reset
+    tz       = TZInfo::Timezone.get("Europe/Berlin")
+    midnight = tz.local_to_utc(Time.parse("#{Date.today} 00:00:00")).to_i
+    # fridge counter at 424,44 kWh, then resets to 0, then consumes 50 Wh
+    Web.settings.db[:samples].insert(plug_id: "fridge", ts: midnight + 60,  apower_w: 0, aenergy_wh: 424_440.0)
+    Web.settings.db[:samples].insert(plug_id: "fridge", ts: midnight + 120, apower_w: 0, aenergy_wh: 0.0)
+    Web.settings.db[:samples].insert(plug_id: "fridge", ts: midnight + 180, apower_w: 0, aenergy_wh: 50.0)
+    get "/api/today/summary"
+    data = JSON.parse(last_response.body)
+    assert_in_delta 50.0, data["consumed_wh_today"]
+  end
+
   def test_api_history_returns_n_days
     tz     = TZInfo::Timezone.get("Europe/Berlin")
     today  = Date.today
