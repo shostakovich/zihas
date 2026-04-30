@@ -50,12 +50,17 @@ class Web < Sinatra::Base
       settings.config.plugs.select { |p| p.role == :consumer }.map(&:id)
     end
 
+    # Plausible per-sample power ceiling used to cap energy deltas (see
+    # Aggregator::MAX_PLAUSIBLE_W for rationale).
+    MAX_PLAUSIBLE_W = 20_000
+
     def energy_delta_wh(plug_ids, start_ts, end_ts)
       return 0.0 if plug_ids.empty?
       placeholders = plug_ids.map { "?" }.join(", ")
       sql = <<~SQL
         WITH window_samples AS (
-          SELECT plug_id, aenergy_wh,
+          SELECT plug_id, ts, aenergy_wh,
+                 LAG(ts)         OVER (PARTITION BY plug_id ORDER BY ts) AS prev_ts,
                  LAG(aenergy_wh) OVER (PARTITION BY plug_id ORDER BY ts) AS prev_wh
             FROM samples
            WHERE plug_id IN (#{placeholders}) AND ts >= ? AND ts <= ?
@@ -63,9 +68,11 @@ class Web < Sinatra::Base
         deltas AS (
           SELECT plug_id,
                  CASE
-                   WHEN prev_wh IS NULL       THEN 0
-                   WHEN aenergy_wh >= prev_wh THEN aenergy_wh - prev_wh
-                   ELSE aenergy_wh
+                   WHEN prev_wh IS NULL      THEN 0
+                   WHEN aenergy_wh < prev_wh THEN 0
+                   WHEN aenergy_wh - prev_wh
+                        > #{MAX_PLAUSIBLE_W}.0 * (ts - prev_ts) / 3600.0 THEN 0
+                   ELSE aenergy_wh - prev_wh
                  END AS delta_wh
             FROM window_samples
         )

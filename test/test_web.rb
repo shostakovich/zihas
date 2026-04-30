@@ -122,6 +122,22 @@ class WebTest < Minitest::Test
     assert_in_delta 50.0, data["consumed_wh_today"]
   end
 
+  def test_api_today_summary_ignores_glitch_zero_then_jump_back
+    # Fritz!DECT briefly returns 0 for getswitchenergy (firmware glitch)
+    # and then snaps back to its real lifetime cumulative value. The jump
+    # back UP must not be counted as consumption.
+    tz       = TZInfo::Timezone.get("Europe/Berlin")
+    midnight = tz.local_to_utc(Time.parse("#{Date.today} 00:00:00")).to_i
+    Web.settings.db[:samples].insert(plug_id: "fridge", ts: midnight + 60,  apower_w: 145, aenergy_wh: 425_000.0)
+    Web.settings.db[:samples].insert(plug_id: "fridge", ts: midnight + 65,  apower_w: 145, aenergy_wh: 0.0)
+    Web.settings.db[:samples].insert(plug_id: "fridge", ts: midnight + 70,  apower_w: 145, aenergy_wh: 425_005.0)
+    Web.settings.db[:samples].insert(plug_id: "fridge", ts: midnight + 75,  apower_w: 145, aenergy_wh: 425_010.0)
+    get "/api/today/summary"
+    data = JSON.parse(last_response.body)
+    # Only the legitimate 5 Wh delta between the last two samples is counted.
+    assert_in_delta 5.0, data["consumed_wh_today"]
+  end
+
   def test_api_history_returns_n_days
     tz     = TZInfo::Timezone.get("Europe/Berlin")
     today  = Date.today
