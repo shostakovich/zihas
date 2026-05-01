@@ -125,11 +125,8 @@ class ConfigLoader
   def build_fritz_box(h)
     return nil if h.nil?
     h = require_hash(h, "fritz_box")
-    FritzBoxCfg.new(
-      host:     require_string(h["host"],     "fritz_box.host"),
-      user:     require_string(h["user"],     "fritz_box.user"),
-      password: require_string(h["password"], "fritz_box.password"),
-    )
+    host, user, password = %w[host user password].map { |k| require_string(h[k], "fritz_box.#{k}") }
+    FritzBoxCfg.new(host: host, user: user, password: password)
   end
 
   def build_plugs(list)
