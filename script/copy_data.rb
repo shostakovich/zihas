@@ -3,7 +3,7 @@ require 'sqlite3'
 source_db = SQLite3::Database.new("data/ziwoas.db")
 dest_db = SQLite3::Database.new("storage/development.sqlite3")
 
-%w[samples samples_5min daily_totals].each do |table|
+%w[samples daily_totals].each do |table|
   puts "Copying #{table}..."
   rows = source_db.execute("SELECT * FROM #{table}")
   dest_db.transaction do

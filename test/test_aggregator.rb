@@ -5,6 +5,8 @@ require "fileutils"
 require "tmpdir"
 
 class AggregatorTest < ActiveSupport::TestCase
+  self.use_transactional_tests = false
+
   setup do
     Sample.delete_all
     DailyTotal.delete_all
