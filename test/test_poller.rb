@@ -1,28 +1,25 @@
 require "test_helper"
 require "poller"
-require "db"
 require "config_loader"
 require "logger"
 require "stringio"
 
-class PollerTest < Minitest::Test
-  def setup
-    @db = DB.connect(":memory:")
-    DB.migrate!(@db)
+class PollerTest < ActiveSupport::TestCase
+  setup do
+    Sample.delete_all
 
     @log_io = StringIO.new
-    @logger = Logger.new(@log_io)
+    @logger  = Logger.new(@log_io)
+    @now     = 1_700_000_000.0
 
-    @now = 1_700_000_000.0
     @plugs = [
-      ConfigLoader::PlugCfg.new(id: "bkw",   name: "BKW",   role: :producer, driver: :shelly, host: "10.0.0.1"),
-      ConfigLoader::PlugCfg.new(id: "fridge", name: "Fridge", role: :consumer, driver: :shelly, host: "10.0.0.2"),
+      ConfigLoader::PlugCfg.new(id: "bkw",    name: "BKW",   role: :producer, driver: :shelly, host: "10.0.0.1", ain: nil),
+      ConfigLoader::PlugCfg.new(id: "fridge",  name: "Fridge", role: :consumer, driver: :shelly, host: "10.0.0.2", ain: nil),
     ]
 
     @poller = Poller.new(
       plugs:        @plugs,
-      db:           @db,
-      clients:      @plugs.to_h { |p| [p.id, fake_client] },
+      clients:      @plugs.to_h { |p| [ p.id, fake_client ] },
       logger:       @logger,
       breaker_opts: { threshold: 3, probe_seconds: 30 },
       clock:        -> { @now },
@@ -31,7 +28,7 @@ class PollerTest < Minitest::Test
 
   def fake_client
     client = Object.new
-    def client.fetch(plug) = ShellyClient::Reading.new(apower_w: 100.0, aenergy_wh: 500.0)
+    def client.fetch(_plug) = ShellyClient::Reading.new(apower_w: 100.0, aenergy_wh: 500.0)
     client
   end
 
@@ -44,34 +41,29 @@ class PollerTest < Minitest::Test
     client
   end
 
-  def test_successful_tick_inserts_one_row_per_plug
+  test "successful tick inserts one row per plug" do
     @poller.tick
-    assert_equal 2, @db[:samples].count
-    ids = @db[:samples].map(:plug_id).sort
-    assert_equal %w[bkw fridge], ids
+    assert_equal 2, Sample.count
+    assert_equal %w[bkw fridge], Sample.pluck(:plug_id).sort
   end
 
-  def test_failing_plug_does_not_block_others
-    failing = failing_client("bkw")
+  test "failing plug does not block others" do
     @poller = Poller.new(
       plugs:        @plugs,
-      db:           @db,
-      clients:      @plugs.to_h { |p| [p.id, failing] },
+      clients:      @plugs.to_h { |p| [ p.id, failing_client("bkw") ] },
       logger:       @logger,
       breaker_opts: { threshold: 3, probe_seconds: 30 },
       clock:        -> { @now },
     )
     @poller.tick
-    assert_equal 1, @db[:samples].count
-    assert_equal "fridge", @db[:samples].first[:plug_id]
+    assert_equal 1, Sample.count
+    assert_equal "fridge", Sample.first.plug_id
   end
 
-  def test_breaker_opens_after_threshold
-    failing = failing_client("bkw")
+  test "breaker opens after threshold failures" do
     @poller = Poller.new(
       plugs:        @plugs,
-      db:           @db,
-      clients:      @plugs.to_h { |p| [p.id, failing] },
+      clients:      @plugs.to_h { |p| [ p.id, failing_client("bkw") ] },
       logger:       @logger,
       breaker_opts: { threshold: 3, probe_seconds: 30 },
       clock:        -> { @now },
@@ -80,24 +72,20 @@ class PollerTest < Minitest::Test
     assert_match(/opening breaker.*bkw/i, @log_io.string)
   end
 
-  def test_only_logs_state_changes
-    failing = failing_client("bkw")
+  test "breaker state change is only logged once" do
     @poller = Poller.new(
       plugs:        @plugs,
-      db:           @db,
-      clients:      @plugs.to_h { |p| [p.id, failing] },
+      clients:      @plugs.to_h { |p| [ p.id, failing_client("bkw") ] },
       logger:       @logger,
       breaker_opts: { threshold: 3, probe_seconds: 30 },
       clock:        -> { @now },
     )
     10.times { @poller.tick }
-    opens = @log_io.string.scan(/opening breaker/).length
-    assert_equal 1, opens
+    assert_equal 1, @log_io.string.scan(/opening breaker/).length
   end
 
-  def test_timestamp_is_unix_seconds
+  test "timestamp stored as unix seconds" do
     @poller.tick
-    ts = @db[:samples].first[:ts]
-    assert_equal @now.to_i, ts
+    assert_equal @now.to_i, Sample.order(:ts).first.ts
   end
 end

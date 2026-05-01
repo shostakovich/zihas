@@ -2,7 +2,7 @@ require "fileutils"
 require "ziwoas"
 
 Rails.application.config.after_initialize do
-  if (defined?(Rails::Server) || defined?(Puma)) && !ENV["SKIP_BACKGROUND"]
+  if (defined?(Rails::Server) || defined?(Puma)) && !ENV["SKIP_BACKGROUND"] && !Rails.env.test?
     # Ensure data directory exists
     FileUtils.mkdir_p(Rails.root.join("data"))
 

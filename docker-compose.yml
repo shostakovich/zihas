@@ -10,5 +10,5 @@ services:
       TZ: Europe/Berlin
       SECRET_KEY_BASE: dummy_secret_for_local_docker
     volumes:
-      - ./data:/rails/data
+      - ./storage:/rails/storage
       - ./config/ziwoas.yml:/rails/config/ziwoas.yml:ro

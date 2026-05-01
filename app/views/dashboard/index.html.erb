@@ -1,402 +1,106 @@
-<h1>Zipfelmaus — Stromübersicht</h1>
+<div data-controller="dashboard">
+  <h1>Zipfelmaus — Stromübersicht</h1>
 
-<!-- Hero: BKW live -->
-<div class="hero"
-     hx-get="/api/live"
-     hx-trigger="load, every 5s"
-     hx-swap="none"
-     hx-on::after-request="updateHero(event)">
-  <div class="hero-label">Leistung jetzt</div>
-  <div class="hero-value" id="hero-value">— <span class="hero-unit">W</span></div>
-</div>
-
-<!-- Tiles: today's numbers -->
-<div class="tiles"
-     hx-get="/api/today/summary"
-     hx-trigger="load, every 10s"
-     hx-swap="none"
-     hx-on::after-request="updateSummary(event)">
-  <div class="tile">
-    <div class="tile-label">Erzeugt heute</div>
-    <div class="tile-value" id="tile-produced">—</div>
+  <!-- Hero: PV live -->
+  <div class="hero">
+    <div class="hero-label">Leistung jetzt</div>
+    <div class="hero-value" data-dashboard-target="heroValue">— <span class="hero-unit">W</span></div>
   </div>
-  <div class="tile">
-    <div class="tile-label">Verbraucht heute</div>
-    <div class="tile-value" id="tile-consumed">—</div>
+
+  <!-- Tiles: today's numbers -->
+  <div class="tiles">
+    <div class="tile">
+      <div class="tile-label">Erzeugt heute</div>
+      <div class="tile-value" data-dashboard-target="tileProduced">—</div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Verbraucht heute</div>
+      <div class="tile-value" data-dashboard-target="tileConsumed">—</div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Gespart heute</div>
+      <div class="tile-value" data-dashboard-target="tileSavings">—</div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Bilanz heute</div>
+      <div class="tile-value" data-dashboard-target="tileNettoday">—</div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Verbrauch jetzt</div>
+      <div class="tile-value" data-dashboard-target="tileConsumption">—</div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Bilanz jetzt</div>
+      <div class="tile-value" data-dashboard-target="tileNetbalance">—</div>
+    </div>
   </div>
-  <div class="tile">
-    <div class="tile-label">Gespart heute</div>
-    <div class="tile-value" id="tile-savings">—</div>
+
+  <!-- Energiefluss -->
+  <div class="section-label">Energiefluss</div>
+  <div class="chart-card" style="padding:12px 8px">
+    <svg viewBox="0 0 400 244" style="width:100%;height:auto;display:block">
+      <defs>
+        <!-- Clip region: full SVG minus the three node circles (evenodd punches out the circles) -->
+        <clipPath id="ef-clip">
+          <path fill-rule="evenodd" d="M 0,0 H 400 V 244 H 0 Z M 200,40 A 40,40 0 1,0 200,120 A 40,40 0 1,0 200,40 Z M 58,135 A 40,40 0 1,0 58,215 A 40,40 0 1,0 58,135 Z M 342,131 A 44,44 0 1,0 342,219 A 44,44 0 1,0 342,131 Z"/>
+        </clipPath>
+      </defs>
+      <line data-dashboard-target="efLineV"   x1="200" y1="120" x2="200" y2="175" stroke="#dee2e6" stroke-width="3" stroke-linecap="round"/>
+      <line data-dashboard-target="efLineHl"  x1="98"  y1="175" x2="200" y2="175" stroke="#dee2e6" stroke-width="3" stroke-linecap="round"/>
+      <line data-dashboard-target="efLineHr"  x1="200" y1="175" x2="298" y2="175" stroke="#dee2e6" stroke-width="3" stroke-linecap="round"/>
+      <g data-dashboard-target="efDotsPvHome"   clip-path="url(#ef-clip)"></g>
+      <g data-dashboard-target="efDotsGridHome" clip-path="url(#ef-clip)"></g>
+      <g data-dashboard-target="efDotsPvGrid"   clip-path="url(#ef-clip)"></g>
+      <circle cx="200" cy="80"  r="40" fill="white" stroke="#f59f00" stroke-width="2.5"/>
+      <!-- sun icon (MDI weather-sunny) -->
+      <path d="M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7M12,1L12,4M12,20L12,23M1,12L4,12M20,12L23,12M4.22,4.22L6.34,6.34M19.78,4.22L17.66,6.34M17.66,17.66L19.78,19.78M4.22,19.78L6.34,17.66"
+            fill="none" stroke="#f59f00" stroke-width="1.8" stroke-linecap="round"
+            transform="translate(186.8,48.8) scale(1.1)"/>
+      <text data-dashboard-target="efPvW" x="200" y="93"  text-anchor="middle" font-size="12" font-weight="600" fill="#7c5e00">— W</text>
+      <text x="200" y="22"  text-anchor="middle" font-size="11" fill="#6c757d">PV-Anlage</text>
+      <circle cx="58"  cy="175" r="40" fill="white" stroke="#3b82f6" stroke-width="2.5"/>
+      <!-- lightning bolt icon (MDI lightning-bolt) -->
+      <path d="M7,2H14L11,9H16L5,22L8,14H4L7,2Z"
+            fill="#3b82f6"
+            transform="translate(47,148.8) scale(1.1)"/>
+      <text data-dashboard-target="efGridW" x="58"  y="188" text-anchor="middle" font-size="12" font-weight="600" fill="#1d4ed8">— W</text>
+      <text x="58"  y="229" text-anchor="middle" font-size="11" fill="#6c757d">Stromnetz</text>
+      <!-- Consumer breakdown ring -->
+      <circle cx="342" cy="175" r="44" fill="none" stroke="#e9ecef" stroke-width="2.5"/>
+      <circle data-dashboard-target="efRingPv"   cx="342" cy="175" r="44" fill="none" stroke="#f59f00" stroke-width="2.5" stroke-dasharray="0 276.5" transform="rotate(-90,342,175)"/>
+      <circle data-dashboard-target="efRingGrid" cx="342" cy="175" r="44" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-dasharray="0 276.5" transform="rotate(-90,342,175)"/>
+      <circle cx="342" cy="175" r="40" fill="white" stroke="none"/>
+      <!-- house icon (MDI home) -->
+      <path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"
+            fill="none" stroke="#10b981" stroke-width="1.8" stroke-linejoin="round"
+            transform="translate(328.8,149.35) scale(1.1)"/>
+      <text data-dashboard-target="efConsumerW" x="342" y="188" text-anchor="middle" font-size="12" font-weight="600" fill="#065f46">— W</text>
+      <text x="342" y="229" text-anchor="middle" font-size="11" fill="#6c757d">Verbraucher</text>
+    </svg>
   </div>
-  <div class="tile">
-    <div class="tile-label">Bilanz heute</div>
-    <div class="tile-value" id="tile-nettoday">—</div>
+
+  <!-- Plug chips -->
+  <div class="section-label">Steckdosen</div>
+  <div class="plugs" data-dashboard-target="plugList">—</div>
+
+  <!-- Today + Energy charts -->
+  <div data-controller="today-chart">
+    <div class="section-label">Gesamtenergie — Letzte 24 h</div>
+    <div class="chart-card">
+      <canvas data-today-chart-target="energyCanvas"></canvas>
+    </div>
+
+    <div class="section-label">Leistung — Letzte 24 h</div>
+    <div class="chart-card">
+      <canvas data-today-chart-target="powerCanvas"></canvas>
+    </div>
   </div>
-  <div class="tile">
-    <div class="tile-label">Verbrauch jetzt</div>
-    <div class="tile-value" id="tile-consumption">—</div>
-  </div>
-  <div class="tile">
-    <div class="tile-label">Bilanz jetzt</div>
-    <div class="tile-value" id="tile-netbalance">—</div>
+
+  <!-- History chart -->
+  <div data-controller="history-chart">
+    <div class="section-label">Ertrag — Letzte 14 Tage</div>
+    <div class="chart-card">
+      <canvas data-history-chart-target="canvas"></canvas>
+    </div>
   </div>
 </div>
-
-<!-- Energiefluss -->
-<div class="section-label">Energiefluss</div>
-<div class="chart-card" style="padding:12px 8px">
-  <svg viewBox="0 0 400 244" style="width:100%;height:auto;display:block">
-    <defs>
-      <!-- Clip region: full SVG minus the three node circles (evenodd punches out the circles) -->
-      <clipPath id="ef-clip">
-        <path fill-rule="evenodd" d="M 0,0 H 400 V 244 H 0 Z M 200,40 A 40,40 0 1,0 200,120 A 40,40 0 1,0 200,40 Z M 58,135 A 40,40 0 1,0 58,215 A 40,40 0 1,0 58,135 Z M 342,131 A 44,44 0 1,0 342,219 A 44,44 0 1,0 342,131 Z"/>
-      </clipPath>
-    </defs>
-    <line id="ef-line-v"   x1="200" y1="120" x2="200" y2="175" stroke="#dee2e6" stroke-width="3" stroke-linecap="round"/>
-    <line id="ef-line-h-l" x1="98"  y1="175" x2="200" y2="175" stroke="#dee2e6" stroke-width="3" stroke-linecap="round"/>
-    <line id="ef-line-h-r" x1="200" y1="175" x2="298" y2="175" stroke="#dee2e6" stroke-width="3" stroke-linecap="round"/>
-    <g id="ef-dots-pv-home"   clip-path="url(#ef-clip)"></g>
-    <g id="ef-dots-grid-home" clip-path="url(#ef-clip)"></g>
-    <g id="ef-dots-pv-grid"   clip-path="url(#ef-clip)"></g>
-    <circle cx="200" cy="80"  r="40" fill="white" stroke="#f59f00" stroke-width="2.5"/>
-    <!-- sun icon (MDI weather-sunny) -->
-    <path d="M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7M12,1L12,4M12,20L12,23M1,12L4,12M20,12L23,12M4.22,4.22L6.34,6.34M19.78,4.22L17.66,6.34M17.66,17.66L19.78,19.78M4.22,19.78L6.34,17.66"
-          fill="none" stroke="#f59f00" stroke-width="1.8" stroke-linecap="round"
-          transform="translate(186.8,48.8) scale(1.1)"/>
-    <text id="ef-pv-w" x="200" y="93"  text-anchor="middle" font-size="12" font-weight="600" fill="#7c5e00">— W</text>
-    <text x="200" y="22"  text-anchor="middle" font-size="11" fill="#6c757d">PV-Anlage</text>
-    <circle cx="58"  cy="175" r="40" fill="white" stroke="#3b82f6" stroke-width="2.5"/>
-    <!-- lightning bolt icon (MDI lightning-bolt) -->
-    <path d="M7,2H14L11,9H16L5,22L8,14H4L7,2Z"
-          fill="#3b82f6"
-          transform="translate(47,148.8) scale(1.1)"/>
-    <text id="ef-grid-w" x="58"  y="188" text-anchor="middle" font-size="12" font-weight="600" fill="#1d4ed8">— W</text>
-    <text x="58"  y="229" text-anchor="middle" font-size="11" fill="#6c757d">Stromnetz</text>
-    <!-- Consumer breakdown ring -->
-    <circle cx="342" cy="175" r="44" fill="none" stroke="#e9ecef" stroke-width="2.5"/>
-    <circle id="ef-ring-pv"   cx="342" cy="175" r="44" fill="none" stroke="#f59f00" stroke-width="2.5" stroke-dasharray="0 276.5" transform="rotate(-90,342,175)"/>
-    <circle id="ef-ring-grid" cx="342" cy="175" r="44" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-dasharray="0 276.5" transform="rotate(-90,342,175)"/>
-    <circle cx="342" cy="175" r="40" fill="white" stroke="none"/>
-    <!-- house icon (MDI home) -->
-    <path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"
-          fill="none" stroke="#10b981" stroke-width="1.8" stroke-linejoin="round"
-          transform="translate(328.8,149.35) scale(1.1)"/>
-    <text id="ef-consumer-w" x="342" y="188" text-anchor="middle" font-size="12" font-weight="600" fill="#065f46">— W</text>
-    <text x="342" y="229" text-anchor="middle" font-size="11" fill="#6c757d">Verbraucher</text>
-  </svg>
-</div>
-
-<!-- Plug chips -->
-<div class="section-label">Steckdosen</div>
-<div id="plug-list" class="plugs">—</div>
-
-<!-- Energy chart -->
-<div class="section-label">Gesamtenergie — Letzte 24 h</div>
-<div class="chart-card">
-  <canvas id="energy-chart"></canvas>
-</div>
-
-<!-- Today chart -->
-<div class="section-label">Leistung — Letzte 24 h</div>
-<div class="chart-card">
-  <canvas id="today-chart"></canvas>
-</div>
-
-<!-- History chart -->
-<div class="section-label">Ertrag — Letzte 14 Tage</div>
-<div class="chart-card">
-  <canvas id="history-chart"></canvas>
-</div>
-
-<script>
-  // Keep latest /api/live response cached so updateHero and the plug list share data
-  let lastLive = null;
-
-  function updateHero(evt) {
-    try {
-      const data = JSON.parse(evt.detail.xhr.responseText);
-      lastLive = data;
-      updateEnergyFlow(data);
-      const producer = data.plugs.find(p => p.role === "producer");
-      document.getElementById("hero-value").innerHTML =
-        (producer && producer.online ? Math.abs(producer.apower_w).toFixed(0) : "—") +
-        ' <span class="hero-unit">W</span>';
-
-      const consumers = data.plugs.filter(p => p.role === "consumer");
-      const sum = consumers.reduce((s, p) => s + (p.online ? p.apower_w : 0), 0);
-      document.getElementById("tile-consumption").textContent = sum.toFixed(0) + " W";
-
-      const producedW = producer && producer.online ? Math.abs(producer.apower_w) : 0;
-      const net = producedW - sum;
-      const netEl = document.getElementById("tile-netbalance");
-      netEl.textContent = (net >= 0 ? "+" : "") + net.toFixed(0) + " W";
-
-      renderPlugChips(data.plugs, data.now_ts);
-    } catch (e) { console.error(e); }
-  }
-
-  function fmtDE(num, digits = 2) {
-    return num.toFixed(digits).replace(".", ",");
-  }
-
-  function updateSummary(evt) {
-    try {
-      const data = JSON.parse(evt.detail.xhr.responseText);
-      document.getElementById("tile-produced").textContent =
-        fmtDE(data.produced_wh_today / 1000) + " kWh";
-      document.getElementById("tile-consumed").textContent =
-        fmtDE(data.consumed_wh_today / 1000) + " kWh";
-      document.getElementById("tile-savings").textContent =
-        fmtDE(data.savings_eur_today) + " €";
-      const netKwh = (data.produced_wh_today - data.consumed_wh_today) / 1000;
-      document.getElementById("tile-nettoday").textContent =
-        (netKwh >= 0 ? "+" : "") + fmtDE(netKwh) + " kWh";
-    } catch (e) { console.error(e); }
-  }
-
-  function renderPlugChips(plugs, nowTs) {
-    const el = document.getElementById("plug-list");
-    el.innerHTML = "";
-    for (const p of plugs) {
-      const chip = document.createElement("span");
-      chip.className = "plug-chip" + (p.online ? "" : " offline");
-      const dot = document.createElement("span");
-      dot.className = "dot" + (p.online ? "" : " offline");
-      chip.appendChild(dot);
-      const label = p.online
-        ? `${p.name} · ${p.apower_w.toFixed(0)} W`
-        : `${p.name} · offline`;
-      chip.appendChild(document.createTextNode(label));
-      el.appendChild(chip);
-    }
-  }
-
-  const CONSUMER_COLORS = [
-    "#3b82f6", "#10b981", "#8b5cf6", "#ef4444", "#06b6d4",
-    "#ec4899", "#84cc16", "#6366f1", "#14b8a6", "#f43f5e",
-  ];
-
-  let todayChart, historyChart, energyChart;
-
-  function renderTodayChart(data) {
-    let consumerIdx = 0;
-    const datasets = data.series.map(s => {
-      const isProducer = s.role === "producer";
-      const dataset = {
-        label: s.name,
-        data: s.points.map(pt => ({ x: pt.ts * 1000, y: isProducer ? Math.abs(pt.avg_power_w) : pt.avg_power_w })),
-        tension: 0.2,
-        fill: isProducer,
-        pointRadius: 0,
-      };
-      if (isProducer) {
-        dataset.borderColor = "#f59f00";
-        dataset.backgroundColor = "rgba(245,159,0,0.12)";
-      } else {
-        const color = CONSUMER_COLORS[consumerIdx++ % CONSUMER_COLORS.length];
-        dataset.borderColor = color;
-        dataset.backgroundColor = color;
-      }
-      return dataset;
-    });
-    if (todayChart) todayChart.destroy();
-    todayChart = new Chart(document.getElementById("today-chart"), {
-      type: "line",
-      data: { datasets },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: {
-            type: "linear",
-            min: Date.now() - 86_400_000,
-            max: Date.now(),
-            title: { display: true, text: "Uhrzeit" },
-            ticks: {
-              callback: (v) => {
-                const d = new Date(v);
-                return d.getHours().toString().padStart(2,"0") + ":" +
-                       d.getMinutes().toString().padStart(2,"0");
-              },
-              stepSize: 3 * 3_600_000,
-            },
-          },
-          y: { beginAtZero: true, title: { display: true, text: "Watt" } },
-        },
-        plugins: { legend: { position: "bottom" } },
-        animation: false,
-      },
-    });
-  }
-
-  function renderEnergyChart(data) {
-    const buckets = {};
-    for (const series of data.series) {
-      for (const pt of series.points) {
-        const hourKey = Math.floor(pt.ts / 3600) * 3600;
-        const wh = Math.abs(pt.avg_power_w) / 60;
-        if (!buckets[hourKey]) buckets[hourKey] = { produced: 0, consumed: 0 };
-        if (series.role === "producer") {
-          buckets[hourKey].produced += wh;
-        } else {
-          buckets[hourKey].consumed += wh;
-        }
-      }
-    }
-    const sorted = Object.keys(buckets).map(Number).sort((a, b) => a - b);
-    const labels = sorted.map(ts => {
-      const d = new Date(ts * 1000);
-      return d.getHours().toString().padStart(2, "0") + ":00";
-    });
-    const produced = sorted.map(ts => +(buckets[ts].produced / 1000).toFixed(3));
-    const consumed = sorted.map(ts => +(buckets[ts].consumed / 1000).toFixed(3));
-    if (energyChart) energyChart.destroy();
-    energyChart = new Chart(document.getElementById("energy-chart"), {
-      type: "bar",
-      data: {
-        labels,
-        datasets: [
-          { label: "Erzeugt",    data: produced, backgroundColor: "#f59f00" },
-          { label: "Verbraucht", data: consumed,  backgroundColor: "#3b82f6" },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: { y: { beginAtZero: true, title: { display: true, text: "kWh" } } },
-        plugins: { legend: { position: "bottom" } },
-        animation: false,
-      },
-    });
-  }
-
-  function loadTodayChart() {
-    fetch("/api/today").then(r => r.json()).then(data => {
-      renderTodayChart(data);
-      renderEnergyChart(data);
-    });
-  }
-
-  function loadHistoryChart() {
-    fetch("/api/history?days=14").then(r => r.json()).then(data => {
-      const producer = data.series.find(s => s.role === "producer");
-      if (!producer) return;
-      const labels = producer.points.map(p => p.date);
-      const values = producer.points.map(p => p.energy_wh / 1000);
-      if (historyChart) historyChart.destroy();
-      historyChart = new Chart(document.getElementById("history-chart"), {
-        type: "bar",
-        data: {
-          labels,
-          datasets: [{ label: "kWh/Tag", data: values, backgroundColor: "#f59f00" }],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: { y: { beginAtZero: true, title: { display: true, text: "kWh" } } },
-          plugins: { legend: { display: false } },
-          animation: false,
-        },
-      });
-    });
-  }
-
-  // Energy flow visualization
-  const EF_PATHS = {
-    pvHome:   "M 200,120 L 200,175 L 298,175",
-    gridHome: "M 98,175 L 298,175",
-    pvGrid:   "M 200,120 L 200,175 L 98,175",
-  };
-  // Actual pixel lengths of each path (vertical + horizontal segments)
-  const EF_LENS = { pvHome: 153, gridHome: 200, pvGrid: 157 };
-
-  function efDur(w, len) {
-    return w < 1 ? null : Math.max(0.5, Math.min(8, len / w));
-  }
-
-  const efLastDur = {};
-
-  function efSetDots(id, path, color, dur) {
-    const g = document.getElementById(id);
-    if (!g) return;
-    const prev = efLastDur[id];
-    const changed = dur === null ? prev != null
-                                 : prev == null || Math.abs(dur - prev) / prev > 0.05;
-    if (!changed) return;
-    efLastDur[id] = dur;
-    g.innerHTML = "";
-    if (!dur) return;
-    for (let i = 0; i < 3; i++) {
-      const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      c.setAttribute("r", "4.5");
-      c.setAttribute("fill", color);
-      c.style.cssText = `offset-path:path("${path}")`;
-      g.appendChild(c);
-      c.animate(
-        [{ offsetDistance: "0%" }, { offsetDistance: "100%" }],
-        { duration: dur * 1000, delay: -(i * dur / 3) * 1000, iterations: Infinity, easing: "linear" }
-      );
-    }
-  }
-
-  function efLine(id, color) {
-    const el = document.getElementById(id);
-    if (el) el.setAttribute("stroke", color);
-  }
-
-  function updateEnergyFlow(data) {
-    const prod  = data.plugs.find(p => p.role === "producer");
-    const pvW   = prod?.online ? Math.abs(prod.apower_w) : 0;
-    const consW = data.plugs
-      .filter(p => p.role === "consumer")
-      .reduce((s, p) => s + (p.online ? p.apower_w : 0), 0);
-
-    const pvToHome   = Math.min(pvW, consW);
-    const gridToHome = Math.max(0, consW - pvW);
-    const pvToGrid   = Math.max(0, pvW - consW);
-
-    document.getElementById("ef-pv-w").textContent       = pvW.toFixed(0) + " W";
-    document.getElementById("ef-consumer-w").textContent = consW.toFixed(0) + " W";
-    document.getElementById("ef-grid-w").textContent =
-      gridToHome > 0 ? "+" + gridToHome.toFixed(0) + " W" :
-      pvToGrid   > 0 ? "−" + pvToGrid.toFixed(0) + " W" : "0 W";
-
-    efSetDots("ef-dots-pv-home",   EF_PATHS.pvHome,   "#f59f00", efDur(pvToHome,   EF_LENS.pvHome));
-    efSetDots("ef-dots-grid-home", EF_PATHS.gridHome, "#3b82f6", efDur(gridToHome, EF_LENS.gridHome));
-    efSetDots("ef-dots-pv-grid",   EF_PATHS.pvGrid,   "#f59f00", efDur(pvToGrid,   EF_LENS.pvGrid));
-
-    const GRAY = "#dee2e6";
-    efLine("ef-line-v",   pvW > 0        ? "#f59f00" : GRAY);
-    efLine("ef-line-h-r", gridToHome > 0 ? "#3b82f6" : (pvToHome > 0 ? "#f59f00" : GRAY));
-    efLine("ef-line-h-l", gridToHome > 0 ? "#3b82f6" : (pvToGrid > 0 ? "#f59f00" : GRAY));
-
-    const C = 2 * Math.PI * 44;
-    const pvArc   = consW > 0 ? (pvToHome   / consW) * C : 0;
-    const gridArc = consW > 0 ? (gridToHome / consW) * C : 0;
-    document.getElementById("ef-ring-pv").setAttribute("stroke-dasharray",   `${pvArc} ${C}`);
-    document.getElementById("ef-ring-pv").setAttribute("stroke-dashoffset",  "0");
-    document.getElementById("ef-ring-grid").setAttribute("stroke-dasharray", `${gridArc} ${C}`);
-    document.getElementById("ef-ring-grid").setAttribute("stroke-dashoffset", -pvArc);
-  }
-
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && lastLive) {
-      Object.keys(efLastDur).forEach(k => delete efLastDur[k]);
-      updateEnergyFlow(lastLive);
-    }
-  });
-
-  window.addEventListener("pageshow", (e) => {
-    if (e.persisted && lastLive) {
-      Object.keys(efLastDur).forEach(k => delete efLastDur[k]);
-      updateEnergyFlow(lastLive);
-    }
-  });
-
-  document.addEventListener("DOMContentLoaded", () => {
-    loadTodayChart();
-    loadHistoryChart();
-    setInterval(loadTodayChart, 60_000);
-    setInterval(loadHistoryChart, 3_600_000);
-  });
-</script>

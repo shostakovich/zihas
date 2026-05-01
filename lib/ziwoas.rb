@@ -69,12 +69,14 @@ module Ziwoas
         Thread.current.name = name
         Thread.current.abort_on_exception = false
         Thread.current.report_on_exception = true
-        begin
-          yield
-        rescue => e
-          @logger.error("thread #{name} crashed: #{e.class}: #{e.message}")
-          @logger.error(e.backtrace.first(10).join("\n"))
-          Process.kill("TERM", Process.pid)
+        ActiveRecord::Base.connection_pool.with_connection do
+          begin
+            yield
+          rescue => e
+            @logger.error("thread #{name} crashed: #{e.class}: #{e.message}")
+            @logger.error(e.backtrace.first(10).join("\n"))
+            Process.kill("TERM", Process.pid)
+          end
         end
       end
     end
@@ -85,7 +87,7 @@ module Ziwoas
         break if @stopping
         @logger.info("aggregator: starting nightly run")
         @aggregator.run_once
-        @aggregator.backup!(File.join(File.dirname(ENV.fetch("DATABASE_PATH")), "backup"))
+        @aggregator.backup!(Rails.root.join("storage", "backup").to_s)
         @logger.info("aggregator: done")
       end
     end
