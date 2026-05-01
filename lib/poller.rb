@@ -37,8 +37,9 @@ class Poller
       rescue ActiveRecord::RecordNotUnique
         # Duplicate ts (can happen on clock skew). Still broadcast last reading if we have it.
         broadcast_reading(plug, ts, reading) if reading
-      rescue ActiveRecord::ConnectionNotDefined, ActiveRecord::ConnectionNotEstablished => e
-        # Connection pool not ready yet on first boot — skip DB write, try next tick.
+      rescue ActiveRecord::ConnectionNotDefined, ActiveRecord::ConnectionNotEstablished,
+             ActiveRecord::NoDatabaseError, ActiveRecord::StatementInvalid => e
+        # DB not ready yet (pool not up, file missing, or schema not migrated) — skip and retry.
         @logger.warn("plug #{plug.id}: DB not ready (#{e.class}), skipping")
       end
     end
