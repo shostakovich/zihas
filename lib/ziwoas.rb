@@ -5,6 +5,8 @@ require "shelly_client"
 require "fritz_dect_client"
 require "poller"
 require "aggregator"
+require "ziwoas/scheduler"
+require "ziwoas/signal_handler"
 
 module Ziwoas
   class App
@@ -46,19 +48,27 @@ module Ziwoas
         },
       )
       @aggregator = Aggregator.new(
-        timezone: tz,
+        timezone:           tz,
         raw_retention_days: @config.aggregator.raw_retention_days,
+      )
+      @scheduler = Scheduler.new(
+        aggregator: @aggregator,
+        run_at:     @config.aggregator.run_at,
+        timezone:   tz,
+        logger:     @logger,
+        backup_dir: Rails.root.join("storage", "backup").to_s,
       )
 
       @poller_thread     = spawn_thread("poller")     { @poller.run(@config.poll.interval_seconds) }
-      @aggregator_thread = spawn_thread("aggregator") { aggregator_loop(tz) }
-      install_signal_traps!
+      @aggregator_thread = spawn_thread("aggregator") { @scheduler.run }
+
+      SignalHandler.install(self)
     end
 
     def stop!
       @logger.info("ziwoas: shutting down")
       @poller&.stop!
-      @stopping = true
+      @scheduler&.stop!
       [@poller_thread, @aggregator_thread].each { |t| t&.join(3) }
     end
 
@@ -78,40 +88,6 @@ module Ziwoas
             Process.kill("TERM", Process.pid)
           end
         end
-      end
-    end
-
-    def aggregator_loop(tz)
-      until @stopping
-        sleep_until_run_at(tz, @config.aggregator.run_at)
-        break if @stopping
-        @logger.info("aggregator: starting nightly run")
-        @aggregator.run_once
-        @aggregator.backup!(Rails.root.join("storage", "backup").to_s)
-        @logger.info("aggregator: done")
-      end
-    end
-
-    def sleep_until_run_at(tz, run_at)
-      hour, minute = run_at.split(":").map(&:to_i)
-      now_utc      = Time.now.utc
-      local_now    = tz.utc_to_local(now_utc)
-      target_local = Time.new(local_now.year, local_now.month, local_now.day, hour, minute, 0)
-      target_utc   = tz.local_to_utc(target_local)
-      target_utc  += 86_400 if target_utc <= now_utc
-      sleep_for    = target_utc - now_utc
-
-      # Sleep in short bursts so SIGTERM is responsive.
-      while sleep_for > 0 && !@stopping
-        chunk = [sleep_for, 5].min
-        sleep(chunk)
-        sleep_for -= chunk
-      end
-    end
-
-    def install_signal_traps!
-      %w[INT TERM].each do |sig|
-        Signal.trap(sig) { stop! }
       end
     end
   end
