@@ -1,35 +1,24 @@
-# ZiWoAS — Zipfelmaus-Wohnungs-Automatisierungs-system
+# README
 
-Heimautomation fürs Mini-Rack. Erstes Feature: Shelly-Monitoring fürs Balkonkraftwerk und Grundverbraucher.
+This README would normally document whatever steps are necessary to get the
+application up and running.
 
-## Quickstart
+Things you may want to cover:
 
-```bash
-cp config/ziwoas.example.yml config/ziwoas.yml
-$EDITOR config/ziwoas.yml
-mkdir -p data
-docker compose up -d
-```
+* Ruby version
 
-Dashboard: <http://localhost:4567>
+* System dependencies
 
-## Anforderungen
+* Configuration
 
-- Shellys mit Gen2+-API (`/rpc/Switch.GetStatus?id=0`) im selben Netz erreichbar
-- Docker + docker-compose
+* Database creation
 
-## Backup
+* Database initialization
 
-Die Anwendung erzeugt nachts um 03:30 einen konsistenten SQLite-Snapshot unter `./data/backup/ziwoas-YYYY-MM-DD.db` und hält die letzten 7 Stück. Das `./data`-Verzeichnis kann per restic/rsync offsite gesichert werden.
+* How to run the test suite
 
-## Tests
+* Services (job queues, cache servers, search engines, etc.)
 
-```bash
-bundle install
-bundle exec rake test
-```
+* Deployment instructions
 
-## Spec & Plan
-
-- Design: `docs/superpowers/specs/2026-04-13-shelly-monitoring-design.md`
-- Plan:   `docs/superpowers/plans/2026-04-13-shelly-monitoring.md`
+* ...

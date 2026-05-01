@@ -1,11 +1,6 @@
-$LOAD_PATH.unshift File.expand_path("lib", __dir__)
-$LOAD_PATH.unshift File.expand_path("app", __dir__)
+# This file is used by Rack-based servers to start the application.
 
-require "ziwoas"
-require "web"
+require_relative "config/environment"
 
-$ZIWOAS_APP = Ziwoas::App.boot
-
-at_exit { $ZIWOAS_APP.stop! rescue nil }
-
-run Web
+run Rails.application
+Rails.application.load_server
