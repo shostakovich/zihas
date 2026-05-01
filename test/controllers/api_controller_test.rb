@@ -23,9 +23,13 @@ class ApiControllerTest < ActionDispatch::IntegrationTest
       fritz_box: nil
     )
 
-    # Stub $ZIWOAS_APP so the controller can access config
+    # Stub Rails.application.ziwoas_app so the controller can access config
     app_stub = Struct.new(:config).new(@config)
-    $ZIWOAS_APP = app_stub # rubocop:disable Style/GlobalVars
+    Rails.application.ziwoas_app = app_stub
+  end
+
+  teardown do
+    Rails.application.ziwoas_app = nil
   end
 
   # --- /api/live ---

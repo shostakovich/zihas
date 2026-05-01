@@ -60,7 +60,7 @@ class ApiController < ApplicationController
   private
 
   def app_config
-    $ZIWOAS_APP.config
+    Rails.application.ziwoas_app.config
   end
 
   def local_tz
