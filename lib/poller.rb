@@ -3,9 +3,8 @@ require "fritz_dect_client"
 require "circuit_breaker"
 
 class Poller
-  def initialize(plugs:, db:, clients:, logger:, breaker_opts:, clock: -> { Time.now.to_f })
+  def initialize(plugs:, clients:, logger:, breaker_opts:, clock: -> { Time.now.to_f })
     @plugs    = plugs
-    @db       = db
     @clients  = clients
     @logger   = logger
     @clock    = clock
@@ -23,7 +22,7 @@ class Poller
 
       begin
         reading = @clients[plug.id].fetch(plug)
-        @db[:samples].insert(
+        Sample.create(
           plug_id:    plug.id,
           ts:         ts,
           apower_w:   reading.apower_w,
@@ -33,7 +32,7 @@ class Poller
       rescue ShellyClient::Error, FritzDectClient::Error => e
         breaker.record_failure
         @logger.debug("plug #{plug.id} poll failed: #{e.message}")
-      rescue Sequel::UniqueConstraintViolation
+      rescue ActiveRecord::RecordNotUnique
         # Duplicate ts (can happen on clock skew). Swallow to keep the loop alive.
       end
     end

@@ -1,7 +1,6 @@
 require "logger"
 require "tzinfo"
 require "config_loader"
-require "db"
 require "shelly_client"
 require "fritz_dect_client"
 require "poller"
@@ -9,19 +8,16 @@ require "aggregator"
 
 module Ziwoas
   class App
-    attr_reader :config, :db, :logger, :poller, :aggregator
+    attr_reader :config, :logger, :poller, :aggregator
 
-    def self.boot(config_path: ENV.fetch("CONFIG_PATH"),
-                  database_path: ENV.fetch("DATABASE_PATH"))
-      new(config_path, database_path).tap(&:start_threads!)
+    def self.boot(config_path: ENV.fetch("CONFIG_PATH"))
+      new(config_path).tap(&:start_threads!)
     end
 
-    def initialize(config_path, database_path)
+    def initialize(config_path)
       @logger = Logger.new($stdout)
       @logger.level = Logger::INFO
       @config = ConfigLoader.load(config_path)
-      @db     = DB.connect(database_path)
-      DB.migrate!(@db)
     end
 
     def start_threads!
@@ -42,7 +38,6 @@ module Ziwoas
 
       @poller = Poller.new(
         plugs:        @config.plugs,
-        db:           @db,
         clients:      clients,
         logger:       @logger,
         breaker_opts: {
@@ -51,7 +46,6 @@ module Ziwoas
         },
       )
       @aggregator = Aggregator.new(
-        db: @db,
         timezone: tz,
         raw_retention_days: @config.aggregator.raw_retention_days,
       )

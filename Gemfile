@@ -62,6 +62,5 @@ group :test do
   gem "selenium-webdriver"
 end
 
-gem "sequel", "~> 5.103"
 gem "tzinfo", "~> 2.0"
 gem "rexml", "~> 3.4"
