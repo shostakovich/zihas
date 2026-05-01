@@ -13,6 +13,50 @@ class ConfigLoader
   Config      = Struct.new(:electricity_price_eur_per_kwh, :timezone,
                            :poll, :aggregator, :plugs, :fritz_box, keyword_init: true)
 
+  class PlugValidator
+    def initialize(h, index, existing_ids)
+      @h            = h
+      @index        = index
+      @existing_ids = existing_ids
+    end
+
+    def validate!
+      raise ConfigLoader::Error, "plugs[#{@index}] must be a mapping" unless @h.is_a?(Hash)
+
+      id = require_string(@h["id"], "plugs[#{@index}].id")
+      raise ConfigLoader::Error, "plug id '#{id}' must match #{ConfigLoader::ID_REGEX.source}" unless id =~ ConfigLoader::ID_REGEX
+      raise ConfigLoader::Error, "duplicate plug id '#{id}'" if @existing_ids.include?(id)
+
+      role = require_string(@h["role"], "plugs[#{@index}].role").to_sym
+      raise ConfigLoader::Error, "plug '#{id}' role must be one of #{ConfigLoader::VALID_ROLES}" unless ConfigLoader::VALID_ROLES.include?(role)
+
+      driver = (@h["driver"] || "shelly").to_sym
+      raise ConfigLoader::Error, "plug '#{id}' driver must be one of #{ConfigLoader::VALID_DRIVERS}" unless ConfigLoader::VALID_DRIVERS.include?(driver)
+
+      name = require_string(@h["name"], "plugs[#{@index}].name")
+      build_plug(id, name, role, driver)
+    end
+
+    private
+
+    def build_plug(id, name, role, driver)
+      if driver == :shelly
+        raise ConfigLoader::Error, "plugs[#{@index}].host is required for driver: shelly" if @h["host"].nil? || @h["host"].to_s.empty?
+        raise ConfigLoader::Error, "plugs[#{@index}].ain must not be set for driver: shelly" if @h["ain"]
+        ConfigLoader::PlugCfg.new(id: id, name: name, role: role, driver: :shelly, host: @h["host"].to_s, ain: nil)
+      else
+        raise ConfigLoader::Error, "plugs[#{@index}].ain is required for driver: fritz_dect" if @h["ain"].nil? || @h["ain"].to_s.empty?
+        raise ConfigLoader::Error, "plugs[#{@index}].host must not be set for driver: fritz_dect" if @h["host"]
+        ConfigLoader::PlugCfg.new(id: id, name: name, role: role, driver: :fritz_dect, ain: @h["ain"].to_s, host: nil)
+      end
+    end
+
+    def require_string(v, key)
+      raise ConfigLoader::Error, "#{key} is required" if v.nil? || v.to_s.empty?
+      v.to_s
+    end
+  end
+
   VALID_ROLES   = %i[producer consumer].freeze
   VALID_DRIVERS = %i[shelly fritz_dect].freeze
   ID_REGEX      = /\A[a-z0-9_]+\z/
@@ -91,31 +135,11 @@ class ConfigLoader
   def build_plugs(list)
     raise Error, "plugs must be a non-empty list" unless list.is_a?(Array) && !list.empty?
 
-    ids = []
+    ids   = []
     plugs = list.map.with_index do |h, i|
-      raise Error, "plugs[#{i}] must be a mapping" unless h.is_a?(Hash)
-      id = require_string(h["id"], "plugs[#{i}].id")
-      raise Error, "plug id '#{id}' must match #{ID_REGEX.source}" unless id =~ ID_REGEX
-      raise Error, "duplicate plug id '#{id}'" if ids.include?(id)
-      ids << id
-
-      role = require_string(h["role"], "plugs[#{i}].role").to_sym
-      raise Error, "plug '#{id}' role must be one of #{VALID_ROLES}" unless VALID_ROLES.include?(role)
-
-      driver = (h["driver"] || "shelly").to_sym
-      raise Error, "plug '#{id}' driver must be one of #{VALID_DRIVERS}" unless VALID_DRIVERS.include?(driver)
-
-      name = require_string(h["name"], "plugs[#{i}].name")
-
-      if driver == :shelly
-        raise Error, "plugs[#{i}].host is required for driver: shelly" if h["host"].nil? || h["host"].to_s.empty?
-        raise Error, "plugs[#{i}].ain must not be set for driver: shelly" if h["ain"]
-        PlugCfg.new(id: id, name: name, role: role, driver: :shelly, host: h["host"].to_s, ain: nil)
-      else
-        raise Error, "plugs[#{i}].ain is required for driver: fritz_dect" if h["ain"].nil? || h["ain"].to_s.empty?
-        raise Error, "plugs[#{i}].host must not be set for driver: fritz_dect" if h["host"]
-        PlugCfg.new(id: id, name: name, role: role, driver: :fritz_dect, ain: h["ain"].to_s, host: nil)
-      end
+      plug = PlugValidator.new(h, i, ids).validate!
+      ids << plug.id
+      plug
     end
 
     unless plugs.any? { |p| p.role == :producer }
