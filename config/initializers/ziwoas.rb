@@ -11,7 +11,7 @@ Rails.application.config.after_initialize do
       Rails.application.ziwoas_app = Ziwoas::App.boot(config_path: config_path)
 
       at_exit do
-        Rails.application.ziwoas_app.stop! rescue nil
+        Rails.application.ziwoas_app&.stop!
       end
     end
   end
