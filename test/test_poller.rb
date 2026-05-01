@@ -88,4 +88,69 @@ class PollerTest < ActiveSupport::TestCase
     @poller.tick
     assert_equal @now.to_i, Sample.order(:ts).first.ts
   end
+
+  test "duplicate ts is handled gracefully without raising" do
+    Sample.create!(plug_id: "bkw", ts: @now.to_i, apower_w: 1.0, aenergy_wh: 1.0)
+    assert_nothing_raised { @poller.tick }
+    assert_equal 1, Sample.where(plug_id: "bkw", ts: @now.to_i).count
+  end
+
+  test "all plugs fail and breakers open independently" do
+    failing = Object.new
+    def failing.fetch(_plug) = raise(ShellyClient::Error, "boom")
+    @poller = Poller.new(
+      plugs:        @plugs,
+      clients:      @plugs.to_h { |p| [p.id, failing] },
+      logger:       @logger,
+      breaker_opts: { threshold: 1, probe_seconds: 30 },
+      clock:        -> { @now },
+    )
+    @poller.tick
+    assert_equal 0, Sample.count
+
+    # After threshold:1, both breakers are open; advancing past probe_seconds allows a probe.
+    # A new Poller (with fake clients) at the advanced time should insert 2 samples.
+    @now += 31
+    @poller = Poller.new(
+      plugs:        @plugs,
+      clients:      @plugs.to_h { |p| [p.id, fake_client] },
+      logger:       @logger,
+      breaker_opts: { threshold: 1, probe_seconds: 30 },
+      clock:        -> { @now },
+    )
+    @poller.tick
+    assert_equal 2, Sample.count
+  end
+
+  test "stop! prevents further ticks in run loop" do
+    ticked = 0
+    @poller.define_singleton_method(:tick) { ticked += 1; stop! }
+    @poller.run(0)
+    assert_equal 1, ticked
+  end
+
+  test "poller recovers after breaker reopens" do
+    @poller = Poller.new(
+      plugs:        @plugs,
+      clients:      @plugs.to_h { |p| [p.id, failing_client("bkw")] },
+      logger:       @logger,
+      breaker_opts: { threshold: 3, probe_seconds: 30 },
+      clock:        -> { @now },
+    )
+    3.times { @poller.tick }
+    assert_match(/opening breaker/, @log_io.string)
+
+    # Clear samples from the failing-phase ticks, then verify recovery with fake clients.
+    Sample.delete_all
+    @now += 31
+    @poller = Poller.new(
+      plugs:        @plugs,
+      clients:      @plugs.to_h { |p| [p.id, fake_client] },
+      logger:       @logger,
+      breaker_opts: { threshold: 3, probe_seconds: 30 },
+      clock:        -> { @now },
+    )
+    @poller.tick
+    assert_equal 2, Sample.count
+  end
 end

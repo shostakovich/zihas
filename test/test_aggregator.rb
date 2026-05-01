@@ -95,4 +95,35 @@ class AggregatorTest < ActiveSupport::TestCase
       assert remaining.any? { |f| f.include?(Date.today.to_s) }
     end
   end
+
+  test "run_once with no samples returns without error" do
+    assert_nothing_raised { @aggregator.run_once }
+    assert_equal 0, DailyTotal.count
+  end
+
+  test "run_once skips days already in daily_totals" do
+    seed_day(plug_id: "bkw", date: "2026-04-10", start_energy: 0, end_energy: 800)
+    @aggregator.aggregate_day("2026-04-10")
+    count_before = DailyTotal.count
+
+    @aggregator.run_once(today: Date.new(2026, 4, 11))
+    assert_equal count_before, DailyTotal.count
+  end
+
+  test "run_once aggregates missing days up to yesterday" do
+    seed_day(plug_id: "bkw", date: "2026-04-10", start_energy: 0, end_energy: 800)
+    seed_day(plug_id: "bkw", date: "2026-04-11", start_energy: 800, end_energy: 1600)
+
+    @aggregator.run_once(today: Date.new(2026, 4, 12))
+    assert_equal 2, DailyTotal.count
+    assert DailyTotal.find_by(plug_id: "bkw", date: "2026-04-10")
+    assert DailyTotal.find_by(plug_id: "bkw", date: "2026-04-11")
+  end
+
+  test "purge_old_raw! preserves records within retention window" do
+    now = Time.now.to_i
+    Sample.create!(plug_id: "bkw", ts: now - 3 * 86_400, apower_w: 1, aenergy_wh: 1)
+    @aggregator.purge_old_raw!
+    assert_equal 1, Sample.count
+  end
 end
