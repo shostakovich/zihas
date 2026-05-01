@@ -86,7 +86,7 @@ class Poller
       aenergy_wh:  reading.aenergy_wh,
     })
   rescue => e
-    @logger.debug("ActionCable broadcast failed: #{e.message}")
+    @logger.warn("ActionCable broadcast failed (#{e.class}): #{e.message}")
   end
 
   def build_breaker(plug, opts)

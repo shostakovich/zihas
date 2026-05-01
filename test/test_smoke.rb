@@ -1,7 +1,11 @@
 require "test_helper"
 
-class SmokeTest < Minitest::Test
-  def test_the_sky_is_blue
-    assert_equal 4, 2 + 2
+class SmokeTest < ActiveSupport::TestCase
+  test "application boots without error" do
+    assert_kind_of Ziwoas::Application, Rails.application
+  end
+
+  test "Sample model connects to database" do
+    assert_nothing_raised { Sample.count }
   end
 end
