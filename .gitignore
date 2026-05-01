@@ -41,3 +41,5 @@
 /data/*.db-*
 .idea
 .legacy_backup/
+
+/coverage/
