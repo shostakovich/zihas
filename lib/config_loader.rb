@@ -13,7 +13,18 @@ class ConfigLoader
   Config      = Struct.new(:electricity_price_eur_per_kwh, :timezone,
                            :poll, :aggregator, :plugs, :fritz_box, keyword_init: true)
 
+  module StringRequirement
+    private
+
+    def require_string(v, key)
+      raise ConfigLoader::Error, "#{key} is required" if v.nil? || v.to_s.empty?
+      v.to_s
+    end
+  end
+
   class PlugValidator
+    include ConfigLoader::StringRequirement
+
     def initialize(h, index, existing_ids)
       @h            = h
       @index        = index
@@ -51,10 +62,6 @@ class ConfigLoader
       end
     end
 
-    def require_string(v, key)
-      raise ConfigLoader::Error, "#{key} is required" if v.nil? || v.to_s.empty?
-      v.to_s
-    end
   end
 
   VALID_ROLES   = %i[producer consumer].freeze
@@ -146,14 +153,11 @@ class ConfigLoader
     plugs
   end
 
+  include StringRequirement
+
   def require_hash(v, key)
     raise Error, "#{key} must be a mapping" unless v.is_a?(Hash)
     v
-  end
-
-  def require_string(v, key)
-    raise Error, "#{key} is required" if v.nil? || v.to_s.empty?
-    v.to_s
   end
 
   def require_number(v, key, allow_zero: false)

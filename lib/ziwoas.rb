@@ -62,7 +62,7 @@ module Ziwoas
       @poller_thread     = spawn_thread("poller")     { @poller.run(@config.poll.interval_seconds) }
       @aggregator_thread = spawn_thread("aggregator") { @scheduler.run }
 
-      SignalHandler.install(self)
+      SignalHandler.install(self) unless defined?(Puma)
     end
 
     def stop!
