@@ -41,5 +41,6 @@ class EnergySummaryTest < ActiveSupport::TestCase
     assert_in_delta 0.0, summary.produced_wh
     assert_in_delta 0.0, summary.consumed_wh
     assert_in_delta 0.0, summary.savings_eur
+    assert_equal Date.today.to_s, summary.date
   end
 end
