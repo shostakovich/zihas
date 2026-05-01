@@ -41,10 +41,14 @@ class ApiController < ApplicationController
 
   def live
     threshold = app_config.poll.interval_seconds * 2
-    @now_ts       = Time.now.to_i
+    @now_ts   = Time.now.to_i
+    plug_ids  = app_config.plugs.map(&:id)
+
+    max_ts_by_plug = Sample.where(plug_id: plug_ids).group(:plug_id).maximum(:ts)
 
     @plugs = app_config.plugs.map do |plug|
-      latest = Sample.where(plug_id: plug.id).order(ts: :desc).first
+      max_ts = max_ts_by_plug[plug.id]
+      latest = max_ts ? Sample.find_by(plug_id: plug.id, ts: max_ts) : nil
       online = latest.present? && (@now_ts - latest.ts) <= threshold
       {
         id:           plug.id,
