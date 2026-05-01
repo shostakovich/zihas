@@ -7,7 +7,6 @@ require "tmpdir"
 class AggregatorTest < ActiveSupport::TestCase
   setup do
     Sample.delete_all
-    Sample5min.delete_all
     DailyTotal.delete_all
 
     @tz         = TZInfo::Timezone.get("Europe/Berlin")
@@ -39,23 +38,14 @@ class AggregatorTest < ActiveSupport::TestCase
     assert_in_delta 800.0, row.energy_wh
   end
 
-  test "5-min buckets are populated" do
-    seed_day(plug_id: "bkw", date: "2026-04-10",
-             start_power: 100, end_power: 100, start_energy: 0, end_energy: 2400)
-    @aggregator.aggregate_day("2026-04-10")
-    count = Sample5min.where(plug_id: "bkw").count
-    assert_operator count, :>, 20
-  end
-
   test "aggregate_day is idempotent" do
     seed_day(plug_id: "bkw", date: "2026-04-10",
              start_power: 50, end_power: 50, start_energy: 0, end_energy: 1200)
     @aggregator.aggregate_day("2026-04-10")
-    first_count_5min = Sample5min.count
-    first_total      = DailyTotal.first.energy_wh
+    first_total = DailyTotal.first.energy_wh
     @aggregator.aggregate_day("2026-04-10")
-    assert_equal first_count_5min, Sample5min.count
     assert_in_delta first_total, DailyTotal.first.energy_wh
+    assert_equal 1, DailyTotal.count
   end
 
   test "purge deletes samples older than retention" do
