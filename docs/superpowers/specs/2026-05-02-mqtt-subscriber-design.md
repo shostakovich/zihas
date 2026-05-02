@@ -130,6 +130,24 @@ The `poll` section (interval_seconds, timeout_seconds, circuit_breaker_*) is rem
 
 Add: `gem "mqtt"`
 
+## Local Development (`bin/dev`)
+
+Create `Procfile.dev`:
+
+```
+web:    ./bin/rails server
+worker: ./bin/ziwoas_collector
+```
+
+Update `bin/dev` to use foreman:
+
+```sh
+#!/usr/bin/env sh
+exec foreman start --procfile Procfile.dev "$@"
+```
+
+Both processes run in the same terminal with prefixed output (`web | worker`).
+
 ## Docker Compose
 
 Add `ziwoas_collector` service sharing the same image as `web`, overriding the command to `bin/ziwoas_collector`. Both services mount the same SQLite database volume.
