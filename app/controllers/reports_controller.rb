@@ -14,7 +14,4 @@ class ReportsController < ApplicationController
     params.permit(:preset, :start_date, :end_date, :selected_date)
   end
 
-  def app_config
-    @app_config ||= ConfigLoader.load(Rails.root.join("config", "ziwoas.yml").to_s)
-  end
 end
