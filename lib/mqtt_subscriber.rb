@@ -45,6 +45,7 @@ class MqttSubscriber
     ts         = @clock.call.to_i
 
     Sample.create!(plug_id: plug_id, ts: ts, apower_w: apower_w, aenergy_wh: aenergy_wh)
+    @logger.debug("MqttSubscriber: #{plug_id} #{apower_w} W / #{aenergy_wh} Wh")
     broadcast_if_changed(plug, ts, apower_w, aenergy_wh)
   rescue ActiveRecord::RecordNotUnique
     # duplicate ts within same second — skip silently

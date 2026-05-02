@@ -13,7 +13,7 @@ require "fritz_dect_client"
 require "tzinfo"
 
 logger = Logger.new($stdout)
-logger.level = Logger::INFO
+logger.level = Rails.env.development? ? Logger::DEBUG : Logger::INFO
 
 config_path = Rails.root.join("config", "ziwoas.yml").to_s
 config      = ConfigLoader.load(config_path)
