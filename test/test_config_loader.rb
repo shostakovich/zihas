@@ -75,7 +75,7 @@ class ConfigLoaderTest < Minitest::Test
   def test_shelly_plug_has_no_host
     cfg = load_yaml(valid_yaml)
     plug = cfg.plugs.find { |p| p.id == "bkw" }
-    assert_nil plug.respond_to?(:host) ? plug.host : nil
+    assert_equal false, plug.respond_to?(:host)
   end
 
   def test_fritz_poll_required_when_fritz_dect_plug_present
