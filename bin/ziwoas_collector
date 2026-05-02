@@ -81,5 +81,5 @@ threads << Thread.new {
 end
 
 logger.info("ziwoas_collector: started #{threads.length} threads")
-threads.each { |t| t.join(10) }
+threads.each(&:join)
 logger.info("ziwoas_collector: stopped")
