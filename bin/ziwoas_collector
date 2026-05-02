@@ -1,6 +1,8 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
+$stdout.sync = true
+
 require_relative "../config/environment"
 require "mqtt_subscriber"
 require "fritz_mqtt_bridge"
