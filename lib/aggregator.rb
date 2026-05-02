@@ -14,7 +14,20 @@ class Aggregator
     end_ts   = start_ts + 86_400
 
     ActiveRecord::Base.transaction do
+      Sample5min.where(bucket_ts: start_ts..(end_ts - 1)).delete_all
       DailyTotal.where(date: date_s).delete_all
+
+      sql_5min = <<~SQL
+        INSERT INTO samples_5min (plug_id, bucket_ts, avg_power_w, energy_delta_wh, sample_count)
+        SELECT plug_id,
+               (ts / 300) * 300 AS bucket_ts,
+               AVG(apower_w) AS avg_power_w,
+               MAX(aenergy_wh) - MIN(aenergy_wh) AS energy_delta_wh,
+               COUNT(*) AS sample_count
+          FROM samples
+         WHERE ts >= ? AND ts < ?
+         GROUP BY plug_id, bucket_ts
+      SQL
 
       sql_daily = <<~SQL
         INSERT INTO daily_totals (plug_id, date, energy_wh)
@@ -25,6 +38,9 @@ class Aggregator
          GROUP BY plug_id
       SQL
 
+      ActiveRecord::Base.connection.execute(
+        ActiveRecord::Base.sanitize_sql_array([sql_5min, start_ts, end_ts])
+      )
       ActiveRecord::Base.connection.execute(
         ActiveRecord::Base.sanitize_sql_array([sql_daily, date_s, start_ts, end_ts])
       )

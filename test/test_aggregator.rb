@@ -9,6 +9,7 @@ class AggregatorTest < ActiveSupport::TestCase
 
   setup do
     Sample.delete_all
+    Sample5min.delete_all
     DailyTotal.delete_all
 
     @tz         = TZInfo::Timezone.get("Europe/Berlin")
@@ -40,12 +41,43 @@ class AggregatorTest < ActiveSupport::TestCase
     assert_in_delta 800.0, row.energy_wh
   end
 
+  test "aggregate_day writes 5-minute samples" do
+    start_ts = berlin_midnight_utc("2026-04-10")
+    Sample.create!(plug_id: "bkw", ts: start_ts + 0, apower_w: 10, aenergy_wh: 100)
+    Sample.create!(plug_id: "bkw", ts: start_ts + 60, apower_w: 20, aenergy_wh: 103)
+    Sample.create!(plug_id: "bkw", ts: start_ts + 300, apower_w: 40, aenergy_wh: 110)
+
+    @aggregator.aggregate_day("2026-04-10")
+
+    rows = ActiveRecord::Base.connection.exec_query(
+      "SELECT plug_id, bucket_ts, avg_power_w, energy_delta_wh, sample_count FROM samples_5min ORDER BY bucket_ts"
+    ).to_a
+
+    assert_equal 2, rows.length
+    assert_equal({
+      "plug_id" => "bkw",
+      "bucket_ts" => start_ts,
+      "avg_power_w" => 15.0,
+      "energy_delta_wh" => 3.0,
+      "sample_count" => 2,
+    }, rows.first)
+    assert_equal({
+      "plug_id" => "bkw",
+      "bucket_ts" => start_ts + 300,
+      "avg_power_w" => 40.0,
+      "energy_delta_wh" => 0.0,
+      "sample_count" => 1,
+    }, rows.second)
+  end
+
   test "aggregate_day is idempotent" do
     seed_day(plug_id: "bkw", date: "2026-04-10",
              start_power: 50, end_power: 50, start_energy: 0, end_energy: 1200)
     @aggregator.aggregate_day("2026-04-10")
+    first_count_5min = Sample5min.count
     first_total = DailyTotal.first.energy_wh
     @aggregator.aggregate_day("2026-04-10")
+    assert_equal first_count_5min, Sample5min.count
     assert_in_delta first_total, DailyTotal.first.energy_wh
     assert_equal 1, DailyTotal.count
   end
