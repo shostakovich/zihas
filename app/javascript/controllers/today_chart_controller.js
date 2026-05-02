@@ -58,12 +58,22 @@ export default class extends Controller {
     if (!this.powerChart) return
     if (!Array.isArray(data.plugs)) return
 
-    data.plugs.forEach((plug) => this._updatePowerChart(plug))
+    let changed = false
+    for (const plug of data.plugs) {
+      const result = this._updatePowerChart(plug)
+      if (result === "reload") return
+      changed ||= result
+    }
+
+    if (changed) {
+      this._replaceTotalConsumptionDataset()
+      this.powerChart.update("none") // "none" = no animation, instant
+    }
   }
 
   _updatePowerChart(data) {
     const idx = this.datasetIndex[data.plug_id]
-    if (idx === undefined) return
+    if (idx === undefined) return false
 
     const dataset = this.powerChart.data.datasets[idx]
     const last    = dataset.data.at(-1)
@@ -77,7 +87,7 @@ export default class extends Controller {
         // Too big a jump — data was missed while tab/laptop was sleeping.
         // Full reload gives us the correct picture.
         this.loadCharts()
-        return
+        return "reload"
       } else if (last.x === newX) {
         // Same bucket: update running average in place
         last.y = y
@@ -94,7 +104,7 @@ export default class extends Controller {
       dataset.data.push({ x: newX, y })
     }
 
-    this.powerChart.update("none") // "none" = no animation, instant
+    return true
   }
 
   // --- Full chart load via HTTP ---
@@ -130,6 +140,7 @@ export default class extends Controller {
           x: pt.ts * 1000,
           y: isProducer ? Math.abs(pt.avg_power_w) : pt.avg_power_w,
         })),
+        role: s.role,
         tension: 0.2,
         fill: isProducer,
         pointRadius: 0,
@@ -144,6 +155,8 @@ export default class extends Controller {
       }
       return dataset
     })
+    const totalConsumption = this._totalPowerConsumptionDataset(datasets)
+    if (totalConsumption) datasets.push(totalConsumption)
 
     this.powerChart?.destroy()
     if (!this.hasPowerCanvasTarget) return
@@ -177,23 +190,38 @@ export default class extends Controller {
   }
 
   _buildEnergyChart(data) {
+    const CONSUMER_COLORS = [
+      "#3b82f6", "#10b981", "#8b5cf6", "#ef4444", "#06b6d4",
+      "#ec4899", "#84cc16", "#6366f1", "#14b8a6", "#f43f5e",
+    ]
+    const consumers = data.series.filter((series) => series.role === "consumer")
     const buckets = {}
     for (const series of data.series) {
       for (const pt of series.points) {
         const hourKey = Math.floor(pt.ts / 3600) * 3600
         const wh = Math.abs(pt.avg_power_w) / 60
-        if (!buckets[hourKey]) buckets[hourKey] = { produced: 0, consumed: 0 }
+        if (!buckets[hourKey]) buckets[hourKey] = { produced: 0, consumers: {} }
         if (series.role === "producer") {
           buckets[hourKey].produced += wh
         } else {
-          buckets[hourKey].consumed += wh
+          buckets[hourKey].consumers[series.plug_id] ||= 0
+          buckets[hourKey].consumers[series.plug_id] += wh
         }
       }
     }
     const sorted   = Object.keys(buckets).map(Number).sort((a, b) => a - b)
     const labels   = sorted.map(ts => new Date(ts * 1000).getHours().toString().padStart(2, "0") + ":00")
     const produced = sorted.map(ts => +(buckets[ts].produced / 1000).toFixed(3))
-    const consumed = sorted.map(ts => +(buckets[ts].consumed / 1000).toFixed(3))
+    const consumed = sorted.map(ts => {
+      const wh = Object.values(buckets[ts].consumers).reduce((sum, value) => sum + value, 0)
+      return +(wh / 1000).toFixed(3)
+    })
+    const consumerDatasets = consumers.map((series, index) => ({
+      label: series.name,
+      data: sorted.map(ts => +((buckets[ts].consumers[series.plug_id] || 0) / 1000).toFixed(3)),
+      backgroundColor: CONSUMER_COLORS[index % CONSUMER_COLORS.length],
+      stack: "consumed",
+    }))
 
     this.energyChart?.destroy()
     if (!this.hasEnergyCanvasTarget) return
@@ -202,17 +230,56 @@ export default class extends Controller {
       data: {
         labels,
         datasets: [
-          { label: "Erzeugt",    data: produced, backgroundColor: "#f59f00" },
-          { label: "Verbraucht", data: consumed,  backgroundColor: "#3b82f6" },
+          { label: "Erzeugt", data: produced, backgroundColor: "#f59f00", stack: "produced" },
+          ...consumerDatasets,
         ],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        scales: { y: { beginAtZero: true, title: { display: true, text: "kWh" } } },
+        scales: {
+          x: { stacked: true },
+          y: { stacked: true, beginAtZero: true, title: { display: true, text: "kWh" } },
+        },
         plugins: { legend: { position: "bottom" } },
         animation: false,
       },
     })
+  }
+
+  _replaceTotalConsumptionDataset() {
+    if (!this.powerChart) return
+
+    const idx = this.powerChart.data.datasets.findIndex((dataset) => dataset.isTotalConsumption)
+    if (idx >= 0) this.powerChart.data.datasets.splice(idx, 1)
+
+    const totalConsumption = this._totalPowerConsumptionDataset(this.powerChart.data.datasets)
+    if (totalConsumption) this.powerChart.data.datasets.push(totalConsumption)
+  }
+
+  _totalPowerConsumptionDataset(datasets) {
+    const consumers = datasets.filter((dataset) => dataset.role === "consumer")
+    if (consumers.length === 0) return null
+
+    const pointsByTs = new Map()
+    for (const dataset of consumers) {
+      for (const point of dataset.data) {
+        pointsByTs.set(point.x, (pointsByTs.get(point.x) || 0) + point.y)
+      }
+    }
+
+    return {
+      label: "Gesamtverbrauch",
+      data: Array.from(pointsByTs.entries())
+        .sort(([a], [b]) => a - b)
+        .map(([x, y]) => ({ x, y })),
+      borderColor: "#1d4ed8",
+      backgroundColor: "rgba(59, 130, 246, 0.14)",
+      fill: true,
+      pointRadius: 0,
+      tension: 0.2,
+      role: "consumer_total",
+      isTotalConsumption: true,
+    }
   }
 }

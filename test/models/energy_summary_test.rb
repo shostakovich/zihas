@@ -43,4 +43,31 @@ class EnergySummaryTest < ActiveSupport::TestCase
     assert_in_delta 0.0, summary.savings_eur
     assert_equal Date.today.to_s, summary.date
   end
+
+  test "compute_today handles meter reset" do
+    tz       = TZInfo::Timezone.get("Europe/Berlin")
+    midnight = tz.local_to_utc(Time.parse("#{Date.today} 00:00:00")).to_i
+
+    Sample.create!(plug_id: "fridge", ts: midnight + 60,  apower_w: 0, aenergy_wh: 424_440.0)
+    Sample.create!(plug_id: "fridge", ts: midnight + 120, apower_w: 0, aenergy_wh: 0.0)
+    Sample.create!(plug_id: "fridge", ts: midnight + 180, apower_w: 0, aenergy_wh: 50.0)
+
+    summary = EnergySummary.new(config: @config).compute_today
+
+    assert_in_delta 50.0, summary.consumed_wh
+  end
+
+  test "compute_today ignores glitch zero then jump back" do
+    tz       = TZInfo::Timezone.get("Europe/Berlin")
+    midnight = tz.local_to_utc(Time.parse("#{Date.today} 00:00:00")).to_i
+
+    Sample.create!(plug_id: "fridge", ts: midnight + 60, apower_w: 145, aenergy_wh: 425_000.0)
+    Sample.create!(plug_id: "fridge", ts: midnight + 65, apower_w: 145, aenergy_wh: 0.0)
+    Sample.create!(plug_id: "fridge", ts: midnight + 70, apower_w: 145, aenergy_wh: 425_005.0)
+    Sample.create!(plug_id: "fridge", ts: midnight + 75, apower_w: 145, aenergy_wh: 425_010.0)
+
+    summary = EnergySummary.new(config: @config).compute_today
+
+    assert_in_delta 5.0, summary.consumed_wh
+  end
 end

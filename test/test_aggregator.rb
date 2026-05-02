@@ -65,9 +65,37 @@ class AggregatorTest < ActiveSupport::TestCase
       "plug_id" => "bkw",
       "bucket_ts" => start_ts + 300,
       "avg_power_w" => 40.0,
-      "energy_delta_wh" => 0.0,
+      "energy_delta_wh" => 7.0,
       "sample_count" => 1,
     }, rows.second)
+  end
+
+  test "daily total handles meter reset" do
+    start_ts = berlin_midnight_utc("2026-04-10")
+
+    Sample.create!(plug_id: "bkw", ts: start_ts,        apower_w: 0, aenergy_wh: 424_440.0)
+    Sample.create!(plug_id: "bkw", ts: start_ts + 3600, apower_w: 0, aenergy_wh: 424_440.0)
+    Sample.create!(plug_id: "bkw", ts: start_ts + 7200, apower_w: 0, aenergy_wh: 0.0)
+    Sample.create!(plug_id: "bkw", ts: start_ts + 7260, apower_w: 0, aenergy_wh: 100.0)
+
+    @aggregator.aggregate_day("2026-04-10")
+
+    row = DailyTotal.find_by!(plug_id: "bkw", date: "2026-04-10")
+    assert_in_delta 100.0, row.energy_wh
+  end
+
+  test "daily total ignores glitch zero then jump back" do
+    start_ts = berlin_midnight_utc("2026-04-10")
+
+    Sample.create!(plug_id: "bkw", ts: start_ts,      apower_w: 145, aenergy_wh: 425_000.0)
+    Sample.create!(plug_id: "bkw", ts: start_ts + 5,  apower_w: 145, aenergy_wh: 0.0)
+    Sample.create!(plug_id: "bkw", ts: start_ts + 10, apower_w: 145, aenergy_wh: 425_005.0)
+    Sample.create!(plug_id: "bkw", ts: start_ts + 15, apower_w: 145, aenergy_wh: 425_010.0)
+
+    @aggregator.aggregate_day("2026-04-10")
+
+    row = DailyTotal.find_by!(plug_id: "bkw", date: "2026-04-10")
+    assert_in_delta 5.0, row.energy_wh
   end
 
   test "aggregate_day is idempotent" do

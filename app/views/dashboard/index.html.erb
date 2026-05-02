@@ -1,6 +1,4 @@
 <div data-controller="dashboard">
-  <h1>Zipfelmaus — Stromübersicht</h1>
-
   <!-- Hero: PV live -->
   <div class="hero">
     <div class="hero-label">Leistung jetzt</div>
@@ -87,12 +85,16 @@
   <div data-controller="today-chart">
     <div class="section-label">Gesamtenergie — Letzte 24 h</div>
     <div class="chart-card">
-      <canvas data-today-chart-target="energyCanvas"></canvas>
+      <div class="chart-frame">
+        <canvas data-today-chart-target="energyCanvas"></canvas>
+      </div>
     </div>
 
     <div class="section-label">Leistung — Letzte 24 h</div>
     <div class="chart-card">
-      <canvas data-today-chart-target="powerCanvas"></canvas>
+      <div class="chart-frame">
+        <canvas data-today-chart-target="powerCanvas"></canvas>
+      </div>
     </div>
   </div>
 
@@ -100,7 +102,9 @@
   <div data-controller="history-chart">
     <div class="section-label">Ertrag — Letzte 14 Tage</div>
     <div class="chart-card">
-      <canvas data-history-chart-target="canvas"></canvas>
+      <div class="chart-frame">
+        <canvas data-history-chart-target="canvas"></canvas>
+      </div>
     </div>
   </div>
 </div>

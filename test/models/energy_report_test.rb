@@ -30,7 +30,10 @@ class EnergyReportTest < ActiveSupport::TestCase
     assert_equal 7, report.daily_points.length
     assert_in_delta 9.8, report.summary.fetch(:produced_kwh)
     assert_in_delta 3.22, report.summary.fetch(:consumed_kwh)
+    assert_in_delta 3.14, report.summary.fetch(:savings_eur)
     assert_in_delta 6.58, report.summary.fetch(:balance_kwh)
+    assert_in_delta 1.4, report.summary.fetch(:avg_produced_kwh)
+    assert_in_delta 0.46, report.summary.fetch(:avg_consumed_kwh)
   end
 
   test "last thirty preset uses thirty fully aggregated days ending at latest day" do
@@ -100,7 +103,49 @@ class EnergyReportTest < ActiveSupport::TestCase
     assert_equal [ "2026-04-10" ], report.chart_payload.fetch(:daily).fetch(:labels)
     assert_equal [ 2.0 ], report.chart_payload.fetch(:daily).fetch(:produced_kwh)
     assert_equal [ 1.0 ], report.chart_payload.fetch(:daily).fetch(:consumed_kwh)
+    assert_equal [ "Schreibtisch", "Waschmaschine" ], report.chart_payload.fetch(:daily).fetch(:consumer_series).map { |row| row.fetch(:name) }
+    assert_equal [ 0.7 ], report.chart_payload.fetch(:daily).fetch(:consumer_series).first.fetch(:data)
+    assert_equal [ 1.0 ], report.chart_payload.fetch(:daily).fetch(:balance_kwh)
     assert_equal 2, report.chart_payload.fetch(:detail).fetch(:series).length
+  end
+
+  test "uses the full detail range for periods up to seven days" do
+    seed_daily("2026-04-10", pv: 2000, desk: 700, washer: 300)
+    seed_daily("2026-04-11", pv: 3000, desk: 800, washer: 400)
+    day_one_ts = Time.utc(2026, 4, 10, 0, 0, 0).to_i
+    day_two_ts = Time.utc(2026, 4, 11, 0, 0, 0).to_i
+    Sample5min.create!(plug_id: "pv", bucket_ts: day_one_ts, avg_power_w: 120, energy_delta_wh: 10, sample_count: 2)
+    Sample5min.create!(plug_id: "pv", bucket_ts: day_two_ts, avg_power_w: 220, energy_delta_wh: 18, sample_count: 2)
+
+    report = EnergyReport.new(
+      params: { start_date: "2026-04-10", end_date: "2026-04-11" },
+      plugs: @plugs
+    ).build
+
+    detail = report.chart_payload.fetch(:detail)
+    assert_equal "line", detail.fetch(:chart_type)
+    assert_equal [ "10.04 00:00", "11.04 00:00" ], detail.fetch(:labels)
+    assert_equal [ 120.0, 220.0 ], detail.fetch(:series).first.fetch(:data)
+    assert_equal Date.new(2026, 4, 10), report.detail_start_date
+    assert_equal Date.new(2026, 4, 11), report.detail_end_date
+  end
+
+  test "uses daily average power detail for periods longer than seven days" do
+    8.times do |i|
+      seed_daily((Date.new(2026, 4, 10) + i).to_s, pv: 2400 + i * 24, desk: 720, washer: 240)
+    end
+
+    report = EnergyReport.new(
+      params: { start_date: "2026-04-10", end_date: "2026-04-17", selected_date: "2026-04-17" },
+      plugs: @plugs
+    ).build
+
+    detail = report.chart_payload.fetch(:detail)
+    assert_equal "bar", detail.fetch(:chart_type)
+    assert_equal [ "10.04", "11.04", "12.04", "13.04", "14.04", "15.04", "16.04", "17.04" ], detail.fetch(:labels)
+    assert_equal [ 100.0, 101.0, 102.0, 103.0, 104.0, 105.0, 106.0, 107.0 ], detail.fetch(:series).first.fetch(:data)
+    assert_equal Date.new(2026, 4, 10), report.detail_start_date
+    assert_equal Date.new(2026, 4, 17), report.detail_end_date
   end
 
   test "empty data returns empty state without raising" do
@@ -108,7 +153,17 @@ class EnergyReportTest < ActiveSupport::TestCase
 
     assert report.empty?
     assert_equal [], report.daily_points
-    assert_equal({ produced_kwh: 0.0, consumed_kwh: 0.0, balance_kwh: 0.0 }, report.summary)
+    assert_equal(
+      {
+        produced_kwh: 0.0,
+        consumed_kwh: 0.0,
+        savings_eur: 0.0,
+        balance_kwh: 0.0,
+        avg_produced_kwh: 0.0,
+        avg_consumed_kwh: 0.0,
+      },
+      report.summary
+    )
     assert_equal [], report.chart_payload.fetch(:daily).fetch(:labels)
   end
 

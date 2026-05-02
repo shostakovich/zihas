@@ -22,10 +22,19 @@
     <%= stylesheet_link_tag :application, "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
 
-    <link rel="stylesheet" href="/app.css">
   </head>
 
   <body>
-    <%= yield %>
+    <header class="app-header">
+      <%= link_to "Zipfelmaus", root_path, class: "app-brand" %>
+      <nav class="app-nav" aria-label="Hauptnavigation">
+        <%= link_to "Dashboard", root_path, class: [ "app-nav-link", ("active" if current_page?(root_path)) ] %>
+        <%= link_to "Berichte", reports_path, class: [ "app-nav-link", ("active" if current_page?(reports_path)) ] %>
+      </nav>
+    </header>
+
+    <main class="app-main">
+      <%= yield %>
+    </main>
   </body>
 </html>
