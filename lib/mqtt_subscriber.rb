@@ -28,7 +28,7 @@ class MqttSubscriber
 
   def stop!
     @stopping = true
-    @client&.disconnect rescue nil
+    begin; @client&.disconnect; rescue StandardError; nil; end
   end
 
   def handle_message(topic, payload)
@@ -62,7 +62,7 @@ class MqttSubscriber
     @logger.info("MqttSubscriber: connected to #{@mqtt_config.host}:#{@mqtt_config.port}, subscribed #{topic}")
     @client.get { |t, payload| handle_message(t, payload) }
   ensure
-    @client&.disconnect rescue nil
+    begin; @client&.disconnect; rescue StandardError; nil; end
   end
 
   def broadcast_if_changed(plug, ts, apower_w, aenergy_wh)
