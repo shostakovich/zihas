@@ -43,3 +43,4 @@
 .legacy_backup/
 
 /coverage/
+/.superpowers/*
