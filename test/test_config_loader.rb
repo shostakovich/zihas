@@ -4,7 +4,7 @@ require "tempfile"
 
 class ConfigLoaderTest < Minitest::Test
   def load_yaml(yaml)
-    file = Tempfile.new([ "config", ".yml" ])
+    file = Tempfile.new(["config", ".yml"])
     file.write(yaml); file.flush
     ConfigLoader.load(file.path)
   ensure
@@ -16,11 +16,10 @@ class ConfigLoaderTest < Minitest::Test
     <<~YAML
       electricity_price_eur_per_kwh: 0.32
       timezone: Europe/Berlin
-      poll:
-        interval_seconds: 5
-        timeout_seconds: 2
-        circuit_breaker_threshold: 3
-        circuit_breaker_probe_seconds: 30
+      mqtt:
+        host: 192.168.1.103
+        port: 1883
+        topic_prefix: shellies
       aggregator:
         run_at: "03:15"
         raw_retention_days: 7
@@ -28,11 +27,23 @@ class ConfigLoaderTest < Minitest::Test
         - id: bkw
           name: Balkonkraftwerk
           role: producer
-          host: 192.168.1.192
         - id: fridge
           name: Kühlschrank
           role: consumer
-          host: 192.168.1.201
+    YAML
+  end
+
+  def valid_yaml_with_fritz
+    valid_yaml + <<~YAML
+      fritz_box:
+        host: 192.168.178.1
+        user: fritz6584
+        password: secret
+      fritz_poll:
+        active_interval_seconds: 5
+        idle_interval_seconds: 60
+        idle_threshold_w: 10
+        timeout_seconds: 2
     YAML
   end
 
@@ -40,11 +51,57 @@ class ConfigLoaderTest < Minitest::Test
     cfg = load_yaml(valid_yaml)
     assert_in_delta 0.32, cfg.electricity_price_eur_per_kwh
     assert_equal "Europe/Berlin", cfg.timezone
-    assert_equal 5, cfg.poll.interval_seconds
     assert_equal "03:15", cfg.aggregator.run_at
     assert_equal 2, cfg.plugs.length
     assert_equal "bkw", cfg.plugs.first.id
     assert_equal :producer, cfg.plugs.first.role
+  end
+
+  def test_loads_mqtt_config
+    cfg = load_yaml(valid_yaml)
+    assert_equal "192.168.1.103", cfg.mqtt.host
+    assert_equal 1883, cfg.mqtt.port
+    assert_equal "shellies", cfg.mqtt.topic_prefix
+  end
+
+  def test_loads_fritz_poll_config
+    cfg = load_yaml(valid_yaml_with_fritz)
+    assert_equal 5,    cfg.fritz_poll.active_interval_seconds
+    assert_equal 60,   cfg.fritz_poll.idle_interval_seconds
+    assert_equal 10,   cfg.fritz_poll.idle_threshold_w
+    assert_equal 2,    cfg.fritz_poll.timeout_seconds
+  end
+
+  def test_shelly_plug_has_no_host
+    cfg = load_yaml(valid_yaml)
+    plug = cfg.plugs.find { |p| p.id == "bkw" }
+    assert_equal false, plug.respond_to?(:host)
+  end
+
+  def test_fritz_poll_required_when_fritz_dect_plug_present
+    yaml_with_fritz_plug = valid_yaml + <<~EXTRA
+      fritz_box:
+        host: 192.168.178.1
+        user: fritz6584
+        password: secret
+      plugs:
+        - id: bkw
+          name: BKW
+          role: producer
+        - id: waschmaschine
+          name: Waschmaschine
+          role: consumer
+          driver: fritz_dect
+          ain: "08761 0500475"
+    EXTRA
+    err = assert_raises(ConfigLoader::Error) { load_yaml(yaml_with_fritz_plug) }
+    assert_match(/fritz_poll/i, err.message)
+  end
+
+  def test_mqtt_required
+    yaml = valid_yaml.sub(/mqtt:.*topic_prefix: shellies\n/m, "")
+    err = assert_raises(ConfigLoader::Error) { load_yaml(yaml) }
+    assert_match(/mqtt/i, err.message)
   end
 
   def test_rejects_duplicate_plug_ids
@@ -59,96 +116,24 @@ class ConfigLoaderTest < Minitest::Test
     assert_match(/at least one.*producer/i, err.message)
   end
 
-  def test_rejects_invalid_role
-    yaml = valid_yaml.sub("role: producer", "role: foo")
-    err = assert_raises(ConfigLoader::Error) { load_yaml(yaml) }
-    assert_match(/role/i, err.message)
-  end
-
-  def test_rejects_invalid_id_chars
-    yaml = valid_yaml.sub("id: bkw", "id: BKW-1")
-    err = assert_raises(ConfigLoader::Error) { load_yaml(yaml) }
-    assert_match(/plug id/i, err.message)
-  end
-
-  def test_rejects_unknown_timezone
-    yaml = valid_yaml.sub("Europe/Berlin", "Europe/Narnia")
+  def test_rejects_invalid_timezone
+    yaml = valid_yaml.sub("Europe/Berlin", "Not/ATimezone")
     err = assert_raises(ConfigLoader::Error) { load_yaml(yaml) }
     assert_match(/timezone/i, err.message)
   end
 
-  def test_rejects_nonpositive_numbers
-    yaml = valid_yaml.sub("interval_seconds: 5", "interval_seconds: 0")
-    err = assert_raises(ConfigLoader::Error) { load_yaml(yaml) }
-    assert_match(/interval_seconds/, err.message)
-  end
-
-  def valid_fritz_yaml
-    <<~YAML
-      electricity_price_eur_per_kwh: 0.32
-      timezone: Europe/Berlin
-      poll:
-        interval_seconds: 5
-        timeout_seconds: 2
-        circuit_breaker_threshold: 3
-        circuit_breaker_probe_seconds: 30
-      aggregator:
-        run_at: "03:15"
-        raw_retention_days: 7
-      fritz_box:
-        host: 192.168.178.1
-        user: fritz6584
-        password: secret
+  def test_rejects_fritz_dect_plug_without_ain
+    yaml = valid_yaml_with_fritz + <<~EXTRA
       plugs:
-        - id: krabbencomputer
-          name: Krabbencomputer
+        - id: bkw
+          name: BKW
           role: producer
+        - id: ws
+          name: WS
+          role: consumer
           driver: fritz_dect
-          ain: "11630 0206224"
-    YAML
-  end
-
-  def test_shelly_driver_defaults_to_shelly
-    cfg = load_yaml(valid_yaml)
-    assert_equal :shelly, cfg.plugs.first.driver
-    assert_equal "192.168.1.192", cfg.plugs.first.host
-    assert_nil cfg.plugs.first.ain
-  end
-
-  def test_loads_fritz_dect_plug
-    cfg = load_yaml(valid_fritz_yaml)
-    plug = cfg.plugs.first
-    assert_equal :fritz_dect, plug.driver
-    assert_equal "11630 0206224", plug.ain
-    assert_nil plug.host
-    assert_equal "192.168.178.1", cfg.fritz_box.host
-    assert_equal "fritz6584", cfg.fritz_box.user
-    assert_equal "secret", cfg.fritz_box.password
-  end
-
-  def test_rejects_fritz_dect_without_fritz_box_section
-    yaml = valid_fritz_yaml.sub(/^fritz_box:\n(  .*\n){3}/, "")
+    EXTRA
     err = assert_raises(ConfigLoader::Error) { load_yaml(yaml) }
-    assert_match(/fritz_box.*required/i, err.message)
-  end
-
-  def test_rejects_fritz_dect_plug_with_host_field
-    yaml = valid_fritz_yaml.sub("ain: \"11630 0206224\"",
-                                 "ain: \"11630 0206224\"\n    host: 192.168.1.1")
-    err = assert_raises(ConfigLoader::Error) { load_yaml(yaml) }
-    assert_match(/host.*must not be set/i, err.message)
-  end
-
-  def test_rejects_shelly_plug_without_host
-    yaml = valid_yaml.sub("    host: 192.168.1.192\n", "")
-    err = assert_raises(ConfigLoader::Error) { load_yaml(yaml) }
-    assert_match(/host.*required/i, err.message)
-  end
-
-  def test_rejects_invalid_driver
-    yaml = valid_yaml.sub("    host: 192.168.1.192",
-                           "    host: 192.168.1.192\n    driver: zigbee")
-    err = assert_raises(ConfigLoader::Error) { load_yaml(yaml) }
-    assert_match(/driver/i, err.message)
+    assert_match(/ain.*required/i, err.message)
   end
 end

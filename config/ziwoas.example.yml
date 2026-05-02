@@ -2,37 +2,37 @@
 electricity_price_eur_per_kwh: 0.32
 timezone: Europe/Berlin
 
-poll:
-  interval_seconds: 5
-  timeout_seconds: 2
-  circuit_breaker_threshold: 3
-  circuit_breaker_probe_seconds: 30
+mqtt:
+  host: 192.168.1.103
+  port: 1883
+  topic_prefix: shellies
 
 aggregator:
   run_at: "03:15"
   raw_retention_days: 7
 
-# Required when any plug uses driver: fritz_dect.
 # fritz_box:
 #   host: 192.168.178.1
-#   user: fritz6584       # Fritz!Box username
-#   password: secret      # Fritz!Box password
+#   user: fritz6584
+#   password: secret
+#
+# fritz_poll:
+#   active_interval_seconds: 5
+#   idle_interval_seconds: 60
+#   idle_threshold_w: 10
+#   timeout_seconds: 2
 
 plugs:
   - id: bkw
     name: Balkonkraftwerk
     role: producer
-    host: 192.168.1.192   # Shelly plug (driver defaults to shelly)
 
-  # Shelly consumer example:
   # - id: kuehlschrank
-  #   name: Kühlschrank
+  #   name: Kuehlschrank
   #   role: consumer
-  #   host: 192.168.1.201
-
-  # Fritz!DECT consumer example (AIN from Fritz!Box device list):
-  # - id: krabbencomputer
-  #   name: Krabbencomputer
+  #
+  # - id: waschmaschine
+  #   name: Waschmaschine
   #   role: consumer
   #   driver: fritz_dect
   #   ain: "11630 0206224"

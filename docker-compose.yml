@@ -12,3 +12,17 @@ services:
     volumes:
       - ./storage:/rails/storage
       - ./config/ziwoas.yml:/rails/config/ziwoas.yml:ro
+
+  ziwoas_collector:
+    image: ziwoas:latest
+    container_name: ziwoas_collector
+    restart: unless-stopped
+    command: ["./bin/ziwoas_collector"]
+    environment:
+      TZ: Europe/Berlin
+      SECRET_KEY_BASE: dummy_secret_for_local_docker
+    volumes:
+      - ./storage:/rails/storage
+      - ./config/ziwoas.yml:/rails/config/ziwoas.yml:ro
+    depends_on:
+      - ziwoas

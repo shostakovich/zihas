@@ -1,0 +1,85 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+$stdout.sync = true
+
+require_relative "../config/environment"
+require "mqtt_subscriber"
+require "fritz_mqtt_bridge"
+require "aggregator"
+require "ziwoas/scheduler"
+require "config_loader"
+require "fritz_dect_client"
+require "tzinfo"
+
+logger = Logger.new($stdout)
+logger.level = Logger::INFO
+
+config_path = Rails.root.join("config", "ziwoas.yml").to_s
+config      = ConfigLoader.load(config_path)
+tz          = TZInfo::Timezone.get(config.timezone)
+
+fritz_plugs  = config.plugs.select { |p| p.driver == :fritz_dect }
+shelly_plugs = config.plugs.reject { |p| p.driver == :fritz_dect }
+
+threads    = []
+stoppables = []
+
+subscriber = MqttSubscriber.new(
+  mqtt_config: config.mqtt,
+  plugs:       shelly_plugs,
+  logger:      logger,
+)
+stoppables << subscriber
+threads << Thread.new {
+  Thread.current.name = "mqtt_subscriber"
+  subscriber.run
+}
+
+if fritz_plugs.any?
+  fritz_client = FritzDectClient.new(
+    host:     config.fritz_box.host,
+    user:     config.fritz_box.user,
+    password: config.fritz_box.password,
+    timeout:  config.fritz_poll.timeout_seconds,
+  )
+  fritz_plugs.each do |plug|
+    bridge = FritzMqttBridge.new(
+      fritz_client:   fritz_client,
+      plug:           plug,
+      mqtt_config:    config.mqtt,
+      fritz_poll_cfg: config.fritz_poll,
+      logger:         logger,
+    )
+    stoppables << bridge
+    threads << Thread.new {
+      Thread.current.name = "fritz_bridge_#{plug.id}"
+      bridge.run
+    }
+  end
+end
+
+aggregator = Aggregator.new(
+  timezone:           tz,
+  raw_retention_days: config.aggregator.raw_retention_days,
+)
+scheduler = Ziwoas::Scheduler.new(
+  aggregator: aggregator,
+  run_at:     config.aggregator.run_at,
+  timezone:   tz,
+  logger:     logger,
+  backup_dir: Rails.root.join("storage", "backup").to_s,
+)
+stoppables << scheduler
+threads << Thread.new {
+  Thread.current.name = "scheduler"
+  scheduler.run
+}
+
+%w[INT TERM].each do |sig|
+  Signal.trap(sig) { stoppables.each(&:stop!) }
+end
+
+logger.info("ziwoas_collector: started #{threads.length} threads")
+threads.each { |t| t.join(10) }
+logger.info("ziwoas_collector: stopped")
