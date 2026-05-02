@@ -13,5 +13,4 @@ class ReportsController < ApplicationController
   def report_params
     params.permit(:preset, :start_date, :end_date, :selected_date)
   end
-
 end
