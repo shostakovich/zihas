@@ -20,8 +20,6 @@ Bundler.require(*Rails.groups)
 
 module Ziwoas
   class Application < Rails::Application
-    attr_accessor :ziwoas_app
-
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 8.1
 

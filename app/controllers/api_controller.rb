@@ -58,6 +58,6 @@ class ApiController < ApplicationController
   private
 
   def app_config
-    Rails.application.ziwoas_app.config
+    @app_config ||= ConfigLoader.load(Rails.root.join("config", "ziwoas.yml").to_s)
   end
 end

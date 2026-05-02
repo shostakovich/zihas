@@ -4,25 +4,6 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
   setup do
     DailyTotal.delete_all
 
-    plug_bkw = ConfigLoader::PlugCfg.new(id: "bkw", name: "Balkonkraftwerk", role: :producer, driver: :shelly, ain: nil)
-    plug_fridge = ConfigLoader::PlugCfg.new(id: "fridge", name: "Kuehlschrank", role: :consumer, driver: :shelly, ain: nil)
-    mqtt = ConfigLoader::MqttCfg.new(host: "localhost", port: 1883, topic_prefix: "shellies")
-
-    config = ConfigLoader::Config.new(
-      electricity_price_eur_per_kwh: 0.32,
-      timezone: "Europe/Berlin",
-      mqtt: mqtt,
-      fritz_poll: nil,
-      aggregator: nil,
-      plugs: [ plug_bkw, plug_fridge ],
-      fritz_box: nil
-    )
-
-    Rails.application.ziwoas_app = Struct.new(:config).new(config)
-  end
-
-  teardown do
-    Rails.application.ziwoas_app = nil
   end
 
   test "reports page renders" do
