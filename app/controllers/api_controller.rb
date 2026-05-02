@@ -34,7 +34,7 @@ class ApiController < ApplicationController
   end
 
   def live
-    threshold = app_config.poll.interval_seconds * 2
+    threshold = 120
     @now_ts   = Time.now.to_i
     plug_ids  = app_config.plugs.map(&:id)
 

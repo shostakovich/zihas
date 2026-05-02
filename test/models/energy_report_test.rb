@@ -6,9 +6,9 @@ class EnergyReportTest < ActiveSupport::TestCase
     Sample5min.delete_all
 
     @plugs = [
-      ConfigLoader::PlugCfg.new(id: "pv", name: "Balkonkraftwerk", role: :producer, driver: :shelly, host: "pv.local", ain: nil),
-      ConfigLoader::PlugCfg.new(id: "desk", name: "Schreibtisch", role: :consumer, driver: :shelly, host: "desk.local", ain: nil),
-      ConfigLoader::PlugCfg.new(id: "washer", name: "Waschmaschine", role: :consumer, driver: :shelly, host: "washer.local", ain: nil)
+      ConfigLoader::PlugCfg.new(id: "pv", name: "Balkonkraftwerk", role: :producer, driver: :shelly, ain: nil),
+      ConfigLoader::PlugCfg.new(id: "desk", name: "Schreibtisch", role: :consumer, driver: :shelly, ain: nil),
+      ConfigLoader::PlugCfg.new(id: "washer", name: "Waschmaschine", role: :consumer, driver: :shelly, ain: nil)
     ]
   end
 

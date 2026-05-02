@@ -4,19 +4,15 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
   setup do
     DailyTotal.delete_all
 
-    plug_bkw = ConfigLoader::PlugCfg.new(id: "bkw", name: "Balkonkraftwerk", role: :producer, driver: :shelly, host: "10.0.0.1", ain: nil)
-    plug_fridge = ConfigLoader::PlugCfg.new(id: "fridge", name: "Kuehlschrank", role: :consumer, driver: :shelly, host: "10.0.0.2", ain: nil)
-    poll = ConfigLoader::PollCfg.new(
-      interval_seconds: 5,
-      timeout_seconds: 2,
-      circuit_breaker_threshold: 3,
-      circuit_breaker_probe_seconds: 30
-    )
+    plug_bkw = ConfigLoader::PlugCfg.new(id: "bkw", name: "Balkonkraftwerk", role: :producer, driver: :shelly, ain: nil)
+    plug_fridge = ConfigLoader::PlugCfg.new(id: "fridge", name: "Kuehlschrank", role: :consumer, driver: :shelly, ain: nil)
+    mqtt = ConfigLoader::MqttCfg.new(host: "localhost", port: 1883, topic_prefix: "shellies")
 
     config = ConfigLoader::Config.new(
       electricity_price_eur_per_kwh: 0.32,
       timezone: "Europe/Berlin",
-      poll: poll,
+      mqtt: mqtt,
+      fritz_poll: nil,
       aggregator: nil,
       plugs: [ plug_bkw, plug_fridge ],
       fritz_box: nil

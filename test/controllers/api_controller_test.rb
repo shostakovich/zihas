@@ -6,18 +6,16 @@ class ApiControllerTest < ActionDispatch::IntegrationTest
     DailyTotal.delete_all
 
     # Minimal config stub so controller can call app_config
-    plug_bkw    = ConfigLoader::PlugCfg.new(id: "bkw",    name: "Balkonkraftwerk", role: :producer, driver: :shelly, host: "10.0.0.1", ain: nil)
-    plug_fridge = ConfigLoader::PlugCfg.new(id: "fridge", name: "Kühlschrank",     role: :consumer, driver: :shelly, host: "10.0.0.2", ain: nil)
+    plug_bkw    = ConfigLoader::PlugCfg.new(id: "bkw",    name: "Balkonkraftwerk", role: :producer, driver: :shelly, ain: nil)
+    plug_fridge = ConfigLoader::PlugCfg.new(id: "fridge", name: "Kühlschrank",     role: :consumer, driver: :shelly, ain: nil)
 
-    poll = ConfigLoader::PollCfg.new(
-      interval_seconds: 5, timeout_seconds: 2,
-      circuit_breaker_threshold: 3, circuit_breaker_probe_seconds: 30
-    )
+    mqtt = ConfigLoader::MqttCfg.new(host: "localhost", port: 1883, topic_prefix: "shellies")
 
     @config = ConfigLoader::Config.new(
       electricity_price_eur_per_kwh: 0.32,
       timezone: "Europe/Berlin",
-      poll: poll,
+      mqtt: mqtt,
+      fritz_poll: nil,
       aggregator: nil,
       plugs: [ plug_bkw, plug_fridge ],
       fritz_box: nil
@@ -56,7 +54,7 @@ class ApiControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "GET /api/live marks stale sample as offline" do
-    old = Time.now.to_i - 60
+    old = Time.now.to_i - 130
     Sample.create!(plug_id: "bkw", ts: old, apower_w: 1.0, aenergy_wh: 1.0)
 
     get "/api/live", as: :json
