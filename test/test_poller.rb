@@ -13,8 +13,8 @@ class PollerTest < ActiveSupport::TestCase
     @now     = 1_700_000_000.0
 
     @plugs = [
-      ConfigLoader::PlugCfg.new(id: "bkw",    name: "BKW",   role: :producer, driver: :shelly, host: "10.0.0.1", ain: nil),
-      ConfigLoader::PlugCfg.new(id: "fridge",  name: "Fridge", role: :consumer, driver: :shelly, host: "10.0.0.2", ain: nil)
+      ConfigLoader::PlugCfg.new(id: "bkw",    name: "BKW",   role: :producer, driver: :shelly, ain: nil),
+      ConfigLoader::PlugCfg.new(id: "fridge",  name: "Fridge", role: :consumer, driver: :shelly, ain: nil)
     ]
 
     @poller = Poller.new(

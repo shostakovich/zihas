@@ -4,14 +4,15 @@ require "tzinfo"
 class ConfigLoader
   class Error < StandardError; end
 
-  PlugCfg     = Struct.new(:id, :name, :role, :host, :ain, :driver, keyword_init: true)
-  PollCfg     = Struct.new(:interval_seconds, :timeout_seconds,
-                           :circuit_breaker_threshold, :circuit_breaker_probe_seconds,
-                           keyword_init: true)
+  PlugCfg     = Struct.new(:id, :name, :role, :ain, :driver, keyword_init: true)
+  MqttCfg     = Struct.new(:host, :port, :topic_prefix, keyword_init: true)
+  FritzPollCfg = Struct.new(:active_interval_seconds, :idle_interval_seconds,
+                             :idle_threshold_w, :timeout_seconds, keyword_init: true)
   AggCfg      = Struct.new(:run_at, :raw_retention_days, keyword_init: true)
   FritzBoxCfg = Struct.new(:host, :user, :password, keyword_init: true)
   Config      = Struct.new(:electricity_price_eur_per_kwh, :timezone,
-                           :poll, :aggregator, :plugs, :fritz_box, keyword_init: true)
+                           :mqtt, :fritz_poll, :aggregator, :plugs, :fritz_box,
+                           keyword_init: true)
 
   module StringRequirement
     private
@@ -52,13 +53,11 @@ class ConfigLoader
 
     def build_plug(id, name, role, driver)
       if driver == :shelly
-        raise ConfigLoader::Error, "plugs[#{@index}].host is required for driver: shelly" if @h["host"].nil? || @h["host"].to_s.empty?
         raise ConfigLoader::Error, "plugs[#{@index}].ain must not be set for driver: shelly" if @h["ain"]
-        ConfigLoader::PlugCfg.new(id: id, name: name, role: role, driver: :shelly, host: @h["host"].to_s, ain: nil)
+        ConfigLoader::PlugCfg.new(id: id, name: name, role: role, driver: :shelly, ain: nil)
       else
         raise ConfigLoader::Error, "plugs[#{@index}].ain is required for driver: fritz_dect" if @h["ain"].nil? || @h["ain"].to_s.empty?
-        raise ConfigLoader::Error, "plugs[#{@index}].host must not be set for driver: fritz_dect" if @h["host"]
-        ConfigLoader::PlugCfg.new(id: id, name: name, role: role, driver: :fritz_dect, ain: @h["ain"].to_s, host: nil)
+        ConfigLoader::PlugCfg.new(id: id, name: name, role: role, driver: :fritz_dect, ain: @h["ain"].to_s)
       end
     end
   end
@@ -87,7 +86,8 @@ class ConfigLoader
       raise Error, "timezone '#{tz}' is not a valid IANA timezone"
     end
 
-    poll       = build_poll(@raw["poll"])
+    mqtt       = build_mqtt(@raw["mqtt"])
+    fritz_poll = build_fritz_poll(@raw["fritz_poll"])
     aggregator = build_aggregator(@raw["aggregator"])
     fritz_box  = build_fritz_box(@raw["fritz_box"])
     plugs      = build_plugs(@raw["plugs"])
@@ -96,25 +96,41 @@ class ConfigLoader
       raise Error, "fritz_box config required when using driver: fritz_dect"
     end
 
+    if plugs.any? { |p| p.driver == :fritz_dect } && fritz_poll.nil?
+      raise Error, "fritz_poll config required when using driver: fritz_dect"
+    end
+
     Config.new(
       electricity_price_eur_per_kwh: price,
-      timezone: tz,
-      poll: poll,
+      timezone:   tz,
+      mqtt:       mqtt,
+      fritz_poll: fritz_poll,
       aggregator: aggregator,
-      plugs: plugs,
-      fritz_box: fritz_box,
+      plugs:      plugs,
+      fritz_box:  fritz_box,
     )
   end
 
   private
 
-  def build_poll(h)
-    h = require_hash(h, "poll")
-    PollCfg.new(
-      interval_seconds:              require_number(h["interval_seconds"],              "poll.interval_seconds"),
-      timeout_seconds:               require_number(h["timeout_seconds"],               "poll.timeout_seconds"),
-      circuit_breaker_threshold:     require_number(h["circuit_breaker_threshold"],     "poll.circuit_breaker_threshold").to_i,
-      circuit_breaker_probe_seconds: require_number(h["circuit_breaker_probe_seconds"], "poll.circuit_breaker_probe_seconds"),
+  def build_mqtt(h)
+    raise Error, "mqtt config is required" if h.nil?
+    h = require_hash(h, "mqtt")
+    MqttCfg.new(
+      host:         require_string(h["host"],  "mqtt.host"),
+      port:         require_number(h["port"].to_i, "mqtt.port").to_i,
+      topic_prefix: require_string(h["topic_prefix"], "mqtt.topic_prefix"),
+    )
+  end
+
+  def build_fritz_poll(h)
+    return nil if h.nil?
+    h = require_hash(h, "fritz_poll")
+    FritzPollCfg.new(
+      active_interval_seconds: require_number(h["active_interval_seconds"], "fritz_poll.active_interval_seconds"),
+      idle_interval_seconds:   require_number(h["idle_interval_seconds"],   "fritz_poll.idle_interval_seconds"),
+      idle_threshold_w:        require_number(h["idle_threshold_w"].to_f,   "fritz_poll.idle_threshold_w", allow_zero: true),
+      timeout_seconds:         require_number(h["timeout_seconds"],         "fritz_poll.timeout_seconds"),
     )
   end
 
