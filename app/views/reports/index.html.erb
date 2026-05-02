@@ -1,9 +1,83 @@
 <% content_for :title, "Berichte" %>
 
-<h1>Berichte</h1>
+<div class="reports-page" data-controller="energy-report">
+  <header class="page-header">
+    <div>
+      <h1>Berichte</h1>
+      <p class="page-subtitle">Rueckschau fuer Ertrag und Verbrauch</p>
+    </div>
+  </header>
 
-<form method="get" action="/reports">
-  <input type="date" name="start_date" value="<%= params[:start_date].presence || @report.start_date %>">
-  <input type="date" name="end_date" value="<%= params[:end_date].presence || @report.end_date %>">
-  <button type="submit">Anwenden</button>
-</form>
+  <section class="report-panel report-controls" aria-label="Zeitraum">
+    <div class="preset-actions" role="group" aria-label="Schnellauswahl">
+      <%= link_to "Letzte 7 Tage", reports_path(preset: "last_7"), class: [ "preset-link", ("active" if @report.preset == "last_7") ] %>
+      <%= link_to "Letzte 30 Tage", reports_path(preset: "last_30"), class: [ "preset-link", ("active" if @report.preset == "last_30") ] %>
+    </div>
+
+    <%= form_with url: reports_path, method: :get, local: true, class: "date-range-form" do %>
+      <label>
+        <span>Von</span>
+        <%= date_field_tag :start_date, params[:start_date].presence || @report.start_date, max: @report.end_date %>
+      </label>
+      <label>
+        <span>Bis</span>
+        <%= date_field_tag :end_date, params[:end_date].presence || @report.end_date, max: @report.end_date %>
+      </label>
+      <%= submit_tag "Anwenden" %>
+    <% end %>
+  </section>
+
+  <% @report.messages.each do |message| %>
+    <p class="report-message"><%= message %></p>
+  <% end %>
+
+  <% if @report.empty? %>
+    <section class="empty-state">
+      <h2>Noch keine Berichtsdaten</h2>
+      <p>Die Rueckschau erscheint, sobald die erste Tagesaggregation vorhanden ist.</p>
+    </section>
+  <% else %>
+    <section class="report-summary-grid" aria-label="Zusammenfassung">
+      <div class="report-summary-card">
+        <span>Ertrag</span>
+        <strong><%= number_with_precision(@report.summary.fetch(:produced_kwh), precision: 2, delimiter: ".", separator: ",") %> kWh</strong>
+      </div>
+      <div class="report-summary-card">
+        <span>Verbrauch</span>
+        <strong><%= number_with_precision(@report.summary.fetch(:consumed_kwh), precision: 2, delimiter: ".", separator: ",") %> kWh</strong>
+      </div>
+      <div class="report-summary-card">
+        <span>Bilanz</span>
+        <strong><%= number_with_precision(@report.summary.fetch(:balance_kwh), precision: 2, delimiter: ".", separator: ",") %> kWh</strong>
+      </div>
+    </section>
+
+    <section class="report-grid">
+      <div class="report-panel chart-panel">
+        <div class="panel-heading">
+          <h2>Ertrag und Verbrauch</h2>
+          <span><%= @report.start_date %> bis <%= @report.end_date %></span>
+        </div>
+        <canvas data-energy-report-target="dailyCanvas"></canvas>
+      </div>
+
+      <aside class="report-panel ranking-panel">
+        <h2>Sensoren</h2>
+        <h3>Erzeuger</h3>
+        <%= render "ranking", rows: @report.producer_ranking %>
+        <h3>Verbraucher</h3>
+        <%= render "ranking", rows: @report.consumer_ranking %>
+      </aside>
+    </section>
+
+    <section class="report-panel chart-panel">
+      <div class="panel-heading">
+        <h2>Detailverlauf</h2>
+        <span><%= @report.selected_date %></span>
+      </div>
+      <canvas data-energy-report-target="detailCanvas"></canvas>
+    </section>
+  <% end %>
+
+  <script type="application/json" data-energy-report-target="payload"><%= raw JSON.generate(@report.chart_payload) %></script>
+</div>

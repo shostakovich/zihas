@@ -1,0 +1,12 @@
+<% if rows.any? %>
+  <ol class="ranking-list">
+    <% rows.each do |row| %>
+      <li>
+        <span><%= row.fetch(:name) %></span>
+        <strong><%= number_with_precision(row.fetch(:kwh), precision: 2, delimiter: ".", separator: ",") %> kWh</strong>
+      </li>
+    <% end %>
+  </ol>
+<% else %>
+  <p class="muted-text">Keine Daten</p>
+<% end %>

@@ -43,4 +43,23 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='start_date'][value='2026-04-01']"
     assert_select "input[name='end_date'][value='2026-04-07']"
   end
+
+  test "reports page renders summary ranking and chart payload" do
+    DailyTotal.create!(plug_id: "bkw", date: "2026-04-10", energy_wh: 2000)
+
+    get "/reports"
+
+    assert_response :success
+    assert_select ".report-summary-card", minimum: 3
+    assert_select "[data-energy-report-target='dailyCanvas']", 1
+    assert_select "[data-energy-report-target='detailCanvas']", 1
+    assert_select "script[data-energy-report-target='payload']", 1
+  end
+
+  test "reports page shows empty state without data" do
+    get "/reports"
+
+    assert_response :success
+    assert_select ".empty-state", text: /Noch keine Berichtsdaten/
+  end
 end
