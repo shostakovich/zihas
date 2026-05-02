@@ -41,10 +41,93 @@ class PollerTest < ActiveSupport::TestCase
     client
   end
 
+  def sequence_client(readings_by_plug)
+    counts = Hash.new(0)
+    client = Object.new
+    client.define_singleton_method(:fetch) do |plug|
+      readings = readings_by_plug.fetch(plug.id)
+      idx = [ counts[plug.id], readings.length - 1 ].min
+      counts[plug.id] += 1
+      readings[idx]
+    end
+    client
+  end
+
+  def capture_broadcasts
+    broadcasts = []
+    server = ActionCable.server
+    original = server.method(:broadcast)
+    server.define_singleton_method(:broadcast) do |stream, payload|
+      broadcasts << [ stream, payload ]
+    end
+    begin
+      yield broadcasts
+    ensure
+      server.define_singleton_method(:broadcast, original)
+    end
+  end
+
   test "successful tick inserts one row per plug" do
     @poller.tick
     assert_equal 2, Sample.count
     assert_equal %w[bkw fridge], Sample.pluck(:plug_id).sort
+  end
+
+  test "successful tick broadcasts one bundled message for changed plugs" do
+    capture_broadcasts do |broadcasts|
+      @poller.tick
+
+      assert_equal 1, broadcasts.length
+      stream, payload = broadcasts.first
+      assert_equal "dashboard", stream
+      assert_equal @now.to_i, payload[:ts]
+      assert_equal %w[bkw fridge], payload[:plugs].map { |plug| plug[:plug_id] }.sort
+    end
+  end
+
+  test "unchanged rounded power is not broadcast again" do
+    capture_broadcasts do |broadcasts|
+      @poller.tick
+      @now += 5
+      @poller.tick
+
+      assert_equal 1, broadcasts.length
+    end
+  end
+
+  test "tick broadcasts only plugs whose rounded power changed" do
+    clients = {
+      "bkw" => sequence_client(
+        "bkw" => [
+          ShellyClient::Reading.new(apower_w: 100.0, aenergy_wh: 500.0),
+          ShellyClient::Reading.new(apower_w: 101.0, aenergy_wh: 501.0),
+        ]
+      ),
+      "fridge" => sequence_client(
+        "fridge" => [
+          ShellyClient::Reading.new(apower_w: 0.0, aenergy_wh: 500.0),
+          ShellyClient::Reading.new(apower_w: 0.0, aenergy_wh: 500.1),
+        ]
+      ),
+    }
+    @poller = Poller.new(
+      plugs:        @plugs,
+      clients:      clients,
+      logger:       @logger,
+      breaker_opts: { threshold: 3, probe_seconds: 30 },
+      clock:        -> { @now },
+    )
+
+    capture_broadcasts do |broadcasts|
+      @poller.tick
+      @now += 5
+      @poller.tick
+
+      assert_equal 2, broadcasts.length
+      changed = broadcasts.last.last[:plugs]
+      assert_equal [ "bkw" ], changed.map { |plug| plug[:plug_id] }
+      assert_equal 101.0, changed.first[:apower_w]
+    end
   end
 
   test "failing plug does not block others" do

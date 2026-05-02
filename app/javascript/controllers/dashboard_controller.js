@@ -20,11 +20,14 @@ export default class extends Controller {
   connect() {
     // Keyed by plug_id — holds latest broadcast per plug
     this.plugState = {}
+    this.plugChips = {}
     this.efLastDur = {}
 
     this.subscription = consumer.subscriptions.create("DashboardChannel", {
       received: (data) => this.handleReading(data),
     })
+
+    this.fetchLive()
 
     // Summary tiles are cumulative daily values — not per-plug,
     // so we fetch them periodically via HTTP rather than ActionCable.
@@ -37,15 +40,50 @@ export default class extends Controller {
     clearInterval(this.summaryInterval)
   }
 
-  // Called for every broadcast from Poller (one plug at a time)
+  // Called for every bundled broadcast from Poller
   handleReading(data) {
-    this.plugState[data.plug_id] = data
+    if (!Array.isArray(data.plugs)) return
 
+    data.plugs.forEach((plug) => this.applyPlugState(plug))
+    this.renderLiveState()
+  }
+
+  applyPlugState(data) {
+    const plugId = data.plug_id || data.id
+    if (!plugId) return
+
+    const ts = data.ts || data.last_seen_ts || 0
+    const current = this.plugState[plugId]
+    const currentTs = current?.ts || current?.last_seen_ts || 0
+    if (current && ts < currentTs) return
+
+    this.plugState[plugId] = {
+      ...data,
+      plug_id: plugId,
+      ts: ts,
+    }
+  }
+
+  renderLiveState() {
     const plugs = Object.values(this.plugState)
     this.updateHero(plugs)
     this.updateLiveTiles(plugs)
     this.updatePlugChips(plugs)
     this.updateEnergyFlow(plugs)
+  }
+
+  async fetchLive() {
+    try {
+      const response = await fetch("/api/live")
+      if (!response.ok) return
+      const data = await response.json()
+      if (!Array.isArray(data.plugs)) return
+
+      data.plugs.forEach((plug) => this.applyPlugState(plug))
+      this.renderLiveState()
+    } catch (e) {
+      console.error("fetchLive failed:", e)
+    }
   }
 
   // --- Hero ---
@@ -54,7 +92,7 @@ export default class extends Controller {
     if (!this.hasHeroValueTarget) return
     const producer = plugs.find(p => p.role === "producer")
     const w = producer?.online ? Math.abs(producer.apower_w).toFixed(0) : "—"
-    this.heroValueTarget.innerHTML = `${w} <span class="hero-unit">W</span>`
+    this.heroValueTarget.innerHTML = `<span class="hero-number">${w}</span> <span class="hero-unit">W</span>`
   }
 
   // --- Live tiles ---
@@ -77,19 +115,59 @@ export default class extends Controller {
 
   updatePlugChips(plugs) {
     if (!this.hasPlugListTarget) return
-    this.plugListTarget.innerHTML = ""
-    for (const p of plugs) {
-      const chip = document.createElement("span")
-      chip.className = "plug-chip" + (p.online ? "" : " offline")
-      const dot = document.createElement("span")
-      dot.className = "dot" + (p.online ? "" : " offline")
-      chip.appendChild(dot)
-      const label = p.online
-        ? `${p.name} · ${p.apower_w.toFixed(0)} W`
-        : `${p.name} · offline`
-      chip.appendChild(document.createTextNode(label))
-      this.plugListTarget.appendChild(chip)
+    if (!this.plugListInitialized) {
+      this.plugListTarget.textContent = ""
+      this.plugListInitialized = true
     }
+    const seen = new Set()
+
+    for (const p of plugs) {
+      seen.add(p.plug_id)
+      const chip = this._plugChip(p)
+      const dot = chip.querySelector(".dot")
+      const name = chip.querySelector(".plug-name")
+      const value = chip.querySelector(".plug-value")
+
+      chip.classList.toggle("offline", !p.online)
+      dot.classList.toggle("offline", !p.online)
+      name.textContent = p.name
+      const label = p.online
+        ? `${p.apower_w.toFixed(0)} W`
+        : "offline"
+      value.textContent = label
+    }
+
+    for (const [id, chip] of Object.entries(this.plugChips)) {
+      if (seen.has(id)) continue
+      chip.remove()
+      delete this.plugChips[id]
+    }
+  }
+
+  _plugChip(plug) {
+    let chip = this.plugChips[plug.plug_id]
+    if (chip) return chip
+
+    chip = document.createElement("span")
+    chip.className = "plug-chip"
+
+    const dot = document.createElement("span")
+    dot.className = "dot"
+    chip.appendChild(dot)
+
+    const name = document.createElement("span")
+    name.className = "plug-name"
+    chip.appendChild(name)
+
+    chip.appendChild(document.createTextNode(" · "))
+
+    const value = document.createElement("span")
+    value.className = "plug-value"
+    chip.appendChild(value)
+
+    this.plugChips[plug.plug_id] = chip
+    this.plugListTarget.appendChild(chip)
+    return chip
   }
 
   // --- Energy flow SVG ---

@@ -12,11 +12,14 @@ class Poller
       [plug.id, build_breaker(plug, breaker_opts)]
     end
     @buckets  = {}   # plug_id => { bucket_ts:, sum:, count: }
+    @last_broadcast_power_w = {}
     @stopping = false
   end
 
   def tick
     ts = @clock.call.to_i
+    changed_readings = []
+
     @plugs.each do |plug|
       breaker = @breakers[plug.id]
       next if breaker.skip?
@@ -30,19 +33,25 @@ class Poller
           aenergy_wh: reading.aenergy_wh,
         )
         breaker.record_success
-        broadcast_reading(plug, ts, reading)
+        payload = reading_payload(plug, ts, reading)
+        changed_readings << payload if should_broadcast?(plug, reading)
       rescue ShellyClient::Error, FritzDectClient::Error => e
         breaker.record_failure
         @logger.debug("plug #{plug.id} poll failed: #{e.message}")
       rescue ActiveRecord::RecordNotUnique
         # Duplicate ts (can happen on clock skew). Still broadcast last reading if we have it.
-        broadcast_reading(plug, ts, reading) if reading
+        if reading
+          payload = reading_payload(plug, ts, reading)
+          changed_readings << payload if should_broadcast?(plug, reading)
+        end
       rescue ActiveRecord::ConnectionNotDefined, ActiveRecord::ConnectionNotEstablished,
              ActiveRecord::NoDatabaseError, ActiveRecord::StatementInvalid => e
         # DB not ready yet (pool not up, file missing, or schema not migrated) — skip and retry.
         @logger.warn("plug #{plug.id}: DB not ready (#{e.class}), skipping")
       end
     end
+
+    broadcast_readings(ts, changed_readings)
   end
 
   def run(interval)
@@ -61,7 +70,7 @@ class Poller
 
   private
 
-  def broadcast_reading(plug, ts, reading)
+  def reading_payload(plug, ts, reading)
     bucket_ts = (ts / 60) * 60
     bucket    = @buckets[plug.id]
 
@@ -75,7 +84,7 @@ class Poller
 
     avg_power_w = bucket[:sum].to_f / bucket[:count]
 
-    ActionCable.server.broadcast("dashboard", {
+    {
       plug_id:     plug.id,
       name:        plug.name,
       role:        plug.role.to_s,
@@ -85,6 +94,27 @@ class Poller
       apower_w:    reading.apower_w,
       avg_power_w: avg_power_w,
       aenergy_wh:  reading.aenergy_wh,
+    }
+  end
+
+  def should_broadcast?(plug, reading)
+    power_w = display_power_w(plug, reading).round
+    return false if @last_broadcast_power_w[plug.id] == power_w
+
+    @last_broadcast_power_w[plug.id] = power_w
+    true
+  end
+
+  def display_power_w(plug, reading)
+    plug.role.to_s == "producer" ? reading.apower_w.abs : reading.apower_w
+  end
+
+  def broadcast_readings(ts, readings)
+    return if readings.empty?
+
+    ActionCable.server.broadcast("dashboard", {
+      ts: ts,
+      plugs: readings,
     })
   rescue => e
     @logger.warn("ActionCable broadcast failed (#{e.class}): #{e.message}")

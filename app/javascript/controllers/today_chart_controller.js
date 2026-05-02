@@ -56,7 +56,9 @@ export default class extends Controller {
 
   handleReading(data) {
     if (!this.powerChart) return
-    this._updatePowerChart(data)
+    if (!Array.isArray(data.plugs)) return
+
+    data.plugs.forEach((plug) => this._updatePowerChart(plug))
   }
 
   _updatePowerChart(data) {
