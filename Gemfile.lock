@@ -221,6 +221,8 @@ GEM
     minitest (6.0.6)
       drb (~> 2.0)
       prism (~> 1.5)
+    mqtt (0.7.0)
+      logger
     msgpack (1.8.0)
     net-imap (0.6.4)
       date
@@ -480,6 +482,7 @@ DEPENDENCIES
   importmap-rails
   jbuilder
   kamal
+  mqtt
   propshaft
   puma (>= 5.0)
   rails (~> 8.1.2)
@@ -571,6 +574,7 @@ CHECKSUMS
   matrix (0.4.3) sha256=a0d5ab7ddcc1973ff690ab361b67f359acbb16958d1dc072b8b956a286564c5b
   mini_mime (1.1.5) sha256=8681b7e2e4215f2a159f9400b5816d85e9d8c6c6b491e96a12797e798f8bccef
   minitest (6.0.6) sha256=153ea36d1d987a62942382b61075745042a2b3123b1cd48f4c3675af9cc7d6f1
+  mqtt (0.7.0) sha256=52c139253b738408133a68ab8d19144a17a5934ad8c0ba6d906f899a9737de3b
   msgpack (1.8.0) sha256=e64ce0212000d016809f5048b48eb3a65ffb169db22238fb4b72472fecb2d732
   net-imap (0.6.4) sha256=9a5598c67a3022c284d98430ef1d4948e7dbdb62596f61081ea8ca933270a02b
   net-pop (0.1.2) sha256=848b4e982013c15b2f0382792268763b748cce91c9e91e36b0f27ed26420dff3
