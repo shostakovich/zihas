@@ -117,11 +117,14 @@ svg text[data-dashboard-target] {
 }
 
 .app-brand {
-  color: var(--text);
   text-decoration: none;
-  font-size: 15px;
-  font-weight: 650;
-  letter-spacing: 0;
+  line-height: 0;
+}
+
+.app-logo {
+  height: 64px;
+  width: auto;
+  display: block;
 }
 
 .app-nav {
