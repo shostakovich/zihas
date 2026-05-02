@@ -58,12 +58,12 @@ class CircuitBreakerTest < Minitest::Test
   def test_transitions_yield_state_change
     changes = []
     breaker = CircuitBreaker.new(threshold: 2, probe_seconds: 10, clock: -> { @now }) do |from, to|
-      changes << [from, to]
+      changes << [ from, to ]
     end
     breaker.record_failure
     breaker.record_failure          # closed → open
     @now += 11
     breaker.record_success          # open → closed
-    assert_equal [[:closed, :open], [:open, :closed]], changes
+    assert_equal [ [ :closed, :open ], [ :open, :closed ] ], changes
   end
 end

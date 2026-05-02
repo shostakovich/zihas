@@ -1,0 +1,14 @@
+<% if rows.any? %>
+  <div class="plugs report-plugs">
+    <% rows.each do |row| %>
+      <span class="plug-chip">
+        <span class="dot <%= row.fetch(:role) %>"></span>
+        <span class="plug-name"><%= row.fetch(:name) %></span>
+        <%= " · " %>
+        <span class="plug-value"><%= number_with_precision(row.fetch(:kwh), precision: 2, delimiter: ".", separator: ",") %> kWh</span>
+      </span>
+    <% end %>
+  </div>
+<% else %>
+  <p class="muted-text">Keine Daten</p>
+<% end %>

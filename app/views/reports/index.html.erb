@@ -1,0 +1,86 @@
+<% content_for :title, "Berichte" %>
+
+<div class="reports-page" data-controller="energy-report">
+  <section class="chart-card report-controls" aria-label="Zeitraum">
+    <div class="preset-actions" role="group" aria-label="Schnellauswahl">
+      <%= link_to "Letzte 7 Tage", reports_path(preset: "last_7"), class: [ "preset-link", ("active" if @report.preset == "last_7") ] %>
+      <%= link_to "Letzte 30 Tage", reports_path(preset: "last_30"), class: [ "preset-link", ("active" if @report.preset == "last_30") ] %>
+    </div>
+
+    <%= form_with url: reports_path, method: :get, local: true, class: "date-range-form" do %>
+      <label>
+        <span>Von</span>
+        <%= date_field_tag :start_date, params[:start_date].presence || @report.start_date, max: @report.end_date %>
+      </label>
+      <label>
+        <span>Bis</span>
+        <%= date_field_tag :end_date, params[:end_date].presence || @report.end_date, max: @report.end_date %>
+      </label>
+      <%= submit_tag "Anwenden" %>
+    <% end %>
+  </section>
+
+  <% @report.messages.each do |message| %>
+    <p class="report-message"><%= message %></p>
+  <% end %>
+
+  <% if @report.empty? %>
+    <section class="chart-card empty-state">
+      <h2>Noch keine Berichtsdaten</h2>
+      <p>Die Rueckschau erscheint, sobald die erste Tagesaggregation vorhanden ist.</p>
+    </section>
+  <% else %>
+    <section class="tiles" aria-label="Zusammenfassung">
+      <div class="tile">
+        <div class="tile-label">Ertrag</div>
+        <div class="tile-value"><%= number_with_precision(@report.summary.fetch(:produced_kwh), precision: 2, delimiter: ".", separator: ",") %> kWh</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">Verbrauch</div>
+        <div class="tile-value"><%= number_with_precision(@report.summary.fetch(:consumed_kwh), precision: 2, delimiter: ".", separator: ",") %> kWh</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">Gespart</div>
+        <div class="tile-value"><%= number_with_precision(@report.summary.fetch(:savings_eur), precision: 2, delimiter: ".", separator: ",") %> €</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">Bilanz</div>
+        <div class="tile-value"><%= number_with_precision(@report.summary.fetch(:balance_kwh), precision: 2, delimiter: ".", separator: ",") %> kWh</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">Ø Ertrag/Tag</div>
+        <div class="tile-value"><%= number_with_precision(@report.summary.fetch(:avg_produced_kwh), precision: 2, delimiter: ".", separator: ",") %> kWh</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">Ø Verbrauch/Tag</div>
+        <div class="tile-value"><%= number_with_precision(@report.summary.fetch(:avg_consumed_kwh), precision: 2, delimiter: ".", separator: ",") %> kWh</div>
+      </div>
+    </section>
+
+    <div class="section-label">Steckdosen</div>
+    <%= render "ranking", rows: @report.producer_ranking + @report.consumer_ranking %>
+
+    <div class="section-label">Energie — Ertrag / Verbrauch</div>
+    <div class="chart-card">
+      <div class="chart-frame">
+        <canvas data-energy-report-target="dailyCanvas"></canvas>
+      </div>
+    </div>
+
+    <% power_resolution = (@report.detail_end_date - @report.detail_start_date).to_i > 6 ? "Tagesmittel" : "5-Minuten-Verlauf" %>
+    <div class="section-label">Leistung — <%= power_resolution %> —
+      <% if @report.detail_start_date == @report.detail_end_date %>
+        <%= @report.detail_start_date %>
+      <% else %>
+        <%= @report.detail_start_date %> bis <%= @report.detail_end_date %>
+      <% end %>
+    </div>
+    <section class="chart-card">
+      <div class="chart-frame">
+        <canvas data-energy-report-target="detailCanvas"></canvas>
+      </div>
+    </section>
+  <% end %>
+
+  <script type="application/json" data-energy-report-target="payload"><%= json_escape(JSON.generate(@report.chart_payload)) %></script>
+</div>

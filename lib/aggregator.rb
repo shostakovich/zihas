@@ -5,13 +5,11 @@ require "time"
 
 class Aggregator
   # Plausible per-sample power ceiling used to cap energy deltas. 20 kW is
-  # well above any realistic single-circuit load, so genuine consumption
-  # passes through while counter glitches (e.g. 0 -> lifetime-cumulative)
-  # are dropped.
+  # above any realistic single-circuit load, while counter glitches can imply
+  # megawatts for a few seconds.
   MAX_PLAUSIBLE_W = 20_000
 
-  def initialize(db:, timezone:, raw_retention_days:)
-    @db = db
+  def initialize(timezone:, raw_retention_days:)
     @tz = timezone
     @raw_retention_days = raw_retention_days
   end
@@ -20,11 +18,9 @@ class Aggregator
     start_ts = @tz.local_to_utc(Time.parse("#{date_s} 00:00:00")).to_i
     end_ts   = start_ts + 86_400
 
-    @db.transaction do
-      @db[:samples_5min]
-        .where(bucket_ts: start_ts..(end_ts - 1))
-        .delete
-      @db[:daily_totals].where(date: date_s).delete
+    ActiveRecord::Base.transaction do
+      Sample5min.where(bucket_ts: start_ts..(end_ts - 1)).delete_all
+      DailyTotal.where(date: date_s).delete_all
 
       # Cap each per-sample delta at MAX_PLAUSIBLE_W * dt to discard
       # implausible counter jumps (e.g. a glitched 0-reading followed by a
@@ -51,10 +47,10 @@ class Aggregator
         )
         INSERT INTO samples_5min (plug_id, bucket_ts, avg_power_w, energy_delta_wh, sample_count)
         SELECT plug_id,
-               (ts / 300) * 300   AS bucket_ts,
-               AVG(apower_w)      AS avg_power_w,
-               SUM(delta_wh)      AS energy_delta_wh,
-               COUNT(*)           AS sample_count
+               (ts / 300) * 300 AS bucket_ts,
+               AVG(apower_w) AS avg_power_w,
+               SUM(delta_wh) AS energy_delta_wh,
+               COUNT(*) AS sample_count
           FROM deltas
          GROUP BY plug_id, bucket_ts
       SQL
@@ -84,16 +80,18 @@ class Aggregator
          GROUP BY plug_id
       SQL
 
-      @db.synchronize do |conn|
-        conn.execute(sql_5min, [start_ts, end_ts])
-        conn.execute(sql_daily, [start_ts, end_ts, date_s])
-      end
+      ActiveRecord::Base.connection.execute(
+        ActiveRecord::Base.sanitize_sql_array([ sql_5min, start_ts, end_ts ])
+      )
+      ActiveRecord::Base.connection.execute(
+        ActiveRecord::Base.sanitize_sql_array([ sql_daily, start_ts, end_ts, date_s ])
+      )
     end
   end
 
   def purge_old_raw!
     cutoff = Time.now.to_i - @raw_retention_days * 86_400
-    @db[:samples].where { ts < cutoff }.delete
+    Sample.where("ts < ?", cutoff).delete_all
   end
 
   def backup!(backup_dir, today: Date.today, keep: 7)
@@ -101,14 +99,14 @@ class Aggregator
     filename = File.join(backup_dir, "ziwoas-#{today}.db")
     File.delete(filename) if File.exist?(filename)
 
-    @db.synchronize { |c| c.execute("VACUUM INTO ?", [filename]) }
+    ActiveRecord::Base.connection.execute(ActiveRecord::Base.sanitize_sql_array([ "VACUUM INTO ?", filename ]))
 
     prune_old_backups(backup_dir, keep)
   end
 
   # Aggregate any finished day not yet in daily_totals, then purge.
   def run_once(today: Date.today)
-    existing = @db[:daily_totals].select_map(:date).uniq.to_set
+    existing = DailyTotal.pluck(:date).to_set
     earliest = earliest_sample_date
     return if earliest.nil?
 
@@ -124,7 +122,7 @@ class Aggregator
   private
 
   def earliest_sample_date
-    min_ts = @db[:samples].min(:ts)
+    min_ts = Sample.minimum(:ts)
     return nil if min_ts.nil?
     Time.at(min_ts).utc.to_date
   end

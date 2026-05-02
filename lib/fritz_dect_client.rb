@@ -11,7 +11,7 @@ class FritzDectClient
   NETWORK_ERRORS = [
     Net::OpenTimeout, Net::ReadTimeout, Net::WriteTimeout,
     Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Errno::ENETUNREACH,
-    Errno::ETIMEDOUT, SocketError, EOFError,
+    Errno::ETIMEDOUT, SocketError, EOFError
   ].freeze
 
   def initialize(host:, user:, password:, timeout: 2)
@@ -34,21 +34,24 @@ class FritzDectClient
   private
 
   def fetch_value(ain, cmd)
-    response = get_homeauto(ain, cmd)
-    if response.code == "403"
-      @sid = nil
-      authenticate!
-      response = get_homeauto(ain, cmd)
-      raise Error, "HTTP 403 from #{@host} after re-auth" if response.code == "403"
-    end
+    response = with_reauth { get_homeauto(ain, cmd) }
     raise Error, "HTTP #{response.code} from #{@host}" unless response.is_a?(Net::HTTPSuccess)
     body = response.body.to_s.strip
     raise Error, "blank response from #{@host}" if body.empty?
-    begin
-      Integer(body)
-    rescue ArgumentError
-      raise Error, "unexpected response from #{@host}: #{body}"
+    Integer(body)
+  rescue ArgumentError
+    raise Error, "unexpected response from #{@host}: #{body}"
+  end
+
+  def with_reauth
+    response = yield
+    if response.code == "403"
+      @sid = nil
+      authenticate!
+      response = yield
+      raise Error, "HTTP 403 from #{@host} after re-auth" if response.code == "403"
     end
+    response
   end
 
   def get_homeauto(ain, cmd)
