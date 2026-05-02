@@ -1,5 +1,5 @@
 class DailyTotal < ApplicationRecord
-  self.primary_key = [:plug_id, :date]
+  self.primary_key = [ :plug_id, :date ]
 
   validates :plug_id, presence: true
   validates :date, presence: true,

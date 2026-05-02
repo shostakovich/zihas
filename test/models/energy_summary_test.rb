@@ -14,7 +14,7 @@ class EnergySummaryTest < ActiveSupport::TestCase
       timezone: "Europe/Berlin",
       poll: poll,
       aggregator: nil,
-      plugs: [plug_bkw, plug_fridge],
+      plugs: [ plug_bkw, plug_fridge ],
       fritz_box: nil
     )
   end

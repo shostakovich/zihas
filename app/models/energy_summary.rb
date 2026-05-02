@@ -28,7 +28,7 @@ class EnergySummary
     local_today = @tz.utc_to_local(now_utc).to_date
     midnight    = Time.new(local_today.year, local_today.month, local_today.day, 0, 0, 0)
     start_utc   = @tz.local_to_utc(midnight).to_i
-    [start_utc, start_utc + 86_400, local_today]
+    [ start_utc, start_utc + 86_400, local_today ]
   end
 
   def producer_ids
@@ -67,7 +67,7 @@ class EnergySummary
     SQL
 
     rows = ActiveRecord::Base.connection.exec_query(
-      ActiveRecord::Base.sanitize_sql_array([sql, plug_ids, start_ts, end_ts])
+      ActiveRecord::Base.sanitize_sql_array([ sql, plug_ids, start_ts, end_ts ])
     )
     rows.sum { |row| row["delta"] || 0 }.to_f
   end

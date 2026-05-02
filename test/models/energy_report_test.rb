@@ -8,7 +8,7 @@ class EnergyReportTest < ActiveSupport::TestCase
     @plugs = [
       ConfigLoader::PlugCfg.new(id: "pv", name: "Balkonkraftwerk", role: :producer, driver: :shelly, host: "pv.local", ain: nil),
       ConfigLoader::PlugCfg.new(id: "desk", name: "Schreibtisch", role: :consumer, driver: :shelly, host: "desk.local", ain: nil),
-      ConfigLoader::PlugCfg.new(id: "washer", name: "Waschmaschine", role: :consumer, driver: :shelly, host: "washer.local", ain: nil),
+      ConfigLoader::PlugCfg.new(id: "washer", name: "Waschmaschine", role: :consumer, driver: :shelly, host: "washer.local", ain: nil)
     ]
   end
 
@@ -160,7 +160,7 @@ class EnergyReportTest < ActiveSupport::TestCase
         savings_eur: 0.0,
         balance_kwh: 0.0,
         avg_produced_kwh: 0.0,
-        avg_consumed_kwh: 0.0,
+        avg_consumed_kwh: 0.0
       },
       report.summary
     )

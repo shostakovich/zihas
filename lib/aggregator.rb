@@ -81,10 +81,10 @@ class Aggregator
       SQL
 
       ActiveRecord::Base.connection.execute(
-        ActiveRecord::Base.sanitize_sql_array([sql_5min, start_ts, end_ts])
+        ActiveRecord::Base.sanitize_sql_array([ sql_5min, start_ts, end_ts ])
       )
       ActiveRecord::Base.connection.execute(
-        ActiveRecord::Base.sanitize_sql_array([sql_daily, start_ts, end_ts, date_s])
+        ActiveRecord::Base.sanitize_sql_array([ sql_daily, start_ts, end_ts, date_s ])
       )
     end
   end
@@ -99,7 +99,7 @@ class Aggregator
     filename = File.join(backup_dir, "ziwoas-#{today}.db")
     File.delete(filename) if File.exist?(filename)
 
-    ActiveRecord::Base.connection.execute(ActiveRecord::Base.sanitize_sql_array(["VACUUM INTO ?", filename]))
+    ActiveRecord::Base.connection.execute(ActiveRecord::Base.sanitize_sql_array([ "VACUUM INTO ?", filename ]))
 
     prune_old_backups(backup_dir, keep)
   end

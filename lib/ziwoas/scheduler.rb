@@ -36,7 +36,7 @@ module Ziwoas
       sleep_for    = target_utc - now_utc
 
       while sleep_for > 0 && !@stopping
-        chunk = [sleep_for, 5].min
+        chunk = [ sleep_for, 5 ].min
         sleep(chunk)
         sleep_for -= chunk
       end

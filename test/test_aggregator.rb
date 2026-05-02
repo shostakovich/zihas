@@ -59,14 +59,14 @@ class AggregatorTest < ActiveSupport::TestCase
       "bucket_ts" => start_ts,
       "avg_power_w" => 15.0,
       "energy_delta_wh" => 3.0,
-      "sample_count" => 2,
+      "sample_count" => 2
     }, rows.first)
     assert_equal({
       "plug_id" => "bkw",
       "bucket_ts" => start_ts + 300,
       "avg_power_w" => 40.0,
       "energy_delta_wh" => 7.0,
-      "sample_count" => 1,
+      "sample_count" => 1
     }, rows.second)
   end
 

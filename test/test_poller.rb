@@ -14,7 +14,7 @@ class PollerTest < ActiveSupport::TestCase
 
     @plugs = [
       ConfigLoader::PlugCfg.new(id: "bkw",    name: "BKW",   role: :producer, driver: :shelly, host: "10.0.0.1", ain: nil),
-      ConfigLoader::PlugCfg.new(id: "fridge",  name: "Fridge", role: :consumer, driver: :shelly, host: "10.0.0.2", ain: nil),
+      ConfigLoader::PlugCfg.new(id: "fridge",  name: "Fridge", role: :consumer, driver: :shelly, host: "10.0.0.2", ain: nil)
     ]
 
     @poller = Poller.new(
@@ -100,15 +100,15 @@ class PollerTest < ActiveSupport::TestCase
       "bkw" => sequence_client(
         "bkw" => [
           ShellyClient::Reading.new(apower_w: 100.0, aenergy_wh: 500.0),
-          ShellyClient::Reading.new(apower_w: 101.0, aenergy_wh: 501.0),
+          ShellyClient::Reading.new(apower_w: 101.0, aenergy_wh: 501.0)
         ]
       ),
       "fridge" => sequence_client(
         "fridge" => [
           ShellyClient::Reading.new(apower_w: 0.0, aenergy_wh: 500.0),
-          ShellyClient::Reading.new(apower_w: 0.0, aenergy_wh: 500.1),
+          ShellyClient::Reading.new(apower_w: 0.0, aenergy_wh: 500.1)
         ]
-      ),
+      )
     }
     @poller = Poller.new(
       plugs:        @plugs,
@@ -183,7 +183,7 @@ class PollerTest < ActiveSupport::TestCase
     def failing.fetch(_plug) = raise(ShellyClient::Error, "boom")
     @poller = Poller.new(
       plugs:        @plugs,
-      clients:      @plugs.to_h { |p| [p.id, failing] },
+      clients:      @plugs.to_h { |p| [ p.id, failing ] },
       logger:       @logger,
       breaker_opts: { threshold: 1, probe_seconds: 30 },
       clock:        -> { @now },
@@ -210,7 +210,7 @@ class PollerTest < ActiveSupport::TestCase
 
     @poller = Poller.new(
       plugs:        @plugs,
-      clients:      @plugs.to_h { |p| [p.id, recovering_client] },
+      clients:      @plugs.to_h { |p| [ p.id, recovering_client ] },
       logger:       @logger,
       breaker_opts: { threshold: 1, probe_seconds: 30 },
       clock:        -> { @now },

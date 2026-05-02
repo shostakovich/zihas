@@ -11,7 +11,7 @@ class FritzDectClient
   NETWORK_ERRORS = [
     Net::OpenTimeout, Net::ReadTimeout, Net::WriteTimeout,
     Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Errno::ENETUNREACH,
-    Errno::ETIMEDOUT, SocketError, EOFError,
+    Errno::ETIMEDOUT, SocketError, EOFError
   ].freeze
 
   def initialize(host:, user:, password:, timeout: 2)

@@ -61,7 +61,6 @@ class ConfigLoader
         ConfigLoader::PlugCfg.new(id: id, name: name, role: role, driver: :fritz_dect, ain: @h["ain"].to_s, host: nil)
       end
     end
-
   end
 
   VALID_ROLES   = %i[producer consumer].freeze
@@ -162,7 +161,7 @@ class ConfigLoader
 
   def require_number(v, key, allow_zero: false)
     raise Error, "#{key} must be a number" unless v.is_a?(Numeric)
-    raise Error, "#{key} must be > 0" if (allow_zero ? v < 0 : v <= 0)
+    raise Error, "#{key} must be > 0" if allow_zero ? v < 0 : v <= 0
     v
   end
 end

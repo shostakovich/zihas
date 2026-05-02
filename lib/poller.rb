@@ -9,7 +9,7 @@ class Poller
     @logger   = logger
     @clock    = clock
     @breakers = plugs.to_h do |plug|
-      [plug.id, build_breaker(plug, breaker_opts)]
+      [ plug.id, build_breaker(plug, breaker_opts) ]
     end
     @buckets  = {}   # plug_id => { bucket_ts:, sum:, count: }
     @last_broadcast_power_w = {}
@@ -93,7 +93,7 @@ class Poller
       bucket_ts:   bucket_ts,
       apower_w:    reading.apower_w,
       avg_power_w: avg_power_w,
-      aenergy_wh:  reading.aenergy_wh,
+      aenergy_wh:  reading.aenergy_wh
     }
   end
 
@@ -114,7 +114,7 @@ class Poller
 
     ActionCable.server.broadcast("dashboard", {
       ts: ts,
-      plugs: readings,
+      plugs: readings
     })
   rescue => e
     @logger.warn("ActionCable broadcast failed (#{e.class}): #{e.message}")

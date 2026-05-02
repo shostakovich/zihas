@@ -1,5 +1,5 @@
 class Sample < ApplicationRecord
-  self.primary_key = [:plug_id, :ts]
+  self.primary_key = [ :plug_id, :ts ]
 
   validates :plug_id, presence: true
   validates :ts, presence: true, numericality: { only_integer: true, greater_than: 0 }

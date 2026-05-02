@@ -26,7 +26,7 @@ class EnergyReport
   DEFAULT_PRESET = "last_7"
   PRESET_DAYS = {
     "last_7" => 7,
-    "last_30" => 30,
+    "last_30" => 30
   }.freeze
 
   def initialize(params:, plugs:, timezone: "UTC", electricity_price_eur_per_kwh: 0.32)
@@ -62,7 +62,7 @@ class EnergyReport
       detail_end_date: detail_range.fetch(:end_date),
       chart_payload: {
         daily: daily_chart_payload(daily_points),
-        detail: detail_chart_payload(rows, detail_range.fetch(:start_date), detail_range.fetch(:end_date)),
+        detail: detail_chart_payload(rows, detail_range.fetch(:start_date), detail_range.fetch(:end_date))
       },
       messages: @messages
     )
@@ -89,7 +89,7 @@ class EnergyReport
       detail_end_date: end_date,
       chart_payload: {
         daily: { labels: [], produced_kwh: [], consumed_kwh: [], balance_kwh: [] },
-        detail: { labels: [], series: [] },
+        detail: { labels: [], series: [] }
       },
       messages: @messages
     )
@@ -154,7 +154,7 @@ class EnergyReport
         date: date_s,
         produced_kwh: kwh(produced_wh),
         consumed_kwh: kwh(consumed_wh),
-        balance_kwh: kwh(produced_wh - consumed_wh),
+        balance_kwh: kwh(produced_wh - consumed_wh)
       }
     end
   end
@@ -170,7 +170,7 @@ class EnergyReport
       savings_eur: @savings_calculator.savings_eur(produced * 1000.0).round(2),
       balance_kwh: (produced - consumed).round(3),
       avg_produced_kwh: average_kwh(produced, days),
-      avg_consumed_kwh: average_kwh(consumed, days),
+      avg_consumed_kwh: average_kwh(consumed, days)
     }
   end
 
@@ -181,7 +181,7 @@ class EnergyReport
       savings_eur: 0.0,
       balance_kwh: 0.0,
       avg_produced_kwh: 0.0,
-      avg_consumed_kwh: 0.0,
+      avg_consumed_kwh: 0.0
     }
   end
 
@@ -201,7 +201,7 @@ class EnergyReport
           plug_id: plug_id,
           name: plug.name,
           role: role.to_s,
-          kwh: kwh(plug_rows.sum(&:energy_wh)),
+          kwh: kwh(plug_rows.sum(&:energy_wh))
         }
       end
       .sort_by { |row| -row.fetch(:kwh) }
@@ -213,7 +213,7 @@ class EnergyReport
       produced_kwh: daily_points.map { |point| point.fetch(:produced_kwh) },
       consumed_kwh: daily_points.map { |point| point.fetch(:consumed_kwh) },
       balance_kwh: daily_points.map { |point| point.fetch(:balance_kwh) },
-      consumer_series: consumer_daily_series(daily_points.map { |point| point.fetch(:date) }),
+      consumer_series: consumer_daily_series(daily_points.map { |point| point.fetch(:date) })
     }
   end
 
@@ -228,7 +228,7 @@ class EnergyReport
           data: labels.map do |date|
             row = rows_by_date[date]
             row ? kwh(row.energy_wh) : 0.0
-          end,
+          end
         }
       end
   end
@@ -256,14 +256,14 @@ class EnergyReport
         data: timestamps.map do |ts|
           row = points_by_ts[ts]
           row ? watt_value(row.avg_power_w, plug.role) : nil
-        end,
+        end
       }
     end.select { |series_row| series_row.fetch(:data).any?(&:present?) }
 
     {
       chart_type: "line",
       labels: timestamps.map { |ts| detail_label(ts, multi_day) },
-      series: series,
+      series: series
     }
   end
 
@@ -279,14 +279,14 @@ class EnergyReport
         data: dates.map do |date|
           row = rows_by_plug_and_date[[ plug.id, date.to_s ]]&.first
           row ? average_power_w(row.energy_wh, plug.role) : nil
-        end,
+        end
       }
     end.select { |series_row| series_row.fetch(:data).any?(&:present?) }
 
     {
       chart_type: "bar",
       labels: dates.map { |date| date.strftime("%d.%m") },
-      series: series,
+      series: series
     }
   end
 

@@ -50,7 +50,7 @@ class ApiController < ApplicationController
         role:         plug.role,
         online:       online,
         apower_w:     online ? latest.apower_w : nil,
-        last_seen_ts: latest&.ts,
+        last_seen_ts: latest&.ts
       }
     end
   end
@@ -60,5 +60,4 @@ class ApiController < ApplicationController
   def app_config
     Rails.application.ziwoas_app.config
   end
-
 end

@@ -33,9 +33,9 @@ module Ziwoas
                           password: @config.fritz_box.password,
                           timeout:  @config.poll.timeout_seconds,
                         )
-                      end
+      end
       clients = @config.plugs.to_h do |plug|
-        [plug.id, plug.driver == :fritz_dect ? fritz_client : shelly_client]
+        [ plug.id, plug.driver == :fritz_dect ? fritz_client : shelly_client ]
       end
 
       @poller = Poller.new(
@@ -44,7 +44,7 @@ module Ziwoas
         logger:       @logger,
         breaker_opts: {
           threshold:     @config.poll.circuit_breaker_threshold,
-          probe_seconds: @config.poll.circuit_breaker_probe_seconds,
+          probe_seconds: @config.poll.circuit_breaker_probe_seconds
         },
       )
       @aggregator = Aggregator.new(
@@ -69,7 +69,7 @@ module Ziwoas
       @logger.info("ziwoas: shutting down")
       @poller&.stop!
       @scheduler&.stop!
-      [@poller_thread, @aggregator_thread].each { |t| t&.join(3) }
+      [ @poller_thread, @aggregator_thread ].each { |t| t&.join(3) }
     end
 
     private
