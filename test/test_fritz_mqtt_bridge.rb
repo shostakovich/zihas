@@ -36,9 +36,9 @@ class FritzMqttBridgeTest < ActiveSupport::TestCase
   def fake_mqtt_client
     published = []
     client = Object.new
-    client.define_singleton_method(:connect) {}
-    client.define_singleton_method(:disconnect) {}
-    client.define_singleton_method(:publish) { |topic, payload| published << [topic, payload] }
+    client.define_singleton_method(:connect) { }
+    client.define_singleton_method(:disconnect) { }
+    client.define_singleton_method(:publish) { |topic, payload| published << [ topic, payload ] }
     client.define_singleton_method(:published) { published }
     client
   end

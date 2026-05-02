@@ -52,7 +52,7 @@ class FritzMqttBridge
   def sleep_interruptible(seconds)
     deadline = Time.now + seconds
     while Time.now < deadline && !@stopping
-      sleep([deadline - Time.now, 1].min)
+      sleep([ deadline - Time.now, 1 ].min)
     end
   end
 end

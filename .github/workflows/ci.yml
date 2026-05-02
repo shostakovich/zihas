@@ -83,6 +83,9 @@ jobs:
         with:
           bundler-cache: true
 
+      - name: Prepare test config
+        run: cp config/ziwoas.test.yml config/ziwoas.yml
+
       - name: Run tests
         env:
           RAILS_ENV: test

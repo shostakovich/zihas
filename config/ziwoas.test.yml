@@ -1,0 +1,20 @@
+electricity_price_eur_per_kwh: 0.2902
+timezone: Europe/Berlin
+
+mqtt:
+  host: localhost
+  port: 1883
+  topic_prefix: shellies
+
+aggregator:
+  run_at: "03:15"
+  raw_retention_days: 7
+
+plugs:
+  - id: bkw
+    name: Balkonkraftwerk
+    role: producer
+
+  - id: fridge
+    name: Kühlschrank
+    role: consumer

@@ -4,7 +4,6 @@ class ApiControllerTest < ActionDispatch::IntegrationTest
   setup do
     Sample.delete_all
     DailyTotal.delete_all
-
   end
 
   # --- /api/live ---

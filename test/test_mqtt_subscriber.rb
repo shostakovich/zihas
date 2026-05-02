@@ -16,7 +16,7 @@ class MqttSubscriberTest < ActiveSupport::TestCase
     )
     @plugs = [
       ConfigLoader::PlugCfg.new(id: "bkw",   name: "Solar",  role: :producer, driver: :shelly, ain: nil),
-      ConfigLoader::PlugCfg.new(id: "fridge", name: "Fridge", role: :consumer, driver: :shelly, ain: nil),
+      ConfigLoader::PlugCfg.new(id: "fridge", name: "Fridge", role: :consumer, driver: :shelly, ain: nil)
     ]
     @subscriber = MqttSubscriber.new(
       mqtt_config: @mqtt_config,
@@ -34,7 +34,7 @@ class MqttSubscriberTest < ActiveSupport::TestCase
     broadcasts = []
     server = ActionCable.server
     original = server.method(:broadcast)
-    server.define_singleton_method(:broadcast) { |stream, payload| broadcasts << [stream, payload] }
+    server.define_singleton_method(:broadcast) { |stream, payload| broadcasts << [ stream, payload ] }
     yield broadcasts
   ensure
     server.define_singleton_method(:broadcast, original)

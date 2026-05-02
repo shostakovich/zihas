@@ -6,7 +6,7 @@ class MqttSubscriber
 
   def initialize(mqtt_config:, plugs:, logger:, clock: -> { Time.now.to_f })
     @mqtt_config       = mqtt_config
-    @plug_map          = plugs.to_h { |p| [p.id, p] }
+    @plug_map          = plugs.to_h { |p| [ p.id, p ] }
     @logger            = logger
     @clock             = clock
     @stopping          = false
@@ -23,8 +23,8 @@ class MqttSubscriber
         backoff = 1
       rescue => e
         @logger.error("MqttSubscriber: #{e.class}: #{e.message}")
-        sleep([backoff, 60].min) unless @stopping
-        backoff = [backoff * 2, 60].min
+        sleep([ backoff, 60 ].min) unless @stopping
+        backoff = [ backoff * 2, 60 ].min
       end
     end
   end
@@ -90,7 +90,7 @@ class MqttSubscriber
       bucket_ts:   bucket_ts,
       apower_w:    apower_w,
       avg_power_w: avg_power_w,
-      aenergy_wh:  aenergy_wh,
+      aenergy_wh:  aenergy_wh
     }
 
     now = @clock.call

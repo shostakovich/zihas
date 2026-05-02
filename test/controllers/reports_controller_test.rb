@@ -3,7 +3,6 @@ require "test_helper"
 class ReportsControllerTest < ActionDispatch::IntegrationTest
   setup do
     DailyTotal.delete_all
-
   end
 
   test "reports page renders" do

@@ -4,7 +4,7 @@ require "tempfile"
 
 class ConfigLoaderTest < Minitest::Test
   def load_yaml(yaml)
-    file = Tempfile.new(["config", ".yml"])
+    file = Tempfile.new([ "config", ".yml" ])
     file.write(yaml); file.flush
     ConfigLoader.load(file.path)
   ensure
