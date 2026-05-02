@@ -1,6 +1,8 @@
 Rails.application.routes.draw do
   root "dashboard#index"
 
+  get "/reports", to: "reports#index"
+
   get "/api/today", to: "api#today"
   get "/api/today/summary", to: "api#today_summary"
   get "/api/history", to: "api#history"

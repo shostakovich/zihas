@@ -1,0 +1,9 @@
+<% content_for :title, "Berichte" %>
+
+<h1>Berichte</h1>
+
+<form method="get" action="/reports">
+  <input type="date" name="start_date" value="<%= params[:start_date].presence || @report.start_date %>">
+  <input type="date" name="end_date" value="<%= params[:end_date].presence || @report.end_date %>">
+  <button type="submit">Anwenden</button>
+</form>
