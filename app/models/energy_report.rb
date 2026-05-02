@@ -209,7 +209,7 @@ class EnergyReport
 
   def daily_chart_payload(daily_points)
     {
-      labels: daily_points.map { |point| point.fetch(:date) },
+      labels: daily_points.map { |point| Date.iso8601(point.fetch(:date)).strftime("%d.%m.") },
       produced_kwh: daily_points.map { |point| point.fetch(:produced_kwh) },
       consumed_kwh: daily_points.map { |point| point.fetch(:consumed_kwh) },
       balance_kwh: daily_points.map { |point| point.fetch(:balance_kwh) },
@@ -285,7 +285,7 @@ class EnergyReport
 
     {
       chart_type: "bar",
-      labels: dates.map { |date| date.strftime("%d.%m") },
+      labels: dates.map { |date| date.strftime("%d.%m.") },
       series: series
     }
   end
@@ -297,7 +297,7 @@ class EnergyReport
 
   def detail_label(ts, multi_day)
     local_time = @timezone.utc_to_local(Time.at(ts).utc)
-    local_time.strftime(multi_day ? "%d.%m %H:%M" : "%H:%M")
+    local_time.strftime(multi_day ? "%d.%m. %H:%M" : "%H:%M")
   end
 
   def sum_role(rows, role)

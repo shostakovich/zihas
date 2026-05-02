@@ -250,11 +250,18 @@ export default class extends Controller {
   _replaceTotalConsumptionDataset() {
     if (!this.powerChart) return
 
-    const idx = this.powerChart.data.datasets.findIndex((dataset) => dataset.isTotalConsumption)
-    if (idx >= 0) this.powerChart.data.datasets.splice(idx, 1)
+    const existing    = this.powerChart.data.datasets.find((d) => d.isTotalConsumption)
+    const others      = this.powerChart.data.datasets.filter((d) => !d.isTotalConsumption)
+    const newDataset  = this._totalPowerConsumptionDataset(others)
 
-    const totalConsumption = this._totalPowerConsumptionDataset(this.powerChart.data.datasets)
-    if (totalConsumption) this.powerChart.data.datasets.push(totalConsumption)
+    if (existing && newDataset) {
+      existing.data = newDataset.data // update in place — preserves Chart.js hidden state
+    } else if (!existing && newDataset) {
+      this.powerChart.data.datasets.push(newDataset)
+    } else if (existing && !newDataset) {
+      const idx = this.powerChart.data.datasets.indexOf(existing)
+      this.powerChart.data.datasets.splice(idx, 1)
+    }
   }
 
   _totalPowerConsumptionDataset(datasets) {

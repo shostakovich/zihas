@@ -2,14 +2,17 @@ require "mqtt"
 require "json"
 
 class MqttSubscriber
+  BROADCAST_INTERVAL = 5
+
   def initialize(mqtt_config:, plugs:, logger:, clock: -> { Time.now.to_f })
-    @mqtt_config  = mqtt_config
-    @plug_map     = plugs.to_h { |p| [p.id, p] }
-    @logger       = logger
-    @clock        = clock
-    @stopping     = false
-    @buckets      = {}
-    @last_power_w = {}
+    @mqtt_config       = mqtt_config
+    @plug_map          = plugs.to_h { |p| [p.id, p] }
+    @logger            = logger
+    @clock             = clock
+    @stopping          = false
+    @buckets           = {}
+    @pending           = {}
+    @last_broadcast_at = 0
   end
 
   def run
@@ -46,7 +49,7 @@ class MqttSubscriber
 
     Sample.create!(plug_id: plug_id, ts: ts, apower_w: apower_w, aenergy_wh: aenergy_wh)
     @logger.debug("MqttSubscriber: #{plug_id} #{apower_w} W / #{aenergy_wh} Wh")
-    broadcast_if_changed(plug, ts, apower_w, aenergy_wh)
+    accumulate(plug, ts, apower_w, aenergy_wh)
   rescue ActiveRecord::RecordNotUnique
     # duplicate ts within same second — skip silently
   rescue JSON::ParserError => e
@@ -66,12 +69,7 @@ class MqttSubscriber
     begin; @client&.disconnect; rescue StandardError; nil; end
   end
 
-  def broadcast_if_changed(plug, ts, apower_w, aenergy_wh)
-    display_power = (plug.role == :producer ? apower_w.abs : apower_w).round
-    return if @last_power_w[plug.id] == display_power
-
-    @last_power_w[plug.id] = display_power
-
+  def accumulate(plug, ts, apower_w, aenergy_wh)
     bucket_ts = (ts / 60) * 60
     bucket    = @buckets[plug.id]
     if bucket && bucket[:bucket_ts] == bucket_ts
@@ -83,20 +81,24 @@ class MqttSubscriber
     end
     avg_power_w = bucket[:sum].to_f / bucket[:count]
 
-    ActionCable.server.broadcast("dashboard", {
-      ts:    ts,
-      plugs: [{
-        plug_id:     plug.id,
-        name:        plug.name,
-        role:        plug.role.to_s,
-        online:      true,
-        ts:          ts,
-        bucket_ts:   bucket_ts,
-        apower_w:    apower_w,
-        avg_power_w: avg_power_w,
-        aenergy_wh:  aenergy_wh,
-      }]
-    })
+    @pending[plug.id] = {
+      plug_id:     plug.id,
+      name:        plug.name,
+      role:        plug.role.to_s,
+      online:      true,
+      ts:          ts,
+      bucket_ts:   bucket_ts,
+      apower_w:    apower_w,
+      avg_power_w: avg_power_w,
+      aenergy_wh:  aenergy_wh,
+    }
+
+    now = @clock.call
+    return unless now - @last_broadcast_at >= BROADCAST_INTERVAL
+
+    ActionCable.server.broadcast("dashboard", { ts: now.to_i, plugs: @pending.values })
+    @pending.clear
+    @last_broadcast_at = now
   rescue => e
     @logger.warn("MqttSubscriber: ActionCable broadcast failed: #{e.message}")
   end

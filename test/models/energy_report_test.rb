@@ -100,7 +100,7 @@ class EnergyReportTest < ActiveSupport::TestCase
       plugs: @plugs
     ).build
 
-    assert_equal [ "2026-04-10" ], report.chart_payload.fetch(:daily).fetch(:labels)
+    assert_equal [ "10.04." ], report.chart_payload.fetch(:daily).fetch(:labels)
     assert_equal [ 2.0 ], report.chart_payload.fetch(:daily).fetch(:produced_kwh)
     assert_equal [ 1.0 ], report.chart_payload.fetch(:daily).fetch(:consumed_kwh)
     assert_equal [ "Schreibtisch", "Waschmaschine" ], report.chart_payload.fetch(:daily).fetch(:consumer_series).map { |row| row.fetch(:name) }
@@ -124,7 +124,7 @@ class EnergyReportTest < ActiveSupport::TestCase
 
     detail = report.chart_payload.fetch(:detail)
     assert_equal "line", detail.fetch(:chart_type)
-    assert_equal [ "10.04 00:00", "11.04 00:00" ], detail.fetch(:labels)
+    assert_equal [ "10.04. 00:00", "11.04. 00:00" ], detail.fetch(:labels)
     assert_equal [ 120.0, 220.0 ], detail.fetch(:series).first.fetch(:data)
     assert_equal Date.new(2026, 4, 10), report.detail_start_date
     assert_equal Date.new(2026, 4, 11), report.detail_end_date
@@ -142,7 +142,7 @@ class EnergyReportTest < ActiveSupport::TestCase
 
     detail = report.chart_payload.fetch(:detail)
     assert_equal "bar", detail.fetch(:chart_type)
-    assert_equal [ "10.04", "11.04", "12.04", "13.04", "14.04", "15.04", "16.04", "17.04" ], detail.fetch(:labels)
+    assert_equal [ "10.04.", "11.04.", "12.04.", "13.04.", "14.04.", "15.04.", "16.04.", "17.04." ], detail.fetch(:labels)
     assert_equal [ 100.0, 101.0, 102.0, 103.0, 104.0, 105.0, 106.0, 107.0 ], detail.fetch(:series).first.fetch(:data)
     assert_equal Date.new(2026, 4, 10), report.detail_start_date
     assert_equal Date.new(2026, 4, 17), report.detail_end_date

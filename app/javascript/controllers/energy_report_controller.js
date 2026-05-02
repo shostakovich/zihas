@@ -110,6 +110,7 @@ export default class extends Controller {
         responsive: true,
         maintainAspectRatio: false,
         scales: {
+          x: { ticks: { maxTicksLimit: 21, autoSkip: true } },
           y: { beginAtZero: true, title: { display: true, text: "Watt" } },
         },
         plugins: { legend: { position: "bottom" } },

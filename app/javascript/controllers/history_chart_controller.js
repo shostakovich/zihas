@@ -31,7 +31,10 @@ export default class extends Controller {
     const producer = data.series.find(s => s.role === "producer")
     if (!producer) return
 
-    const labels = producer.points.map(p => p.date)
+    const labels = producer.points.map(({ date }) => {
+      const [, mm, dd] = date.split("-")
+      return `${dd}.${mm}.`
+    })
     const values = producer.points.map(p => p.energy_wh / 1000)
 
     this.chart?.destroy()

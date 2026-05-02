@@ -75,7 +75,7 @@ class MqttSubscriberTest < ActiveSupport::TestCase
     assert_equal 1, Sample.where(plug_id: "bkw").count
   end
 
-  test "handle_message broadcasts on power change" do
+  test "handle_message broadcasts immediately on first message after startup" do
     capture_broadcasts do |broadcasts|
       @subscriber.handle_message("shellies/bkw/status/switch:0",
                                  status_payload(apower: 300.0, total: 1234.5))
@@ -91,38 +91,47 @@ class MqttSubscriberTest < ActiveSupport::TestCase
     end
   end
 
-  test "handle_message does not broadcast when rounded power is unchanged" do
+  test "handle_message batches messages within the 5-second window" do
     capture_broadcasts do |broadcasts|
       @subscriber.handle_message("shellies/bkw/status/switch:0",
                                  status_payload(apower: 300.0, total: 1234.5))
-      Sample.delete_all
+      @now += 1
       @subscriber.handle_message("shellies/bkw/status/switch:0",
-                                 status_payload(apower: 300.4, total: 1234.6))
+                                 status_payload(apower: 350.0, total: 1234.6))
       assert_equal 1, broadcasts.length
     end
   end
 
-  test "handle_message broadcasts when rounded power changes" do
+  test "handle_message sends a new broadcast after the 5-second interval elapses" do
     capture_broadcasts do |broadcasts|
       @subscriber.handle_message("shellies/bkw/status/switch:0",
                                  status_payload(apower: 300.0, total: 1234.5))
-      Sample.delete_all
-      @now += 1
+      @now += 5
       @subscriber.handle_message("shellies/bkw/status/switch:0",
                                  status_payload(apower: 350.0, total: 1234.6))
       assert_equal 2, broadcasts.length
     end
   end
 
-  test "producer apower_w is compared as absolute value for broadcast threshold" do
+  test "handle_message merges multiple plugs into one broadcast" do
     capture_broadcasts do |broadcasts|
+      # First message triggers immediate broadcast (cold start)
       @subscriber.handle_message("shellies/bkw/status/switch:0",
-                                 status_payload(apower: -300.0, total: 1234.5))
-      Sample.delete_all
+                                 status_payload(apower: 300.0, total: 1234.5))
+      # Fridge message arrives within the window — buffered
       @now += 1
+      @subscriber.handle_message("shellies/fridge/status/switch:0",
+                                 status_payload(apower: 50.0, total: 100.0))
+      # Next bkw message arrives after interval — triggers broadcast with both plugs
+      @now += 5
       @subscriber.handle_message("shellies/bkw/status/switch:0",
-                                 status_payload(apower: -300.4, total: 1234.6))
-      assert_equal 1, broadcasts.length
+                                 status_payload(apower: 310.0, total: 1234.6))
+
+      assert_equal 2, broadcasts.length
+      _, payload = broadcasts.last
+      plug_ids = payload[:plugs].map { |p| p[:plug_id] }
+      assert_includes plug_ids, "fridge"
+      assert_includes plug_ids, "bkw"
     end
   end
 end
