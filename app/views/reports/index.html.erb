@@ -82,5 +82,5 @@
     </section>
   <% end %>
 
-  <script type="application/json" data-energy-report-target="payload"><%= json_escape(JSON.generate(@report.chart_payload)) %></script>
+  <script type="application/json" data-energy-report-target="payload"><%= raw json_escape(@report.chart_payload.to_json) %></script>
 </div>
