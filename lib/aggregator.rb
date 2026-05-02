@@ -22,6 +22,10 @@ class Aggregator
       Sample5min.where(bucket_ts: start_ts..(end_ts - 1)).delete_all
       DailyTotal.where(date: date_s).delete_all
 
+      # Cap each per-sample delta at MAX_PLAUSIBLE_W * dt to discard
+      # implausible counter jumps (e.g. a glitched 0-reading followed by a
+      # snap back to the lifetime cumulative value would otherwise contribute
+      # hundreds of kWh in a single delta).
       sql_5min = <<~SQL
         WITH window_samples AS (
           SELECT plug_id, ts, apower_w, aenergy_wh,
