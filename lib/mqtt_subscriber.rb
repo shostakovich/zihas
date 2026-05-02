@@ -32,7 +32,7 @@ class MqttSubscriber
   end
 
   def handle_message(topic, payload)
-    plug_id = topic.split("/")[1]
+    plug_id = topic.split("/")[@mqtt_config.topic_prefix.split("/").length]
     plug    = @plug_map[plug_id]
     unless plug
       @logger.warn("MqttSubscriber: unknown plug '#{plug_id}' on topic #{topic}")

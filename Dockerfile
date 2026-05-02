@@ -53,7 +53,6 @@ RUN bundle exec bootsnap precompile -j 1 app/ lib/
 
 # Precompiling assets for production without requiring secret RAILS_MASTER_KEY.
 # A temporary SQLite DB is created so AR can resolve column metadata during eager loading.
-# SKIP_BACKGROUND prevents the Ziwoas polling threads from starting during build.
 RUN SECRET_KEY_BASE_DUMMY=1 \
     DATABASE_URL="sqlite3:///tmp/build.db" \
     ./bin/rails db:schema:load assets:precompile && \
