@@ -78,7 +78,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_no_match %r{href="/app\.css}, response.body
     assert_select "link[href^='/assets/application'][data-turbo-track='reload']", 1
     assert_select "header.app-header", 1
-    assert_select ".app-brand", text: "Zipfelmaus"
+    assert_select ".app-brand img[alt='Zipfelmaus']", 1
     assert_select "nav.app-nav a[href='#{root_path}']", text: "Dashboard"
     assert_select "nav.app-nav a[href='#{reports_path}']", text: "Berichte"
   end
