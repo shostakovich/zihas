@@ -13,10 +13,7 @@ module Ziwoas
       until @stopping
         sleep_until_run_at
         break if @stopping
-        @logger.info("aggregator: starting nightly run")
-        @aggregator.run_once
-        @aggregator.backup!(@backup_dir)
-        @logger.info("aggregator: done")
+        perform_run
       end
     end
 
@@ -25,6 +22,19 @@ module Ziwoas
     end
 
     private
+
+    # Runs the nightly job, swallowing exceptions so that a transient failure
+    # (DB error, disk full during VACUUM INTO, ...) doesn't kill the scheduler
+    # thread and silently disable all future nights.
+    def perform_run
+      @logger.info("aggregator: starting nightly run")
+      @aggregator.run_once
+      @aggregator.backup!(@backup_dir)
+      @logger.info("aggregator: done")
+    rescue StandardError => e
+      @logger.error("aggregator: nightly run failed: #{e.class}: #{e.message}")
+      e.backtrace&.first(10)&.each { |line| @logger.error("  #{line}") }
+    end
 
     def sleep_until_run_at
       hour, minute = @run_at.split(":").map(&:to_i)
