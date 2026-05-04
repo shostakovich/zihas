@@ -71,18 +71,35 @@
     <div class="section-label">Nächste Tage</div>
     <section class="weather-days">
       <% @future_weather.each do |day| %>
-        <% date = day.date %>
-        <% records = day.records %>
         <article class="weather-day-card">
-          <header><strong><%= l(date, format: "%A") rescue date.to_s %></strong></header>
+          <header class="weather-day-head">
+            <div>
+              <div class="weather-day-name"><strong><%= l(day.date, format: "%A") rescue day.date.to_s %></strong></div>
+              <div class="weather-day-summary">
+                <%= number_with_precision(day.temp_min, precision: 0, delimiter: ".", separator: ",") %>
+                – <%= number_with_precision(day.temp_max, precision: 0, delimiter: ".", separator: ",") %> °C
+                · Regen <%= number_with_precision(day.precip_sum, precision: 1, delimiter: ".", separator: ",") %> mm
+              </div>
+            </div>
+            <% if day.solar_peak %>
+              <div class="weather-day-peak">☀ Spitze <%= number_with_precision(day.solar_peak, precision: 0, delimiter: ".", separator: ",") %> W/m²</div>
+            <% end %>
+          </header>
           <div class="weather-day-slots">
-            <% records.select { |r| (r.timestamp.hour % 3).zero? }.each do |record| %>
+            <% day.records.select { |r| (r.timestamp.hour % 3).zero? }.each do |record| %>
               <div class="weather-day-slot">
-                <div><%= record.timestamp.strftime("%H") %></div>
+                <div class="weather-day-slot-time"><%= record.timestamp.strftime("%H") %></div>
                 <%= image_tag record.asset_name, class: "weather-day-icon", alt: record.icon.to_s %>
                 <strong><%= number_with_precision(record.temperature, precision: 0, delimiter: ".", separator: ",") %>°</strong>
-                <div><%= record.precipitation ? number_with_precision(record.precipitation, precision: 1, delimiter: ".", separator: ",") + " mm" : "#{record.precipitation_probability || 0}%" %></div>
-                <div><%= record.solar ? number_with_precision(record.solar, precision: 0, delimiter: ".", separator: ",") + " W/m²" : "Wolken #{record.cloud_cover || "—"}%" %></div>
+                <div class="weather-day-slot-solar<%= record.daytime == "night" ? " is-night" : "" %>">
+                  <% if record.daytime == "night" %>
+                    Nacht
+                  <% elsif record.solar %>
+                    <%= number_with_precision(record.solar, precision: 0, delimiter: ".", separator: ",") %> W/m²
+                  <% else %>
+                    Wolken <%= record.cloud_cover || "—" %>%
+                  <% end %>
+                </div>
               </div>
             <% end %>
           </div>

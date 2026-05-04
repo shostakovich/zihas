@@ -73,6 +73,51 @@ class WeatherControllerTest < ActionDispatch::IntegrationTest
     assert_select ".weather-current-solar", text: /W\/m²/, count: 0
   end
 
+  test "day card renders weekday summary line and peak solar badge" do
+    [
+      { hour: 6, temp: 13, precip: 0.4, solar: 220 },
+      { hour: 12, temp: 17, precip: 0.0, solar: 480 },
+      { hour: 18, temp: 14, precip: 1.4, solar: 90 }
+    ].each do |slot|
+      WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
+        timestamp: Time.zone.parse("2026-05-06 #{format('%02d', slot[:hour])}:00"),
+        daytime: "day", icon: "partly-cloudy-day",
+        temperature: slot[:temp], precipitation: slot[:precip], solar: slot[:solar])
+    end
+
+    get "/weather"
+
+    assert_select ".weather-day-card .weather-day-summary", text: /13.*–.*17.*°C/
+    assert_select ".weather-day-card .weather-day-summary", text: /Regen 1,8 mm/
+    assert_select ".weather-day-card .weather-day-peak", text: /Spitze 480 W\/m²/
+  end
+
+  test "day card omits peak badge when every record has nil solar" do
+    WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
+      timestamp: Time.zone.parse("2026-05-06 12:00"), daytime: "day",
+      icon: "cloudy", temperature: 12, precipitation: 0)
+    WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
+      timestamp: Time.zone.parse("2026-05-06 18:00"), daytime: "day",
+      icon: "cloudy", temperature: 11, precipitation: 0)
+
+    get "/weather"
+
+    assert_select ".weather-day-card .weather-day-peak", count: 0
+  end
+
+  test "day card renders Nacht in slots whose record is at night" do
+    WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
+      timestamp: Time.zone.parse("2026-05-06 03:00"), daytime: "night",
+      icon: "clear-night", temperature: 11)
+    WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
+      timestamp: Time.zone.parse("2026-05-06 12:00"), daytime: "day",
+      icon: "clear-day", temperature: 17, solar: 480)
+
+    get "/weather"
+
+    assert_select ".weather-day-slot .weather-day-slot-solar", text: /Nacht/
+  end
+
   test "assigns future weather as WeatherDay instances with aggregates" do
     WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
       timestamp: Time.zone.parse("2026-05-05 09:00"), daytime: "day",

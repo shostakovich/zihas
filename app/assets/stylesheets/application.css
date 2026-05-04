@@ -440,3 +440,47 @@ svg text[data-dashboard-target] {
   font-size: 11px;
   color: var(--muted);
 }
+.weather-day-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.weather-day-name {
+  font-size: 15px;
+}
+.weather-day-summary {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.weather-day-peak {
+  color: var(--solar);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.weather-day-slots {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+}
+.weather-day-slot-time {
+  font-size: 11px;
+}
+.weather-day-slot-solar {
+  font-size: 10px;
+  color: var(--solar);
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+.weather-day-slot-solar.is-night {
+  color: var(--muted);
+  font-weight: 400;
+}
+@media (max-width: 640px) {
+  .weather-day-slots {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    row-gap: 12px;
+  }
+}
