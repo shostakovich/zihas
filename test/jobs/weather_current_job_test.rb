@@ -5,7 +5,7 @@ class WeatherCurrentJobTest < ActiveJob::TestCase
     sync = Minitest::Mock.new
     sync.expect(:sync_current, nil)
     WeatherSync.stub(:from_app_config, sync) { WeatherCurrentJob.perform_now }
-    sync.verify
+    assert sync.verify
   end
 
   test "does nothing when weather is not configured" do

@@ -6,6 +6,6 @@ class WeatherHistoricJobTest < ActiveJob::TestCase
     sync.expect(:sync_historic_date, nil, [ Date.new(2026, 5, 3) ])
     sync.expect(:backfill_historic_from_daily_totals, nil)
     WeatherSync.stub(:from_app_config, sync) { WeatherHistoricJob.perform_now(today: Date.new(2026, 5, 4)) }
-    sync.verify
+    assert sync.verify
   end
 end
