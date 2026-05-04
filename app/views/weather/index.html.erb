@@ -1,0 +1,64 @@
+<% content_for :title, "Wetter" %>
+
+<div class="weather-page">
+  <% if @current_weather.nil? && @today_weather.empty? && @future_weather.empty? %>
+    <section class="chart-card empty-state">
+      <h2>Noch keine Wetterdaten</h2>
+      <p>Die Wetteransicht erscheint, sobald Bright Sky Daten geladen hat.</p>
+    </section>
+  <% else %>
+    <% if @current_weather %>
+      <section class="weather-current chart-card">
+        <%= image_tag @current_weather.asset_name, class: "weather-current-icon", alt: @current_weather.icon.to_s %>
+        <div class="weather-current-main">
+          <div class="tile-label">Jetzt</div>
+          <div class="weather-current-temp"><%= number_with_precision(@current_weather.temperature, precision: 1, delimiter: ".", separator: ",") %> °C</div>
+          <div class="muted-text"><%= @current_weather.condition || "Wetter" %> · Wind <%= number_with_precision(@current_weather.wind_speed || 0, precision: 0, delimiter: ".", separator: ",") %> km/h</div>
+        </div>
+        <div class="weather-current-facts">
+          <div><strong><%= @current_weather.relative_humidity || "—" %>%</strong><br>Luft</div>
+          <div><strong><%= @current_weather.cloud_cover || "—" %>%</strong><br>Wolken</div>
+          <div><strong><%= number_with_precision(@current_weather.precipitation || 0, precision: 1, delimiter: ".", separator: ",") %> mm</strong><br>Regen</div>
+          <div><strong><%= number_with_precision(@current_weather.pressure_msl || 0, precision: 0, delimiter: ".", separator: ",") %></strong><br>hPa</div>
+        </div>
+      </section>
+    <% end %>
+
+    <div class="section-label">Heute</div>
+    <section class="weather-hour-row" aria-label="Heute">
+      <% @today_weather.each do |record| %>
+        <article class="weather-hour-card">
+          <div class="weather-hour-top"><span><%= record.timestamp.strftime("%H:%M") %></span><span><%= number_with_precision(record.precipitation || record.precipitation_probability || 0, precision: 0, delimiter: ".", separator: ",") %><%= record.precipitation ? " mm" : "%" %></span></div>
+          <%= image_tag record.asset_name, class: "weather-hour-icon", alt: record.icon.to_s %>
+          <strong><%= number_with_precision(record.temperature, precision: 0, delimiter: ".", separator: ",") %>°</strong>
+          <% if record.solar %>
+            <div class="weather-solar">Sonne <%= number_with_precision(record.solar, precision: 0, delimiter: ".", separator: ",") %> W/m²</div>
+          <% else %>
+            <div>Wolken <%= record.cloud_cover || "—" %>%</div>
+          <% end %>
+          <div>Wind <%= number_with_precision(record.wind_speed || 0, precision: 0, delimiter: ".", separator: ",") %> km/h</div>
+        </article>
+      <% end %>
+    </section>
+
+    <div class="section-label">Nächste Tage</div>
+    <section class="weather-days">
+      <% @future_weather.each do |date, records| %>
+        <article class="weather-day-card">
+          <header><strong><%= l(date, format: "%A") rescue date.to_s %></strong></header>
+          <div class="weather-day-slots">
+            <% records.select { |r| (r.timestamp.hour % 3).zero? }.each do |record| %>
+              <div class="weather-day-slot">
+                <div><%= record.timestamp.strftime("%H") %></div>
+                <%= image_tag record.asset_name, class: "weather-day-icon", alt: record.icon.to_s %>
+                <strong><%= number_with_precision(record.temperature, precision: 0, delimiter: ".", separator: ",") %>°</strong>
+                <div><%= record.precipitation ? number_with_precision(record.precipitation, precision: 1, delimiter: ".", separator: ",") + " mm" : "#{record.precipitation_probability || 0}%" %></div>
+                <div><%= record.solar ? number_with_precision(record.solar, precision: 0, delimiter: ".", separator: ",") + " W/m²" : "Wolken #{record.cloud_cover || "—"}%" %></div>
+              </div>
+            <% end %>
+          </div>
+        </article>
+      <% end %>
+    </section>
+  <% end %>
+</div>
