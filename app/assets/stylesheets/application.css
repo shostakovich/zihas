@@ -356,7 +356,7 @@ svg text[data-dashboard-target] {
 }
 .weather-days {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 .weather-day-card {
@@ -450,6 +450,12 @@ svg text[data-dashboard-target] {
 }
 .weather-day-name {
   font-size: 15px;
+}
+.weather-day-date {
+  color: var(--muted);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  margin-left: 4px;
 }
 .weather-day-summary {
   color: var(--muted);

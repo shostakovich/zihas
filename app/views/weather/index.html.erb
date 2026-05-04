@@ -74,7 +74,7 @@
         <article class="weather-day-card">
           <header class="weather-day-head">
             <div>
-              <div class="weather-day-name"><strong><%= l(day.date, format: "%A") rescue day.date.to_s %></strong></div>
+              <div class="weather-day-name"><strong><%= day.weekday_label %></strong> <span class="weather-day-date"><%= day.date_label %></span></div>
               <div class="weather-day-summary">
                 <%= number_with_precision(day.temp_min, precision: 0, delimiter: ".", separator: ",") %>
                 – <%= number_with_precision(day.temp_max, precision: 0, delimiter: ".", separator: ",") %> °C

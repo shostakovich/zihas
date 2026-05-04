@@ -80,6 +80,16 @@ class WeatherDayTest < ActiveSupport::TestCase
     assert_nil day.solar_peak_w_per_m2
   end
 
+  test "weekday_label returns the German two-letter abbreviation" do
+    assert_equal "Mo", WeatherDay.from_records(Date.new(2026, 5, 4), []).weekday_label
+    assert_equal "So", WeatherDay.from_records(Date.new(2026, 5, 3), []).weekday_label
+  end
+
+  test "date_label formats as DD.MM." do
+    assert_equal "04.05.", WeatherDay.from_records(Date.new(2026, 5, 4), []).date_label
+    assert_equal "31.03.", WeatherDay.from_records(Date.new(2026, 3, 31), []).date_label
+  end
+
   test "from_records exposes the date and the records list" do
     date = Date.new(2026, 5, 6)
     records = [make_record(timestamp: date.to_time + 12.hours, temperature: 15)]
