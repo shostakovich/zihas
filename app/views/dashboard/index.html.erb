@@ -1,7 +1,7 @@
 <div data-controller="dashboard">
   <!-- Hero: PV live -->
   <div class="hero">
-    <%= image_tag "icon_sonne.webp", class: "hero-icon", alt: "Sonne" %>
+    <%= image_tag @dashboard_weather_asset, class: "hero-icon", alt: @dashboard_weather_alt %>
     <div class="hero-value" data-dashboard-target="heroValue">— <span class="hero-unit">W</span></div>
   </div>
 
@@ -50,7 +50,7 @@
       <g data-dashboard-target="efDotsGridHome" clip-path="url(#ef-clip)"></g>
       <g data-dashboard-target="efDotsPvGrid"   clip-path="url(#ef-clip)"></g>
       <circle cx="200" cy="80"  r="40" fill="white" stroke="#f59f00" stroke-width="2.5"/>
-      <image href="<%= asset_path 'icon_sonne.webp' %>" x="184" y="55" width="32" height="32"/>
+      <image href="<%= asset_path @dashboard_weather_asset %>" x="184" y="55" width="32" height="32"/>
       <text data-dashboard-target="efPvW" x="200" y="102"  text-anchor="middle" font-size="12" font-weight="600" fill="#7c5e00">— W</text>
       <text x="200" y="22"  text-anchor="middle" font-size="11" fill="#6c757d">PV-Anlage</text>
       <circle cx="58"  cy="175" r="40" fill="white" stroke="#3b82f6" stroke-width="2.5"/>
