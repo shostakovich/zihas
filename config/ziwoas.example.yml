@@ -2,6 +2,10 @@
 electricity_price_eur_per_kwh: 0.32
 timezone: Europe/Berlin
 
+weather:
+  lat: 52.52
+  lon: 13.405
+
 mqtt:
   host: 192.168.1.103
   port: 1883

@@ -143,4 +143,68 @@ class ConfigLoaderTest < Minitest::Test
     err = assert_raises(ConfigLoader::Error) { load_yaml(yaml) }
     assert_match(/ain.*required/i, err.message)
   end
+
+  def test_loads_optional_weather_config
+    cfg = load_yaml(valid_yaml + <<~YAML)
+      weather:
+        lat: 52.52
+        lon: 13.405
+    YAML
+
+    assert_in_delta 52.52, cfg.weather.lat
+    assert_in_delta 13.405, cfg.weather.lon
+  end
+
+  def test_weather_config_is_optional
+    cfg = load_yaml(valid_yaml)
+
+    assert_nil cfg.weather
+  end
+
+  def test_rejects_invalid_weather_latitude
+    err = assert_raises(ConfigLoader::Error) do
+      load_yaml(valid_yaml + <<~YAML)
+        weather:
+          lat: 100
+          lon: 13.405
+      YAML
+    end
+
+    assert_match(/weather\.lat/i, err.message)
+  end
+
+  def test_rejects_invalid_weather_longitude
+    err = assert_raises(ConfigLoader::Error) do
+      load_yaml(valid_yaml + <<~YAML)
+        weather:
+          lat: 52.52
+          lon: 200
+      YAML
+    end
+
+    assert_match(/weather\.lon/i, err.message)
+  end
+
+  def test_rejects_missing_weather_latitude
+    err = assert_raises(ConfigLoader::Error) do
+      load_yaml(valid_yaml + <<~YAML)
+        weather:
+          lon: 13.405
+      YAML
+    end
+
+    assert_match(/weather\.lat/i, err.message)
+  end
+
+  def test_rejects_non_numeric_weather_longitude
+    err = assert_raises(ConfigLoader::Error) do
+      load_yaml(valid_yaml + <<~YAML)
+        weather:
+          lat: 52.52
+          lon: east
+      YAML
+    end
+
+    assert_match(/weather\.lon/i, err.message)
+  end
 end

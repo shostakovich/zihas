@@ -9,8 +9,9 @@ class ConfigLoader
   FritzPollCfg = Struct.new(:active_interval_seconds, :idle_interval_seconds,
                              :idle_threshold_w, :timeout_seconds, keyword_init: true)
   FritzBoxCfg = Struct.new(:host, :user, :password, keyword_init: true)
+  WeatherCfg  = Struct.new(:lat, :lon, keyword_init: true)
   Config      = Struct.new(:electricity_price_eur_per_kwh, :timezone,
-                           :mqtt, :fritz_poll, :plugs, :fritz_box,
+                           :mqtt, :fritz_poll, :plugs, :fritz_box, :weather,
                            keyword_init: true)
 
   module StringRequirement
@@ -89,6 +90,7 @@ class ConfigLoader
     fritz_poll = build_fritz_poll(@raw["fritz_poll"])
     fritz_box  = build_fritz_box(@raw["fritz_box"])
     plugs      = build_plugs(@raw["plugs"])
+    weather    = build_weather(@raw["weather"])
 
     if plugs.any? { |p| p.driver == :fritz_dect } && fritz_box.nil?
       raise Error, "fritz_box config required when using driver: fritz_dect"
@@ -105,6 +107,7 @@ class ConfigLoader
       fritz_poll: fritz_poll,
       plugs:      plugs,
       fritz_box:  fritz_box,
+      weather:    weather,
     )
   end
 
@@ -136,6 +139,24 @@ class ConfigLoader
     h = require_hash(h, "fritz_box")
     host, user, password = %w[host user password].map { |k| require_string(h[k], "fritz_box.#{k}") }
     FritzBoxCfg.new(host: host, user: user, password: password)
+  end
+
+  def build_weather(h)
+    return nil if h.nil?
+    h = require_hash(h, "weather")
+    lat = require_coordinate(h["lat"], "weather.lat")
+    lon = require_coordinate(h["lon"], "weather.lon")
+    raise Error, "weather.lat must be between -90 and 90" unless (-90..90).cover?(lat)
+    raise Error, "weather.lon must be between -180 and 180" unless (-180..180).cover?(lon)
+
+    WeatherCfg.new(lat: lat, lon: lon)
+  end
+
+  def require_coordinate(v, key)
+    raise Error, "#{key} must be a number" if v.nil? || v.to_s.empty?
+    Float(v)
+  rescue ArgumentError, TypeError
+    raise Error, "#{key} must be a number"
   end
 
   def build_plugs(list)
