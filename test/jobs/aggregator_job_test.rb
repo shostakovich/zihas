@@ -25,4 +25,22 @@ class AggregatorJobTest < ActiveJob::TestCase
       assert_equal 1, Dir.glob("#{backup_dir}/ziwoas-*.db").length
     end
   end
+
+  test "loads the test config in the test environment" do
+    expected_path = Rails.root.join("config", "ziwoas.test.yml").to_s
+    config = ConfigLoader::Config.new(timezone: "Europe/Berlin")
+    original_load = ConfigLoader.method(:load)
+    loaded_path = nil
+    ConfigLoader.define_singleton_method(:load) do |path|
+      loaded_path = path
+      config
+    end
+
+    Dir.mktmpdir do |backup_dir|
+      AggregatorJob.perform_now(today: Date.new(2026, 4, 11), backup_dir: backup_dir)
+    end
+    assert_equal expected_path, loaded_path
+  ensure
+    ConfigLoader.define_singleton_method(:load, original_load)
+  end
 end
