@@ -15,6 +15,26 @@ aggregator_schedule: &aggregator_schedule
     queue: default
     schedule: at 3:15am every day
 
+  fetch_current_weather:
+    class: WeatherCurrentJob
+    queue: default
+    schedule: every 15 minutes
+
+  fetch_today_weather:
+    class: WeatherTodayJob
+    queue: default
+    schedule: every hour
+
+  fetch_weather_forecast:
+    class: WeatherForecastJob
+    queue: default
+    schedule: every 3 hours
+
+  fetch_historic_weather:
+    class: WeatherHistoricJob
+    queue: default
+    schedule: at 3:45am every day
+
 development:
   <<: *aggregator_schedule
 
