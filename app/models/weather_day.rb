@@ -1,5 +1,5 @@
 WeatherDay = Data.define(:date, :records, :temp_min, :temp_max, :precip_sum, :solar_peak) do
-  WEEKDAY_LABELS_DE = %w[So Mo Di Mi Do Fr Sa].freeze
+  WEEKDAY_LABELS_DE = %w[Sonntag Montag Dienstag Mittwoch Donnerstag Freitag Samstag].freeze
 
   def self.from_records(date, records)
     temperatures = records.map(&:temperature).compact

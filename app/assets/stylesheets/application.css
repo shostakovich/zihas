@@ -457,6 +457,13 @@ svg text[data-dashboard-target] {
   font-variant-numeric: tabular-nums;
   margin-left: 4px;
 }
+.weather-inline-icon {
+  height: 1.1em;
+  width: 1.1em;
+  object-fit: contain;
+  vertical-align: -0.2em;
+  margin-right: 2px;
+}
 .weather-day-summary {
   color: var(--muted);
   font-size: 12px;

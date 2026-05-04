@@ -24,7 +24,10 @@
           </div>
         </div>
         <div class="weather-current-solar">
-          <span class="weather-solar-label">☀ Solar</span>
+          <span class="weather-solar-label">
+            <%= image_tag "weather_clear_day.webp", class: "weather-inline-icon", alt: "" %>
+            Solar
+          </span>
           <span class="weather-solar-value">
             <% if @current_weather.daytime == "night" %>
               Nacht
@@ -56,11 +59,14 @@
           <strong><%= number_with_precision(record.temperature, precision: 0, delimiter: ".", separator: ",") %>°</strong>
           <div class="weather-hour-solar<%= record.daytime == "night" ? " is-night" : "" %>">
             <% if record.daytime == "night" %>
-              ☾ Nacht
+              <%= image_tag "weather_clear_night.webp", class: "weather-inline-icon", alt: "" %>
+              Nacht
             <% elsif record.solar_w_per_m2 %>
-              ☀ <%= number_with_precision(record.solar_w_per_m2, precision: 0, delimiter: ".", separator: ",") %> W/m²
+              <%= image_tag "weather_clear_day.webp", class: "weather-inline-icon", alt: "" %>
+              <%= number_with_precision(record.solar_w_per_m2, precision: 0, delimiter: ".", separator: ",") %> W/m²
             <% else %>
-              Wolken <%= record.cloud_cover || "—" %>%
+              <%= image_tag "weather_clear_day.webp", class: "weather-inline-icon", alt: "" %>
+              — W/m²
             <% end %>
           </div>
           <div class="weather-hour-wind">💨 <%= number_with_precision(record.wind_speed || 0, precision: 0, delimiter: ".", separator: ",") %> km/h</div>
@@ -82,7 +88,10 @@
               </div>
             </div>
             <% if day.solar_peak_w_per_m2 %>
-              <div class="weather-day-peak">☀ Spitze <%= number_with_precision(day.solar_peak_w_per_m2, precision: 0, delimiter: ".", separator: ",") %> W/m²</div>
+              <div class="weather-day-peak">
+                <%= image_tag "weather_clear_day.webp", class: "weather-inline-icon", alt: "" %>
+                Spitze <%= number_with_precision(day.solar_peak_w_per_m2, precision: 0, delimiter: ".", separator: ",") %> W/m²
+              </div>
             <% end %>
           </header>
           <div class="weather-day-slots">
@@ -97,7 +106,7 @@
                   <% elsif record.solar_w_per_m2 %>
                     <%= number_with_precision(record.solar_w_per_m2, precision: 0, delimiter: ".", separator: ",") %> W/m²
                   <% else %>
-                    Wolken <%= record.cloud_cover || "—" %>%
+                    — W/m²
                   <% end %>
                 </div>
               </div>
