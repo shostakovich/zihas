@@ -13,7 +13,6 @@ class EnergySummaryTest < ActiveSupport::TestCase
       timezone: "Europe/Berlin",
       mqtt: mqtt,
       fritz_poll: nil,
-      aggregator: nil,
       plugs: [ plug_bkw, plug_fridge ],
       fritz_box: nil
     )

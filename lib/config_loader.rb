@@ -8,10 +8,9 @@ class ConfigLoader
   MqttCfg     = Struct.new(:host, :port, :topic_prefix, keyword_init: true)
   FritzPollCfg = Struct.new(:active_interval_seconds, :idle_interval_seconds,
                              :idle_threshold_w, :timeout_seconds, keyword_init: true)
-  AggCfg      = Struct.new(:run_at, :raw_retention_days, keyword_init: true)
   FritzBoxCfg = Struct.new(:host, :user, :password, keyword_init: true)
   Config      = Struct.new(:electricity_price_eur_per_kwh, :timezone,
-                           :mqtt, :fritz_poll, :aggregator, :plugs, :fritz_box,
+                           :mqtt, :fritz_poll, :plugs, :fritz_box,
                            keyword_init: true)
 
   module StringRequirement
@@ -88,7 +87,6 @@ class ConfigLoader
 
     mqtt       = build_mqtt(@raw["mqtt"])
     fritz_poll = build_fritz_poll(@raw["fritz_poll"])
-    aggregator = build_aggregator(@raw["aggregator"])
     fritz_box  = build_fritz_box(@raw["fritz_box"])
     plugs      = build_plugs(@raw["plugs"])
 
@@ -105,7 +103,6 @@ class ConfigLoader
       timezone:   tz,
       mqtt:       mqtt,
       fritz_poll: fritz_poll,
-      aggregator: aggregator,
       plugs:      plugs,
       fritz_box:  fritz_box,
     )
@@ -131,16 +128,6 @@ class ConfigLoader
       idle_interval_seconds:   require_number(h["idle_interval_seconds"],   "fritz_poll.idle_interval_seconds"),
       idle_threshold_w:        require_number(h["idle_threshold_w"].to_f,   "fritz_poll.idle_threshold_w", allow_zero: true),
       timeout_seconds:         require_number(h["timeout_seconds"],         "fritz_poll.timeout_seconds"),
-    )
-  end
-
-  def build_aggregator(h)
-    h = require_hash(h, "aggregator")
-    run_at = require_string(h["run_at"], "aggregator.run_at")
-    raise Error, "aggregator.run_at must be HH:MM" unless run_at =~ /\A\d{2}:\d{2}\z/
-    AggCfg.new(
-      run_at: run_at,
-      raw_retention_days: require_number(h["raw_retention_days"], "aggregator.raw_retention_days").to_i,
     )
   end
 

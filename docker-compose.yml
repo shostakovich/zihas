@@ -26,3 +26,17 @@ services:
       - ./config/ziwoas.yml:/rails/config/ziwoas.yml:ro
     depends_on:
       - ziwoas
+
+  ziwoas_jobs:
+    image: ziwoas:latest
+    container_name: ziwoas_jobs
+    restart: unless-stopped
+    command: ["./bin/jobs"]
+    environment:
+      TZ: Europe/Berlin
+      SECRET_KEY_BASE: dummy_secret_for_local_docker
+    volumes:
+      - ./storage:/rails/storage
+      - ./config/ziwoas.yml:/rails/config/ziwoas.yml:ro
+    depends_on:
+      - ziwoas

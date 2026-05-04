@@ -7,10 +7,6 @@ mqtt:
   port: 1883
   topic_prefix: shellies
 
-aggregator:
-  run_at: "03:15"
-  raw_retention_days: 7
-
 # fritz_box:
 #   host: 192.168.178.1
 #   user: fritz6584

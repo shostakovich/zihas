@@ -4,12 +4,14 @@ require "set"
 require "time"
 
 class Aggregator
+  DEFAULT_RAW_RETENTION_DAYS = 7
+
   # Plausible per-sample power ceiling used to cap energy deltas. 20 kW is
   # above any realistic single-circuit load, while counter glitches can imply
   # megawatts for a few seconds.
   MAX_PLAUSIBLE_W = 20_000
 
-  def initialize(timezone:, raw_retention_days:)
+  def initialize(timezone:, raw_retention_days: DEFAULT_RAW_RETENTION_DAYS)
     @tz = timezone
     @raw_retention_days = raw_retention_days
   end

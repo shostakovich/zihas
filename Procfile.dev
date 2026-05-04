@@ -1,2 +1,3 @@
 web:    ./bin/rails server
 worker: ./bin/ziwoas_collector
+jobs:   ./bin/jobs

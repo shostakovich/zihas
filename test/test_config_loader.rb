@@ -20,9 +20,6 @@ class ConfigLoaderTest < Minitest::Test
         host: 192.168.1.103
         port: 1883
         topic_prefix: shellies
-      aggregator:
-        run_at: "03:15"
-        raw_retention_days: 7
       plugs:
         - id: bkw
           name: Balkonkraftwerk
@@ -51,10 +48,20 @@ class ConfigLoaderTest < Minitest::Test
     cfg = load_yaml(valid_yaml)
     assert_in_delta 0.32, cfg.electricity_price_eur_per_kwh
     assert_equal "Europe/Berlin", cfg.timezone
-    assert_equal "03:15", cfg.aggregator.run_at
     assert_equal 2, cfg.plugs.length
     assert_equal "bkw", cfg.plugs.first.id
     assert_equal :producer, cfg.plugs.first.role
+  end
+
+  def test_ignores_legacy_aggregator_config
+    cfg = load_yaml(valid_yaml + <<~YAML)
+      aggregator:
+        run_at: "03:15"
+        raw_retention_days: 99
+    YAML
+
+    assert_respond_to cfg, :plugs
+    assert_equal false, cfg.respond_to?(:aggregator)
   end
 
   def test_loads_mqtt_config

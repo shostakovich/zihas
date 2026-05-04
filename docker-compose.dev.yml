@@ -1,0 +1,31 @@
+services:
+  ziwoas:
+    build: .
+    image: ziwoas:dev
+    container_name: ziwoas-dev
+    restart: "no"
+    ports:
+      - "3000:3000"
+    environment:
+      RAILS_ENV: development
+      PORT: "3000"
+      SECRET_KEY_BASE: dummy_secret_for_local_docker
+      TZ: Europe/Berlin
+    volumes:
+      - ./storage:/rails/storage
+      - ./config/ziwoas.yml:/rails/config/ziwoas.yml:ro
+
+  ziwoas_jobs:
+    image: ziwoas:dev
+    container_name: ziwoas-jobs-dev
+    restart: "no"
+    command: ["./bin/jobs"]
+    environment:
+      RAILS_ENV: development
+      SECRET_KEY_BASE: dummy_secret_for_local_docker
+      TZ: Europe/Berlin
+    volumes:
+      - ./storage:/rails/storage
+      - ./config/ziwoas.yml:/rails/config/ziwoas.yml:ro
+    depends_on:
+      - ziwoas
