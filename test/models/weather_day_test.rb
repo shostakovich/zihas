@@ -62,6 +62,24 @@ class WeatherDayTest < ActiveSupport::TestCase
     assert_nil day.solar_peak
   end
 
+  test "solar_peak_w_per_m2 converts the peak from kWh/m² to W/m²" do
+    date = Date.new(2026, 5, 6)
+    records = [make_record(timestamp: date.to_time + 12.hours, temperature: 17, solar: 0.48)]
+
+    day = WeatherDay.from_records(date, records)
+
+    assert_in_delta 480.0, day.solar_peak_w_per_m2
+  end
+
+  test "solar_peak_w_per_m2 is nil when no record has a solar value" do
+    date = Date.new(2026, 5, 6)
+    records = [make_record(timestamp: date.to_time + 12.hours, temperature: 17)]
+
+    day = WeatherDay.from_records(date, records)
+
+    assert_nil day.solar_peak_w_per_m2
+  end
+
   test "from_records exposes the date and the records list" do
     date = Date.new(2026, 5, 6)
     records = [make_record(timestamp: date.to_time + 12.hours, temperature: 15)]

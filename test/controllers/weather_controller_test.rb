@@ -12,8 +12,8 @@ class WeatherControllerTest < ActionDispatch::IntegrationTest
 
   test "renders current weather today and next days" do
     WeatherRecord.create!(kind: "current", lat: 52.52, lon: 13.405, timestamp: Time.zone.parse("2026-05-04 12:00"), daytime: "day", icon: "cloudy", temperature: 16.2, condition: "dry", wind_speed: 9.7, relative_humidity: 80, cloud_cover: 100, precipitation: 0, pressure_msl: 1011.6)
-    WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405, timestamp: Time.zone.parse("2026-05-04 13:00"), daytime: "day", icon: "partly-cloudy-day", temperature: 18, precipitation: 0, solar: 320, wind_speed: 11)
-    WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405, timestamp: Time.zone.parse("2026-05-05 12:00"), daytime: "day", icon: "clear-day", temperature: 20, precipitation_probability: 4, solar: 480, wind_speed: 12)
+    WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405, timestamp: Time.zone.parse("2026-05-04 13:00"), daytime: "day", icon: "partly-cloudy-day", temperature: 18, precipitation: 0, solar: 0.32, wind_speed: 11)
+    WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405, timestamp: Time.zone.parse("2026-05-05 12:00"), daytime: "day", icon: "clear-day", temperature: 20, precipitation_probability: 4, solar: 0.48, wind_speed: 12)
 
     get "/weather"
 
@@ -29,7 +29,7 @@ class WeatherControllerTest < ActionDispatch::IntegrationTest
     WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
       timestamp: Time.zone.parse("2026-05-04 13:00"), daytime: "day",
       icon: "partly-cloudy-day", temperature: 18, precipitation: 0,
-      solar: 320, wind_speed: 11)
+      solar: 0.32, wind_speed: 11)
 
     get "/weather"
 
@@ -53,11 +53,11 @@ class WeatherControllerTest < ActionDispatch::IntegrationTest
       timestamp: Time.zone.parse("2026-05-04 12:00"), daytime: "day",
       icon: "clear-day", temperature: 20.8, condition: "dry",
       wind_speed: 12, relative_humidity: 55, cloud_cover: 88,
-      precipitation: 0, pressure_msl: 1012, solar: 320)
+      precipitation: 0, pressure_msl: 1012, solar: 0.072)
 
     get "/weather"
 
-    assert_select ".weather-current-solar", text: /320 W\/m²/
+    assert_select ".weather-current-solar", text: /432 W\/m²/
   end
 
   test "current weather card renders Nacht in the solar row at night" do
@@ -75,9 +75,9 @@ class WeatherControllerTest < ActionDispatch::IntegrationTest
 
   test "day card renders weekday summary line and peak solar badge" do
     [
-      { hour: 6, temp: 13, precip: 0.4, solar: 220 },
-      { hour: 12, temp: 17, precip: 0.0, solar: 480 },
-      { hour: 18, temp: 14, precip: 1.4, solar: 90 }
+      { hour: 6, temp: 13, precip: 0.4, solar: 0.22 },
+      { hour: 12, temp: 17, precip: 0.0, solar: 0.48 },
+      { hour: 18, temp: 14, precip: 1.4, solar: 0.09 }
     ].each do |slot|
       WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
         timestamp: Time.zone.parse("2026-05-06 #{format('%02d', slot[:hour])}:00"),

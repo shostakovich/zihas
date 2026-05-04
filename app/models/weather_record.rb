@@ -16,4 +16,14 @@ class WeatherRecord < ApplicationRecord
   def asset_name
     WeatherIcon.asset_name(icon, daytime)
   end
+
+  # Bright Sky reports `solar` as energy per area accumulated over the
+  # source's period (kWh/m²). `current` covers 10 minutes; `forecast` and
+  # `historic` cover 60 minutes. Convert to average power per area for
+  # display so the column reads consistently as W/m² across kinds.
+  def solar_w_per_m2
+    return nil if solar.nil?
+    period_minutes = kind == "current" ? 10 : 60
+    solar * 1000.0 * (60.0 / period_minutes)
+  end
 end

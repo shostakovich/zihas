@@ -12,4 +12,10 @@ WeatherDay = Data.define(:date, :records, :temp_min, :temp_max, :precip_sum, :so
       solar_peak: solar_values.max
     )
   end
+
+  # WeatherDay is built from forecast records (60-minute period). Convert
+  # the raw kWh/m² peak to average W/m² for display.
+  def solar_peak_w_per_m2
+    solar_peak && solar_peak * 1000.0
+  end
 end

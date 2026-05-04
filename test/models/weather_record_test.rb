@@ -33,4 +33,28 @@ class WeatherRecordTest < ActiveSupport::TestCase
 
     assert_equal "weather_cloudy_night.webp", record.asset_name
   end
+
+  test "solar_w_per_m2 converts current 10-minute kWh/m² to average W/m²" do
+    record = WeatherRecord.new(kind: "current", solar: 0.072)
+
+    assert_in_delta 432.0, record.solar_w_per_m2
+  end
+
+  test "solar_w_per_m2 converts forecast hourly kWh/m² to average W/m²" do
+    record = WeatherRecord.new(kind: "forecast", solar: 0.48)
+
+    assert_in_delta 480.0, record.solar_w_per_m2
+  end
+
+  test "solar_w_per_m2 converts historic hourly kWh/m² to average W/m²" do
+    record = WeatherRecord.new(kind: "historic", solar: 0.32)
+
+    assert_in_delta 320.0, record.solar_w_per_m2
+  end
+
+  test "solar_w_per_m2 returns nil when raw solar is nil" do
+    record = WeatherRecord.new(kind: "forecast", solar: nil)
+
+    assert_nil record.solar_w_per_m2
+  end
 end
