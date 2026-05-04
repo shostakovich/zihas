@@ -1,0 +1,121 @@
+<% content_for :title, "Wetter" %>
+
+<div class="weather-page">
+  <% if @current_weather.nil? && @today_weather.empty? && @future_weather.empty? %>
+    <section class="chart-card empty-state">
+      <h2>Noch keine Wetterdaten</h2>
+      <p>Die Wetteransicht erscheint, sobald Bright Sky Daten geladen hat.</p>
+    </section>
+  <% else %>
+    <% if @current_weather %>
+      <section class="weather-current chart-card">
+        <div class="weather-current-head">
+          <%= image_tag @current_weather.asset_name, class: "weather-current-icon", alt: @current_weather.icon.to_s %>
+          <div class="weather-current-main">
+            <div class="tile-label">Jetzt</div>
+            <div class="weather-current-temp"><%= number_with_precision(@current_weather.temperature, precision: 1, delimiter: ".", separator: ",") %> °C</div>
+            <div class="muted-text"><%= @current_weather.condition || "Wetter" %> · Wind <%= number_with_precision(@current_weather.wind_speed || 0, precision: 0, delimiter: ".", separator: ",") %> km/h</div>
+          </div>
+          <div class="weather-current-facts">
+            <div><strong><%= @current_weather.relative_humidity || "—" %>%</strong><br>Luft</div>
+            <div><strong><%= @current_weather.cloud_cover || "—" %>%</strong><br>Wolken</div>
+            <div><strong><%= number_with_precision(@current_weather.precipitation || 0, precision: 1, delimiter: ".", separator: ",") %> mm</strong><br>Regen</div>
+            <div><strong><%= number_with_precision(@current_weather.pressure_msl || 0, precision: 0, delimiter: ".", separator: ",") %></strong><br>hPa</div>
+          </div>
+        </div>
+        <div class="weather-current-solar">
+          <span class="weather-solar-label">
+            <%= image_tag "weather_clear_day.webp", class: "weather-inline-icon", alt: "" %>
+            Solar
+          </span>
+          <span class="weather-solar-value">
+            <% if @current_weather.daytime == "night" %>
+              Nacht
+            <% elsif @current_weather.solar_w_per_m2 %>
+              <%= number_with_precision(@current_weather.solar_w_per_m2, precision: 0, delimiter: ".", separator: ",") %> W/m²
+            <% else %>
+              —
+            <% end %>
+          </span>
+        </div>
+      </section>
+    <% end %>
+
+    <div class="section-label">Heute</div>
+    <section class="weather-hour-row" aria-label="Heute">
+      <% @today_weather.each do |record| %>
+        <article class="weather-hour-card">
+          <div class="weather-hour-top">
+            <span><%= record.timestamp.strftime("%H:%M") %></span>
+            <span>
+              <% if record.precipitation %>
+                <%= number_with_precision(record.precipitation, precision: 1, delimiter: ".", separator: ",") %> mm
+              <% elsif record.precipitation_probability %>
+                <%= record.precipitation_probability %>%
+              <% end %>
+            </span>
+          </div>
+          <%= image_tag record.asset_name, class: "weather-hour-icon", alt: record.icon.to_s %>
+          <strong><%= number_with_precision(record.temperature, precision: 0, delimiter: ".", separator: ",") %>°</strong>
+          <div class="weather-hour-solar<%= record.daytime == "night" ? " is-night" : "" %>">
+            <% if record.daytime == "night" %>
+              <%= image_tag "weather_clear_night.webp", class: "weather-inline-icon", alt: "" %>
+              Nacht
+            <% elsif record.solar_w_per_m2 %>
+              <%= image_tag "weather_clear_day.webp", class: "weather-inline-icon", alt: "" %>
+              <%= number_with_precision(record.solar_w_per_m2, precision: 0, delimiter: ".", separator: ",") %> W/m²
+            <% else %>
+              <%= image_tag "weather_clear_day.webp", class: "weather-inline-icon", alt: "" %>
+              — W/m²
+            <% end %>
+          </div>
+          <div class="weather-hour-wind">💨 <%= number_with_precision(record.wind_speed || 0, precision: 0, delimiter: ".", separator: ",") %> km/h</div>
+        </article>
+      <% end %>
+    </section>
+
+    <div class="section-label">Nächste Tage</div>
+    <section class="weather-days">
+      <% @future_weather.each do |day| %>
+        <article class="weather-day-card">
+          <header class="weather-day-head">
+            <div>
+              <div class="weather-day-name"><strong><%= day.weekday_label %></strong> <span class="weather-day-date"><%= day.date_label %></span></div>
+              <div class="weather-day-summary">
+                <%= number_with_precision(day.temp_min, precision: 0, delimiter: ".", separator: ",") %>
+                – <%= number_with_precision(day.temp_max, precision: 0, delimiter: ".", separator: ",") %> °C
+                <% if day.precip_sum.positive? %>
+                  · Regen <%= number_with_precision(day.precip_sum, precision: 1, delimiter: ".", separator: ",") %> mm
+                <% end %>
+              </div>
+            </div>
+            <% if day.solar_peak_w_per_m2 %>
+              <div class="weather-day-peak">
+                <%= image_tag "weather_clear_day.webp", class: "weather-inline-icon", alt: "" %>
+                Spitze <%= number_with_precision(day.solar_peak_w_per_m2, precision: 0, delimiter: ".", separator: ",") %> W/m²
+              </div>
+            <% end %>
+          </header>
+          <div class="weather-day-slots">
+            <% day.records.select { |r| (r.timestamp.hour % 3).zero? }.each do |record| %>
+              <div class="weather-day-slot">
+                <div class="weather-day-slot-time"><%= record.timestamp.strftime("%H") %></div>
+                <%= image_tag record.asset_name, class: "weather-day-icon", alt: record.icon.to_s %>
+                <strong><%= number_with_precision(record.temperature, precision: 0, delimiter: ".", separator: ",") %>°</strong>
+                <div class="weather-day-slot-solar<%= record.daytime == "night" ? " is-night" : "" %>">
+                  <% if record.daytime == "night" %>
+                    Nacht
+                  <% elsif record.solar_w_per_m2 %>
+                    <%= number_with_precision(record.solar_w_per_m2, precision: 0, delimiter: ".", separator: ",") %> W/m²
+                  <% else %>
+                    — W/m²
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </article>
+      <% end %>
+    </section>
+  <% end %>
+</div>

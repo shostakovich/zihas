@@ -8,6 +8,7 @@
   --accent-bg: linear-gradient(135deg, #fff3bf 0%, #ffe066 100%);
   --online: #40c057;
   --offline: #adb5bd;
+  --solar: #f59e0b;
 }
 
 * { box-sizing: border-box; }
@@ -293,5 +294,212 @@ svg text[data-dashboard-target] {
 
   .date-range-form {
     display: grid;
+  }
+}
+
+.weather-current {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.weather-current-icon {
+  width: 82px;
+  height: 82px;
+  object-fit: contain;
+}
+.weather-current-main {
+  flex: 1;
+  min-width: 0;
+}
+.weather-current-temp {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+}
+.weather-current-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(64px, 1fr));
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.weather-hour-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 16px;
+}
+.weather-hour-card {
+  min-width: 132px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.weather-hour-top {
+  display: flex;
+  justify-content: space-between;
+}
+.weather-hour-icon {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  display: block;
+  margin: 8px 0;
+}
+.weather-hour-card strong {
+  color: var(--text);
+  font-size: 22px;
+}
+.weather-days {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.weather-day-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+}
+.weather-day-slots {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.weather-day-slot {
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+}
+.weather-day-icon {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  display: block;
+  margin: 4px auto;
+}
+.weather-day-slot strong {
+  color: var(--text);
+  font-size: 15px;
+}
+@media (max-width: 640px) {
+  .weather-current {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .weather-current-facts {
+    width: 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .weather-days {
+    grid-template-columns: 1fr;
+  }
+}
+
+.weather-current-head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+}
+.weather-current {
+  flex-direction: column;
+  align-items: stretch;
+}
+.weather-current-solar {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+.weather-solar-label {
+  color: var(--solar);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+.weather-solar-value {
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.weather-hour-solar {
+  margin-top: 6px;
+  color: var(--solar);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.weather-hour-solar.is-night {
+  color: var(--muted);
+  font-weight: 500;
+}
+.weather-hour-wind {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.weather-day-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.weather-day-name {
+  font-size: 15px;
+}
+.weather-day-date {
+  color: var(--muted);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  margin-left: 4px;
+}
+.weather-inline-icon {
+  height: 1.1em;
+  width: 1.1em;
+  object-fit: contain;
+  vertical-align: -0.2em;
+  margin-right: 2px;
+}
+.weather-day-summary {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.weather-day-peak {
+  color: var(--solar);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.weather-day-slots {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+}
+.weather-day-slot-time {
+  font-size: 11px;
+}
+.weather-day-slot-solar {
+  font-size: 10px;
+  color: var(--solar);
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+.weather-day-slot-solar.is-night {
+  color: var(--muted);
+  font-weight: 400;
+}
+@media (max-width: 640px) {
+  .weather-day-slots {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    row-gap: 12px;
   }
 }
