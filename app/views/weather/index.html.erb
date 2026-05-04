@@ -84,7 +84,9 @@
               <div class="weather-day-summary">
                 <%= number_with_precision(day.temp_min, precision: 0, delimiter: ".", separator: ",") %>
                 – <%= number_with_precision(day.temp_max, precision: 0, delimiter: ".", separator: ",") %> °C
-                · Regen <%= number_with_precision(day.precip_sum, precision: 1, delimiter: ".", separator: ",") %> mm
+                <% if day.precip_sum.positive? %>
+                  · Regen <%= number_with_precision(day.precip_sum, precision: 1, delimiter: ".", separator: ",") %> mm
+                <% end %>
               </div>
             </div>
             <% if day.solar_peak_w_per_m2 %>

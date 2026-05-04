@@ -376,9 +376,15 @@ svg text[data-dashboard-target] {
   text-align: center;
 }
 .weather-day-icon {
-  width: 34px;
-  height: 34px;
+  width: 56px;
+  height: 56px;
   object-fit: contain;
+  display: block;
+  margin: 4px auto;
+}
+.weather-day-slot strong {
+  color: var(--text);
+  font-size: 15px;
 }
 @media (max-width: 640px) {
   .weather-current {

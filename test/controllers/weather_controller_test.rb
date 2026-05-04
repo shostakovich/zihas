@@ -92,6 +92,20 @@ class WeatherControllerTest < ActionDispatch::IntegrationTest
     assert_select ".weather-day-card .weather-day-peak", text: /Spitze 480 W\/m²/
   end
 
+  test "day card omits rain summary when total precipitation is zero" do
+    WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
+      timestamp: Time.zone.parse("2026-05-06 12:00"), daytime: "day",
+      icon: "clear-day", temperature: 17, precipitation: 0)
+    WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
+      timestamp: Time.zone.parse("2026-05-06 18:00"), daytime: "day",
+      icon: "clear-day", temperature: 14, precipitation: nil)
+
+    get "/weather"
+
+    assert_select ".weather-day-card .weather-day-summary", text: /14.*–.*17.*°C/
+    assert_select ".weather-day-card .weather-day-summary", text: /Regen/, count: 0
+  end
+
   test "day card omits peak badge when every record has nil solar" do
     WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
       timestamp: Time.zone.parse("2026-05-06 12:00"), daytime: "day",
