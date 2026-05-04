@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_01_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_04_000000) do
   create_table "daily_totals", primary_key: ["plug_id", "date"], force: :cascade do |t|
     t.string "date", limit: 255, null: false
     t.float "energy_wh", null: false
@@ -31,5 +31,35 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_01_000000) do
     t.float "energy_delta_wh", null: false
     t.string "plug_id", limit: 255, null: false
     t.integer "sample_count", null: false
+  end
+
+  create_table "weather_records", force: :cascade do |t|
+    t.integer "cloud_cover"
+    t.string "condition"
+    t.datetime "created_at", null: false
+    t.string "daytime", null: false
+    t.float "dew_point"
+    t.string "icon"
+    t.string "kind", null: false
+    t.float "lat", null: false
+    t.float "lon", null: false
+    t.float "precipitation"
+    t.integer "precipitation_probability"
+    t.integer "precipitation_probability_6h"
+    t.float "pressure_msl"
+    t.integer "relative_humidity"
+    t.float "solar"
+    t.integer "source_id"
+    t.float "sunshine"
+    t.float "temperature"
+    t.datetime "timestamp", null: false
+    t.datetime "updated_at", null: false
+    t.integer "visibility"
+    t.integer "wind_direction"
+    t.integer "wind_gust_direction"
+    t.float "wind_gust_speed"
+    t.float "wind_speed"
+    t.index ["kind", "lat", "lon", "timestamp"], name: "idx_weather_records_identity", unique: true
+    t.index ["lat", "lon", "timestamp"], name: "idx_weather_records_location_ts"
   end
 end
