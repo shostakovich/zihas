@@ -424,3 +424,19 @@ svg text[data-dashboard-target] {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
+.weather-hour-solar {
+  margin-top: 6px;
+  color: var(--solar);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.weather-hour-solar.is-night {
+  color: var(--muted);
+  font-weight: 500;
+}
+.weather-hour-wind {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}

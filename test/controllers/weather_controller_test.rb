@@ -22,7 +22,30 @@ class WeatherControllerTest < ActionDispatch::IntegrationTest
     assert_select ".weather-current", text: /16,2/
     assert_select ".weather-hour-card", minimum: 1
     assert_select ".weather-day-card", minimum: 1
-    assert_select ".weather-solar", text: /320 W\/m²/
+    assert_select ".weather-hour-card .weather-hour-solar", text: /320 W\/m²/
+  end
+
+  test "hourly card renders prominent solar value during the day" do
+    WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
+      timestamp: Time.zone.parse("2026-05-04 13:00"), daytime: "day",
+      icon: "partly-cloudy-day", temperature: 18, precipitation: 0,
+      solar: 320, wind_speed: 11)
+
+    get "/weather"
+
+    assert_select ".weather-hour-card .weather-hour-solar", text: /320 W\/m²/
+  end
+
+  test "hourly card renders Nacht at night and never a W/m² value" do
+    WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
+      timestamp: Time.zone.parse("2026-05-04 23:00"), daytime: "night",
+      icon: "clear-night", temperature: 11, precipitation: 0,
+      solar: 0, wind_speed: 5)
+
+    get "/weather"
+
+    assert_select ".weather-hour-card .weather-hour-solar", text: /Nacht/
+    assert_select ".weather-hour-card .weather-hour-solar", text: /W\/m²/, count: 0
   end
 
   test "current weather card renders solar row with W/m² during the day" do
