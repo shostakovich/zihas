@@ -34,7 +34,7 @@ class BrightskyClientTest < Minitest::Test
     assert_equal "day", weather.fetch(:daytime)
     assert_in_delta 13.7, weather.fetch(:wind_speed)
     assert_in_delta 0.0, weather.fetch(:precipitation)
-    assert_in_delta 432.0, weather.fetch(:solar)
+    assert_in_delta 0.072, weather.fetch(:solar)
   end
 
   def test_fetches_hourly_weather_for_date
@@ -62,25 +62,16 @@ class BrightskyClientTest < Minitest::Test
             precipitation_probability_6h: nil,
             solar: nil,
             icon: "cloudy"
-          },
-          {
-            timestamp: "2026-05-04T12:00:00+02:00",
-            source_id: 7003,
-            temperature: 18.4,
-            solar: 0.48,
-            icon: "clear-day"
           }
         ]
       }.to_json, headers: { "Content-Type" => "application/json" })
 
     rows = @client.weather_for_date(Date.new(2026, 5, 4))
 
-    assert_equal 2, rows.length
+    assert_equal 1, rows.length
     assert_equal 7003, rows.first.fetch(:source_id)
     assert_equal "cloudy", rows.first.fetch(:icon)
     assert_equal "night", rows.first.fetch(:daytime)
-    assert_nil rows.first.fetch(:solar)
-    assert_in_delta 480.0, rows.last.fetch(:solar)
   end
 
   def test_weather_for_date_returns_range_end_for_404

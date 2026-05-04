@@ -63,7 +63,7 @@ class BrightskyClient
       condition: row["condition"],
       precipitation_probability: nil,
       precipitation_probability_6h: nil,
-      solar: kwh_per_period_to_w_per_m2(row["solar_10"], minutes: 10),
+      solar: row["solar_10"],
       icon: row["icon"],
       daytime: WeatherIcon.daytime_for(icon: row["icon"], timestamp: timestamp, timezone: @timezone)
     }
@@ -89,16 +89,9 @@ class BrightskyClient
       condition: row["condition"],
       precipitation_probability: row["precipitation_probability"],
       precipitation_probability_6h: row["precipitation_probability_6h"],
-      solar: kwh_per_period_to_w_per_m2(row["solar"], minutes: 60),
+      solar: row["solar"],
       icon: row["icon"],
       daytime: WeatherIcon.daytime_for(icon: row["icon"], timestamp: timestamp, timezone: @timezone)
     }
-  end
-
-  # Bright Sky reports `solar` as energy per area over the period (kWh/m²).
-  # Convert to average power per area (W/m²) for a unit-consistent column.
-  def kwh_per_period_to_w_per_m2(value, minutes:)
-    return nil if value.nil?
-    value * 1000.0 * (60.0 / minutes)
   end
 end
