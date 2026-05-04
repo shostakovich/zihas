@@ -42,6 +42,7 @@ group :test do
   gem "selenium-webdriver"
   gem "webmock"
   gem "simplecov", require: false
+  gem "minitest-mock"
 end
 
 gem "tzinfo", "~> 2.0"

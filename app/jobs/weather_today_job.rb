@@ -3,7 +3,7 @@ class WeatherTodayJob < ApplicationJob
 
   def perform(today: Date.current)
     sync = WeatherSync.from_app_config
-    return Rails.logger.info("weather: not configured") if sync.nil?
+    return Rails.logger.info("weather: not configured") unless sync
     sync.sync_today(today: today)
   end
 end

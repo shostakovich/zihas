@@ -7,8 +7,8 @@ end
 ENV["RAILS_ENV"] ||= "test"
 require_relative "../config/environment"
 require "rails/test_help"
+require "minitest/mock"
 require "webmock/minitest"
-require_relative "support/test_mock"
 WebMock.disable_net_connect!(allow_localhost: true)
 
 module ActiveSupport
