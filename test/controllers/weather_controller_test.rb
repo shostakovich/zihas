@@ -25,6 +25,31 @@ class WeatherControllerTest < ActionDispatch::IntegrationTest
     assert_select ".weather-solar", text: /320 W\/m²/
   end
 
+  test "current weather card renders solar row with W/m² during the day" do
+    WeatherRecord.create!(kind: "current", lat: 52.52, lon: 13.405,
+      timestamp: Time.zone.parse("2026-05-04 12:00"), daytime: "day",
+      icon: "clear-day", temperature: 20.8, condition: "dry",
+      wind_speed: 12, relative_humidity: 55, cloud_cover: 88,
+      precipitation: 0, pressure_msl: 1012, solar: 320)
+
+    get "/weather"
+
+    assert_select ".weather-current-solar", text: /320 W\/m²/
+  end
+
+  test "current weather card renders Nacht in the solar row at night" do
+    WeatherRecord.create!(kind: "current", lat: 52.52, lon: 13.405,
+      timestamp: Time.zone.parse("2026-05-04 23:00"), daytime: "night",
+      icon: "clear-night", temperature: 12.0, condition: "dry",
+      wind_speed: 4, relative_humidity: 70, cloud_cover: 10,
+      precipitation: 0, pressure_msl: 1015, solar: 200)
+
+    get "/weather"
+
+    assert_select ".weather-current-solar", text: /Nacht/
+    assert_select ".weather-current-solar", text: /W\/m²/, count: 0
+  end
+
   test "assigns future weather as WeatherDay instances with aggregates" do
     WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
       timestamp: Time.zone.parse("2026-05-05 09:00"), daytime: "day",

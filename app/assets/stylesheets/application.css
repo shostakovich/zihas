@@ -8,6 +8,7 @@
   --accent-bg: linear-gradient(135deg, #fff3bf 0%, #ffe066 100%);
   --online: #40c057;
   --offline: #adb5bd;
+  --solar: #f59e0b;
 }
 
 * { box-sizing: border-box; }
@@ -391,4 +392,35 @@ svg text[data-dashboard-target] {
   .weather-days {
     grid-template-columns: 1fr;
   }
+}
+
+.weather-current-head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+}
+.weather-current {
+  flex-direction: column;
+  align-items: stretch;
+}
+.weather-current-solar {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+.weather-solar-label {
+  color: var(--solar);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+.weather-solar-value {
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
