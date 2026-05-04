@@ -6,10 +6,6 @@ mqtt:
   port: 1883
   topic_prefix: shellies
 
-aggregator:
-  run_at: "03:15"
-  raw_retention_days: 7
-
 plugs:
   - id: bkw
     name: Balkonkraftwerk
