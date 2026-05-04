@@ -24,4 +24,23 @@ class WeatherControllerTest < ActionDispatch::IntegrationTest
     assert_select ".weather-day-card", minimum: 1
     assert_select ".weather-solar", text: /320 W\/m²/
   end
+
+  test "assigns future weather as WeatherDay instances with aggregates" do
+    WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
+      timestamp: Time.zone.parse("2026-05-05 09:00"), daytime: "day",
+      icon: "partly-cloudy-day", temperature: 13, precipitation: 0.4, solar: 220)
+    WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
+      timestamp: Time.zone.parse("2026-05-05 12:00"), daytime: "day",
+      icon: "clear-day", temperature: 17, precipitation: 1.4, solar: 480)
+
+    get "/weather"
+
+    future = controller.view_assigns["future_weather"]
+    assert_equal 1, future.length
+    assert_equal Date.new(2026, 5, 5), future.first.date
+    assert_equal 13, future.first.temp_min
+    assert_equal 17, future.first.temp_max
+    assert_in_delta 1.8, future.first.precip_sum, 0.001
+    assert_equal 480, future.first.solar_peak
+  end
 end

@@ -43,7 +43,9 @@
 
     <div class="section-label">Nächste Tage</div>
     <section class="weather-days">
-      <% @future_weather.each do |date, records| %>
+      <% @future_weather.each do |day| %>
+        <% date = day.date %>
+        <% records = day.records %>
         <article class="weather-day-card">
           <header><strong><%= l(date, format: "%A") rescue date.to_s %></strong></header>
           <div class="weather-day-slots">
