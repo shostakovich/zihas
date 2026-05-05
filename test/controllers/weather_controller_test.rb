@@ -43,6 +43,31 @@ class WeatherControllerTest < ActionDispatch::IntegrationTest
     assert_select ".weather-hour-card .weather-hour-solar", text: /320 W\/m²/
   end
 
+  test "today row hides hours before the current hour" do
+    # Clock is frozen at 2026-05-04 12:00 in setup, so 09:00 must drop out.
+    WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
+      timestamp: Time.zone.parse("2026-05-04 09:00"), daytime: "day",
+      icon: "clear-day", temperature: 12)
+    WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
+      timestamp: Time.zone.parse("2026-05-04 13:00"), daytime: "day",
+      icon: "partly-cloudy-day", temperature: 18, solar: 0.32)
+
+    get "/weather"
+
+    assert_select ".weather-hour-row .weather-hour-top span", text: /09:00/, count: 0
+    assert_select ".weather-hour-row .weather-hour-top span", text: /13:00/, count: 1
+  end
+
+  test "today row extends through end of tomorrow" do
+    WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
+      timestamp: Time.zone.parse("2026-05-05 22:00"), daytime: "night",
+      icon: "clear-night", temperature: 10)
+
+    get "/weather"
+
+    assert_select ".weather-hour-row .weather-hour-top span", text: /22:00/, count: 1
+  end
+
   test "hourly card renders Nacht at night and never a W/m² value" do
     WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
       timestamp: Time.zone.parse("2026-05-04 23:00"), daytime: "night",
