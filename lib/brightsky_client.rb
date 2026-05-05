@@ -65,7 +65,7 @@ class BrightskyClient
       precipitation_probability_6h: nil,
       solar: row["solar_10"],
       icon: row["icon"],
-      daytime: WeatherIcon.daytime_for(icon: row["icon"], timestamp: timestamp, timezone: @timezone)
+      daytime: WeatherIcon.daytime_for(icon: row["icon"], timestamp: timestamp, lat: @lat, lon: @lon, timezone: @timezone)
     }
   end
 
@@ -91,7 +91,7 @@ class BrightskyClient
       precipitation_probability_6h: row["precipitation_probability_6h"],
       solar: row["solar"],
       icon: row["icon"],
-      daytime: WeatherIcon.daytime_for(icon: row["icon"], timestamp: timestamp, timezone: @timezone)
+      daytime: WeatherIcon.daytime_for(icon: row["icon"], timestamp: timestamp, lat: @lat, lon: @lon, timezone: @timezone)
     }
   end
 end
