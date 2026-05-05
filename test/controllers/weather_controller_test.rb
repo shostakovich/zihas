@@ -1,7 +1,14 @@
 require "test_helper"
 
 class WeatherControllerTest < ActionDispatch::IntegrationTest
-  setup { WeatherRecord.delete_all }
+  setup do
+    WeatherRecord.delete_all
+    # Tests reference 2026-05-04..06; freeze "now" so the controller's
+    # Time.zone.today filter is stable regardless of the wall clock.
+    travel_to Time.zone.local(2026, 5, 4, 12, 0)
+  end
+
+  teardown { travel_back }
 
   test "renders empty state without weather data" do
     get "/weather"
