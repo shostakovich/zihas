@@ -19,13 +19,25 @@ class WeatherIconTest < Minitest::Test
     assert_equal "weather_unknown_night.webp", WeatherIcon.asset_name(nil, "night")
   end
 
+  BERLIN = { lat: 52.52, lon: 13.405, timezone: "Europe/Berlin" }.freeze
+
   def test_derives_daytime_from_icon_suffix
-    assert_equal "day", WeatherIcon.daytime_for(icon: "clear-day", timestamp: Time.utc(2026, 5, 4, 22), timezone: "Europe/Berlin")
-    assert_equal "night", WeatherIcon.daytime_for(icon: "clear-night", timestamp: Time.utc(2026, 5, 4, 12), timezone: "Europe/Berlin")
+    assert_equal "day", WeatherIcon.daytime_for(icon: "clear-day", timestamp: Time.utc(2026, 5, 4, 22), **BERLIN)
+    assert_equal "night", WeatherIcon.daytime_for(icon: "clear-night", timestamp: Time.utc(2026, 5, 4, 12), **BERLIN)
   end
 
-  def test_derives_daytime_from_local_hour_for_neutral_icon
-    assert_equal "day", WeatherIcon.daytime_for(icon: "rain", timestamp: Time.utc(2026, 5, 4, 10), timezone: "Europe/Berlin")
-    assert_equal "night", WeatherIcon.daytime_for(icon: "rain", timestamp: Time.utc(2026, 5, 4, 22), timezone: "Europe/Berlin")
+  def test_derives_daytime_from_sun_position_for_neutral_icon
+    # 12:00 CEST is well after sunrise, before sunset → day
+    assert_equal "day", WeatherIcon.daytime_for(icon: "rain", timestamp: Time.utc(2026, 5, 4, 10), **BERLIN)
+    # 00:00 CEST is well after sunset → night
+    assert_equal "night", WeatherIcon.daytime_for(icon: "rain", timestamp: Time.utc(2026, 5, 4, 22), **BERLIN)
+  end
+
+  def test_uses_real_sunrise_not_fixed_window
+    # Berlin around the winter solstice: sunset ~16:30 CEST, so 18:00 CEST is night
+    # even though the previously hardcoded 6–20 window would have flagged it as day.
+    assert_equal "night", WeatherIcon.daytime_for(icon: "cloudy", timestamp: Time.utc(2025, 12, 21, 17), **BERLIN)
+    # And around the summer solstice: 21:00 CEST (= 19:00 UTC) is still daylight.
+    assert_equal "day", WeatherIcon.daytime_for(icon: "cloudy", timestamp: Time.utc(2026, 6, 21, 19), **BERLIN)
   end
 end

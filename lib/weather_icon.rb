@@ -1,5 +1,5 @@
 require "time"
-require "tzinfo"
+require "sun_calc"
 
 module WeatherIcon
   ICONS = %w[
@@ -14,13 +14,11 @@ module WeatherIcon
     "weather_#{base.tr("-", "_")}_#{suffix}.webp"
   end
 
-  def daytime_for(icon:, timestamp:, timezone:)
+  def daytime_for(icon:, timestamp:, lat:, lon:, timezone:)
     return "day" if icon.to_s.end_with?("-day")
     return "night" if icon.to_s.end_with?("-night")
 
-    tz = TZInfo::Timezone.get(timezone)
-    local_time = tz.utc_to_local(timestamp.to_time.utc)
-    (6...20).cover?(local_time.hour) ? "day" : "night"
+    SunCalc.daytime?(timestamp: timestamp, lat: lat, lon: lon, timezone: timezone) ? "day" : "night"
   end
 
   def normalized_icon(icon)
