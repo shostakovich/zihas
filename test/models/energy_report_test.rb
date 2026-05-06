@@ -4,6 +4,7 @@ class EnergyReportTest < ActiveSupport::TestCase
   setup do
     DailyTotal.delete_all
     Sample5min.delete_all
+    DailyEnergySummary.delete_all
 
     @plugs = [
       ConfigLoader::PlugCfg.new(id: "pv", name: "Balkonkraftwerk", role: :producer, driver: :shelly, ain: nil),
@@ -155,23 +156,108 @@ class EnergyReportTest < ActiveSupport::TestCase
     assert_equal [], report.daily_points
     assert_equal(
       {
-        produced_kwh: 0.0,
-        consumed_kwh: 0.0,
-        savings_eur: 0.0,
-        balance_kwh: 0.0,
-        avg_produced_kwh: 0.0,
-        avg_consumed_kwh: 0.0
+        produced_kwh:           0.0,
+        consumed_kwh:           0.0,
+        self_consumed_kwh:      0.0,
+        savings_eur:            0.0,
+        balance_kwh:            0.0,
+        avg_produced_kwh:       0.0,
+        avg_consumed_kwh:       0.0,
+        autarky_ratio:          0.0,
+        self_consumption_ratio: 0.0
       },
       report.summary
     )
     assert_equal [], report.chart_payload.fetch(:daily).fetch(:labels)
   end
 
+  test "summary includes self-consumption and ratios from daily_energy_summary" do
+    DailyTotal.create!(plug_id: "pv",     date: "2026-04-10", energy_wh: 2000)
+    DailyTotal.create!(plug_id: "desk",   date: "2026-04-10", energy_wh: 700)
+    DailyTotal.create!(plug_id: "washer", date: "2026-04-10", energy_wh: 300)
+    DailyEnergySummary.create!(
+      date: "2026-04-10",
+      produced_wh: 2000.0,
+      consumed_wh: 1000.0,
+      self_consumed_wh: 600.0
+    )
+
+    report = EnergyReport.new(
+      params: { start_date: "2026-04-10", end_date: "2026-04-10" },
+      plugs: @plugs
+    ).build
+
+    assert_in_delta 2.0, report.summary.fetch(:produced_kwh)
+    assert_in_delta 1.0, report.summary.fetch(:consumed_kwh)
+    assert_in_delta 0.6, report.summary.fetch(:self_consumed_kwh)
+    assert_in_delta 0.6, report.summary.fetch(:autarky_ratio),           0.001
+    assert_in_delta 0.3, report.summary.fetch(:self_consumption_ratio), 0.001
+  end
+
+  test "ratios are zero when denominators are zero" do
+    DailyEnergySummary.create!(
+      date: "2026-04-10",
+      produced_wh: 0.0,
+      consumed_wh: 0.0,
+      self_consumed_wh: 0.0
+    )
+    DailyTotal.create!(plug_id: "pv", date: "2026-04-10", energy_wh: 0)
+
+    report = EnergyReport.new(
+      params: { start_date: "2026-04-10", end_date: "2026-04-10" },
+      plugs: @plugs
+    ).build
+
+    assert_equal 0.0, report.summary.fetch(:autarky_ratio)
+    assert_equal 0.0, report.summary.fetch(:self_consumption_ratio)
+  end
+
+  test "chart payload includes per-day ratios with nulls for gaps" do
+    DailyTotal.create!(plug_id: "pv", date: "2026-04-10", energy_wh: 2000)
+    DailyTotal.create!(plug_id: "pv", date: "2026-04-11", energy_wh: 2000)
+    DailyEnergySummary.create!(date: "2026-04-10", produced_wh: 2000.0, consumed_wh: 1000.0, self_consumed_wh: 500.0)
+    # 2026-04-11 has no daily_energy_summary row -> gap
+
+    report = EnergyReport.new(
+      params: { start_date: "2026-04-10", end_date: "2026-04-11" },
+      plugs: @plugs
+    ).build
+
+    ratios = report.chart_payload.fetch(:daily).fetch(:ratios)
+    assert_equal 2, ratios.length
+    assert_equal "2026-04-10", ratios.first.fetch(:date)
+    assert_in_delta 50.0, ratios.first.fetch(:autarky_pct),           0.001
+    assert_in_delta 25.0, ratios.first.fetch(:self_consumption_pct), 0.001
+    assert_nil ratios.last.fetch(:autarky_pct)
+    assert_nil ratios.last.fetch(:self_consumption_pct)
+  end
+
+  test "summary excludes days without daily_energy_summary from totals" do
+    DailyTotal.create!(plug_id: "pv", date: "2026-04-10", energy_wh: 2000)
+    DailyTotal.create!(plug_id: "pv", date: "2026-04-11", energy_wh: 2000)
+    DailyEnergySummary.create!(date: "2026-04-10", produced_wh: 2000.0, consumed_wh: 1000.0, self_consumed_wh: 500.0)
+
+    report = EnergyReport.new(
+      params: { start_date: "2026-04-10", end_date: "2026-04-11" },
+      plugs: @plugs
+    ).build
+
+    assert_in_delta 2.0, report.summary.fetch(:produced_kwh)
+    assert_in_delta 1.0, report.summary.fetch(:consumed_kwh)
+    assert_in_delta 0.5, report.summary.fetch(:self_consumed_kwh)
+  end
+
   private
 
   def seed_daily(date, pv:, desk:, washer:)
-    DailyTotal.create!(plug_id: "pv", date: date, energy_wh: pv)
-    DailyTotal.create!(plug_id: "desk", date: date, energy_wh: desk)
+    DailyTotal.create!(plug_id: "pv",     date: date, energy_wh: pv)
+    DailyTotal.create!(plug_id: "desk",   date: date, energy_wh: desk)
     DailyTotal.create!(plug_id: "washer", date: date, energy_wh: washer)
+    DailyEnergySummary.create!(
+      date:             date,
+      produced_wh:      pv,
+      consumed_wh:      desk + washer,
+      self_consumed_wh: 0.0
+    )
   end
 end
