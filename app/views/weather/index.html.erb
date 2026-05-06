@@ -83,10 +83,12 @@
                       aria-controls="seg-<%= day.date.iso8601 %>-<%= idx %>">
                 <div class="weather-segment-label"><%= segment.label %></div>
                 <%= image_tag segment.asset_name, class: "weather-segment-icon", alt: segment.dominant_icon.to_s %>
-                <strong class="weather-segment-temp">
-                  <%= number_with_precision(segment.temp_min || 0, precision: 0, delimiter: ".", separator: ",") %>
-                  – <%= number_with_precision(segment.temp_max || 0, precision: 0, delimiter: ".", separator: ",") %>°
-                </strong>
+                <% if segment.temp_min && segment.temp_max %>
+                  <strong class="weather-segment-temp">
+                    <%= number_with_precision(segment.temp_min, precision: 0, delimiter: ".", separator: ",") %>
+                    – <%= number_with_precision(segment.temp_max, precision: 0, delimiter: ".", separator: ",") %>°
+                  </strong>
+                <% end %>
                 <% if segment.precip_sum.positive? %>
                   <div class="weather-segment-precip">
                     <%= number_with_precision(segment.precip_sum, precision: 1, delimiter: ".", separator: ",") %> mm
