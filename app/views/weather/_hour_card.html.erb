@@ -1,10 +1,10 @@
 <article class="weather-hour-card">
   <div class="weather-hour-top">
-    <span><%= record.timestamp.strftime("%H:%M") %></span>
-    <span>
-      <% if record.precipitation %>
+    <span class="weather-hour-time"><%= record.timestamp.strftime("%H:%M") %></span>
+    <span class="weather-hour-precip">
+      <% if record.precipitation && record.precipitation.positive? %>
         <%= number_with_precision(record.precipitation, precision: 1, delimiter: ".", separator: ",") %> mm
-      <% elsif record.precipitation_probability %>
+      <% elsif record.precipitation_probability && record.precipitation_probability.positive? %>
         <%= record.precipitation_probability %>%
       <% end %>
     </span>
