@@ -88,29 +88,19 @@ export default class extends Controller {
     const selfCons = ratios.map((r) => (r.self_consumption_pct === null ? null : r.self_consumption_pct))
 
     this.ratiosChart = this._replaceChart(this.ratiosCanvasTarget, {
-      type: "line",
+      type: "bar",
       data: {
         labels,
         datasets: [
           {
             label: "Autarkie",
             data: autarky,
-            borderColor: "#10b981",
             backgroundColor: "#10b981",
-            spanGaps: false,
-            fill: false,
-            tension: 0.2,
-            pointRadius: 3,
           },
           {
             label: "Eigenverbrauch",
             data: selfCons,
-            borderColor: "#f59f00",
             backgroundColor: "#f59f00",
-            spanGaps: false,
-            fill: false,
-            tension: 0.2,
-            pointRadius: 3,
           },
         ],
       },
