@@ -34,4 +34,14 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "img.hero-icon[src*='icon_sonne']", 1
     assert_select "image[href*='icon_sonne'][x='184'][y='55'][width='32'][height='32']", 1
   end
+
+  test "dashboard renders Autarkie and Eigenverbrauch tiles" do
+    get "/"
+    assert_response :ok
+    labels = css_select(".tiles .tile .tile-label").map { |n| n.text.squish }
+    assert_includes labels, "Autarkie heute"
+    assert_includes labels, "Eigenverbrauch heute"
+    assert_select "[data-dashboard-target='tileAutarky']", 1
+    assert_select "[data-dashboard-target='tileSelfConsumption']", 1
+  end
 end
