@@ -9,6 +9,7 @@ export default class extends Controller {
     "heroValue",
     "tileConsumption", "tileNetbalance",
     "tileProduced", "tileConsumed", "tileSavings", "tileNettoday",
+    "tileAutarky", "tileSelfConsumption",
     "plugList",
     // Energy flow SVG elements
     "efPvW", "efGridW", "efConsumerW",
@@ -274,6 +275,11 @@ export default class extends Controller {
         const net = (data.produced_wh_today - data.consumed_wh_today) / 1000
         this.tileNettodayTarget.textContent  = (net >= 0 ? "+" : "") + fmt(net) + " kWh"
       }
+      const fmtPct = (ratio) => fmt(ratio * 100, 1) + " %"
+      if (this.hasTileAutarkyTarget)
+        this.tileAutarkyTarget.textContent = fmtPct(data.autarky_ratio || 0)
+      if (this.hasTileSelfConsumptionTarget)
+        this.tileSelfConsumptionTarget.textContent = fmtPct(data.self_consumption_ratio || 0)
     } catch (e) {
       console.error("fetchSummary failed:", e)
     }
