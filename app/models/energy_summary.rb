@@ -116,7 +116,9 @@ class EnergySummary
       cons_w = 0.0
       bucket_rows.each do |row|
         case role_by_id[row["plug_id"]]
-        when :producer then prod_w += row["avg_w"].to_f
+        # Shelly reports producer apower_w with opposite sign (matches the
+        # .abs convention used by the dashboard hero / energy-flow widgets).
+        when :producer then prod_w += row["avg_w"].to_f.abs
         when :consumer then cons_w += row["avg_w"].to_f
         end
       end
