@@ -112,6 +112,29 @@ class DailyEnergySummaryBuilderTest < ActiveSupport::TestCase
     assert_in_delta 0.0,           result.fetch(:self_consumed_wh)
   end
 
+  test "treats negative producer avg_power_w as production magnitude" do
+    bucket_h = 5.0 / 60.0
+
+    # Shelly producer plug reports apower_w with opposite sign — but
+    # aenergy_wh / energy_delta_wh stay positive (monotonic counter).
+    Sample5min.create!(
+      plug_id: "pv", bucket_ts: @midnight, avg_power_w: -200.0,
+      energy_delta_wh: 200.0 * bucket_h, sample_count: 60
+    )
+    Sample5min.create!(
+      plug_id: "desk", bucket_ts: @midnight, avg_power_w: 150.0,
+      energy_delta_wh: 150.0 * bucket_h, sample_count: 60
+    )
+
+    result = DailyEnergySummaryBuilder.new(plugs: @plugs, timezone: @tz).build(@date)
+
+    assert_in_delta 200 * bucket_h, result.fetch(:produced_wh)
+    assert_in_delta 150 * bucket_h, result.fetch(:consumed_wh)
+    # Overlap = min(|−200|, 150) * 5/60 = 12.5 Wh — must NOT be negative.
+    assert_in_delta 150 * bucket_h, result.fetch(:self_consumed_wh)
+    assert result.fetch(:self_consumed_wh) >= 0.0
+  end
+
   test "self-consumption clamps to consumed when overlap power exceeds metered consumption" do
     bucket_h = 5.0 / 60.0
 

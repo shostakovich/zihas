@@ -30,7 +30,10 @@ class DailyEnergySummaryBuilder
         case @plug_role[row.plug_id]
         when :producer
           prod_wh += row.energy_delta_wh
-          prod_w  += row.avg_power_w
+          # Shelly reports producer apower_w with the opposite sign (current
+          # flowing into the plug terminal), matching how the dashboard / detail
+          # chart already use .abs for producer power.
+          prod_w  += row.avg_power_w.abs
         when :consumer
           cons_wh += row.energy_delta_wh
           cons_w  += row.avg_power_w
