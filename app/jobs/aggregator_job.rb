@@ -8,7 +8,7 @@ class AggregatorJob < ApplicationJob
   def perform(today: Date.today, backup_dir: Rails.root.join("storage", "backup").to_s)
     config = ConfigLoader.load(Rails.root.join("config", config_file_name).to_s)
     tz = TZInfo::Timezone.get(config.timezone)
-    aggregator = Aggregator.new(timezone: tz)
+    aggregator = Aggregator.new(timezone: tz, plugs: config.plugs)
 
     Rails.logger.info("aggregator: starting scheduled run")
     aggregator.run_once(today: today)

@@ -14,24 +14,23 @@ class DailyEnergySummaryBuilder
     end_ts   = start_ts + 86_400
 
     rows = Sample5min.where(bucket_ts: start_ts..(end_ts - 1)).to_a
-    bucket_h = BUCKET_SECONDS / 3600.0
 
     produced_wh      = 0.0
     consumed_wh      = 0.0
     self_consumed_wh = 0.0
 
     rows.group_by(&:bucket_ts).each_value do |bucket_rows|
-      prod_w = 0.0
-      cons_w = 0.0
+      prod_wh = 0.0
+      cons_wh = 0.0
       bucket_rows.each do |row|
         case @plug_role[row.plug_id]
-        when :producer then prod_w += row.avg_power_w
-        when :consumer then cons_w += row.avg_power_w
+        when :producer then prod_wh += row.energy_delta_wh
+        when :consumer then cons_wh += row.energy_delta_wh
         end
       end
-      produced_wh      += prod_w * bucket_h
-      consumed_wh      += cons_w * bucket_h
-      self_consumed_wh += [ prod_w, cons_w ].min * bucket_h
+      produced_wh      += prod_wh
+      consumed_wh      += cons_wh
+      self_consumed_wh += [ prod_wh, cons_wh ].min
     end
 
     {

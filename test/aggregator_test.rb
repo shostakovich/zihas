@@ -11,6 +11,7 @@ class AggregatorTest < ActiveSupport::TestCase
     Sample.delete_all
     Sample5min.delete_all
     DailyTotal.delete_all
+    DailyEnergySummary.delete_all  # <-- add this line
 
     @tz         = TZInfo::Timezone.get("Europe/Berlin")
     @aggregator = Aggregator.new(timezone: @tz, raw_retention_days: 7)
@@ -185,5 +186,56 @@ class AggregatorTest < ActiveSupport::TestCase
     Sample.create!(plug_id: "bkw", ts: now - 3 * 86_400, apower_w: 1, aenergy_wh: 1)
     @aggregator.purge_old_raw!
     assert_equal 1, Sample.count
+  end
+
+  test "aggregate_day writes daily_energy_summary row" do
+    plugs = [
+      ConfigLoader::PlugCfg.new(id: "bkw",    name: "BKW",    role: :producer, driver: :shelly, ain: nil),
+      ConfigLoader::PlugCfg.new(id: "fridge", name: "Fridge", role: :consumer, driver: :shelly, ain: nil)
+    ]
+    aggregator = Aggregator.new(timezone: @tz, raw_retention_days: 7, plugs: plugs)
+
+    start_ts = berlin_midnight_utc("2026-04-10")
+    # 1 hour of producer 200W and consumer 100W simultaneously, sampled every minute
+    (0..3600).step(60) do |dt|
+      Sample.create!(plug_id: "bkw",    ts: start_ts + dt, apower_w: 200.0, aenergy_wh: 200.0 * dt / 3600.0)
+      Sample.create!(plug_id: "fridge", ts: start_ts + dt, apower_w: 100.0, aenergy_wh: 100.0 * dt / 3600.0)
+    end
+
+    aggregator.aggregate_day("2026-04-10")
+
+    summary = DailyEnergySummary.find("2026-04-10")
+    assert_in_delta 200.0, summary.produced_wh,      1.0
+    assert_in_delta 100.0, summary.consumed_wh,      1.0
+    assert_in_delta 100.0, summary.self_consumed_wh, 1.0
+  end
+
+  test "aggregate_day is idempotent for daily_energy_summary" do
+    plugs = [
+      ConfigLoader::PlugCfg.new(id: "bkw",    name: "BKW",    role: :producer, driver: :shelly, ain: nil),
+      ConfigLoader::PlugCfg.new(id: "fridge", name: "Fridge", role: :consumer, driver: :shelly, ain: nil)
+    ]
+    aggregator = Aggregator.new(timezone: @tz, raw_retention_days: 7, plugs: plugs)
+
+    start_ts = berlin_midnight_utc("2026-04-10")
+    Sample.create!(plug_id: "bkw",    ts: start_ts,         apower_w: 200, aenergy_wh: 0)
+    Sample.create!(plug_id: "bkw",    ts: start_ts + 600,   apower_w: 200, aenergy_wh: 33.3)
+    Sample.create!(plug_id: "fridge", ts: start_ts,         apower_w: 100, aenergy_wh: 0)
+    Sample.create!(plug_id: "fridge", ts: start_ts + 600,   apower_w: 100, aenergy_wh: 16.7)
+
+    aggregator.aggregate_day("2026-04-10")
+    first = DailyEnergySummary.find("2026-04-10").attributes
+    aggregator.aggregate_day("2026-04-10")
+
+    assert_equal 1, DailyEnergySummary.count
+    assert_in_delta first.fetch("self_consumed_wh"), DailyEnergySummary.find("2026-04-10").self_consumed_wh, 0.01
+  end
+
+  test "aggregate_day does not write summary when plugs are not provided" do
+    aggregator = Aggregator.new(timezone: @tz, raw_retention_days: 7)
+    seed_day(plug_id: "bkw", date: "2026-04-10", start_energy: 1000.0, end_energy: 1800.0)
+
+    aggregator.aggregate_day("2026-04-10")
+    assert_equal 0, DailyEnergySummary.count
   end
 end
