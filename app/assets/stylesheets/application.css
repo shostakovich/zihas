@@ -350,13 +350,11 @@ svg text[data-dashboard-target] {
   margin-bottom: 16px;
 }
 .weather-hour-card {
-  min-width: 132px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px;
+  min-width: 96px;
+  padding: 4px 4px;
   color: var(--muted);
   font-size: 12px;
+  text-align: center;
 }
 .weather-hour-top {
   display: flex;
@@ -445,13 +443,15 @@ svg text[data-dashboard-target] {
   font-weight: 500;
 }
 .weather-day-hours {
-  margin-top: 10px;
+  margin-top: 0;
 }
 .weather-day-hour-row {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   overflow-x: auto;
-  padding: 4px 0;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
 .weather-day-hour-row[hidden] {
   display: none;
