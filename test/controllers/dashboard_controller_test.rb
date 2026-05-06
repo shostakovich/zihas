@@ -40,7 +40,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_response :ok
     labels = css_select(".tiles .tile .tile-label").map { |n| n.text.squish }
     assert_includes labels, "Autarkie heute"
-    assert_includes labels, "Eigenverbrauch heute"
+    assert_includes labels, "Verbrauch heute"
     assert_select "[data-dashboard-target='tileAutarky']", 1
     assert_select "[data-dashboard-target='tileSelfConsumption']", 1
   end
