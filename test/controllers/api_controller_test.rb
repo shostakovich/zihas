@@ -78,6 +78,27 @@ class ApiControllerTest < ActionDispatch::IntegrationTest
     assert_in_delta 1000.0 * 0.2902 / 1000.0, data["savings_eur_today"], 0.001
   end
 
+  test "GET /api/today/summary includes self-consumption fields" do
+    tz       = TZInfo::Timezone.get("Europe/Berlin")
+    midnight = tz.local_to_utc(Time.parse("#{Date.today} 00:00:00")).to_i
+
+    (0..3600).step(60) do |dt|
+      Sample.create!(plug_id: "bkw",    ts: midnight + dt, apower_w: 200.0, aenergy_wh: 200.0 * dt / 3600.0)
+      Sample.create!(plug_id: "fridge", ts: midnight + dt, apower_w: 100.0, aenergy_wh: 100.0 * dt / 3600.0)
+    end
+
+    get "/api/today/summary", as: :json
+    assert_response :ok
+
+    data = response.parsed_body
+    assert data.key?("self_consumed_wh_today")
+    assert data.key?("autarky_ratio")
+    assert data.key?("self_consumption_ratio")
+    assert_in_delta 100.0, data["self_consumed_wh_today"], 2.0
+    assert_in_delta 1.0,   data["autarky_ratio"],          0.05
+    assert_in_delta 0.5,   data["self_consumption_ratio"], 0.05
+  end
+
   # --- /api/history ---
 
   test "GET /api/history returns requested number of days" do

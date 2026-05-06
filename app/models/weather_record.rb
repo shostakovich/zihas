@@ -13,6 +13,24 @@ class WeatherRecord < ApplicationRecord
   scope :forecast, -> { where(kind: "forecast") }
   scope :historic, -> { where(kind: "historic") }
 
+  def self.latest_current
+    current.order(updated_at: :desc).first
+  end
+
+  def self.today_hourly(now: Time.current)
+    where(kind: [ "forecast", "historic" ])
+      .where(timestamp: now.beginning_of_hour..now.to_date.tomorrow.end_of_day)
+      .order(:timestamp)
+  end
+
+  def self.future_days(today: Time.zone.today)
+    forecast
+      .where("timestamp > ?", today.end_of_day)
+      .order(:timestamp)
+      .group_by { |record| record.timestamp.to_date }
+      .map { |date, records| WeatherDay.from_records(date, records) }
+  end
+
   def asset_name
     WeatherIcon.asset_name(icon, daytime)
   end

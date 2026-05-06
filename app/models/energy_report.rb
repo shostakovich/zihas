@@ -44,7 +44,8 @@ class EnergyReport
 
     range = resolve_range(latest)
     rows = daily_rows(range.fetch(:start_date), range.fetch(:end_date))
-    daily_points = build_daily_points(rows, range.fetch(:start_date), range.fetch(:end_date))
+    summaries = daily_summaries(range.fetch(:start_date), range.fetch(:end_date))
+    daily_points = build_daily_points(summaries, range.fetch(:start_date), range.fetch(:end_date))
     summary = summarize(daily_points)
     selected_date = resolve_selected_date(range.fetch(:start_date), range.fetch(:end_date))
     detail_range = resolve_detail_range(range.fetch(:start_date), range.fetch(:end_date))
@@ -88,7 +89,7 @@ class EnergyReport
       detail_start_date: start_date,
       detail_end_date: end_date,
       chart_payload: {
-        daily: { labels: [], produced_kwh: [], consumed_kwh: [], balance_kwh: [] },
+        daily: { labels: [], produced_kwh: [], consumed_kwh: [], balance_kwh: [], consumer_series: [], ratios: [] },
         detail: { labels: [], series: [] }
       },
       messages: @messages
@@ -141,47 +142,72 @@ class EnergyReport
     DailyTotal.where(date: start_date.to_s..end_date.to_s).to_a
   end
 
-  def build_daily_points(rows, start_date, end_date)
-    rows_by_date = rows.group_by(&:date)
+  def daily_summaries(start_date, end_date)
+    DailyEnergySummary.where(date: start_date.to_s..end_date.to_s).index_by(&:date)
+  end
 
+  def build_daily_points(summaries, start_date, end_date)
     (start_date..end_date).map do |date|
       date_s = date.to_s
-      day_rows = rows_by_date.fetch(date_s, [])
-      produced_wh = sum_role(day_rows, :producer)
-      consumed_wh = sum_role(day_rows, :consumer)
-
-      {
-        date: date_s,
-        produced_kwh: kwh(produced_wh),
-        consumed_kwh: kwh(consumed_wh),
-        balance_kwh: kwh(produced_wh - consumed_wh)
-      }
+      summary = summaries[date_s]
+      if summary
+        {
+          date: date_s,
+          produced_kwh:      kwh(summary.produced_wh),
+          consumed_kwh:      kwh(summary.consumed_wh),
+          self_consumed_kwh: kwh(summary.self_consumed_wh),
+          balance_kwh:       kwh(summary.produced_wh - summary.consumed_wh),
+          covered:           true
+        }
+      else
+        {
+          date: date_s,
+          produced_kwh:      0.0,
+          consumed_kwh:      0.0,
+          self_consumed_kwh: 0.0,
+          balance_kwh:       0.0,
+          covered:           false
+        }
+      end
     end
   end
 
   def summarize(daily_points)
-    produced = daily_points.sum { |point| point.fetch(:produced_kwh) }
-    consumed = daily_points.sum { |point| point.fetch(:consumed_kwh) }
-    days = daily_points.length
+    covered_points = daily_points.select { |p| p.fetch(:covered) }
+    produced       = covered_points.sum { |p| p.fetch(:produced_kwh) }
+    consumed       = covered_points.sum { |p| p.fetch(:consumed_kwh) }
+    self_consumed  = covered_points.sum { |p| p.fetch(:self_consumed_kwh) }
+    days = covered_points.length
 
     {
-      produced_kwh: produced.round(3),
-      consumed_kwh: consumed.round(3),
-      savings_eur: @savings_calculator.savings_eur(produced * 1000.0).round(2),
-      balance_kwh: (produced - consumed).round(3),
-      avg_produced_kwh: average_kwh(produced, days),
-      avg_consumed_kwh: average_kwh(consumed, days)
+      produced_kwh:           produced.round(3),
+      consumed_kwh:           consumed.round(3),
+      self_consumed_kwh:      self_consumed.round(3),
+      savings_eur:            @savings_calculator.savings_eur(produced * 1000.0).round(2),
+      balance_kwh:            (produced - consumed).round(3),
+      avg_produced_kwh:       average_kwh(produced, days),
+      avg_consumed_kwh:       average_kwh(consumed, days),
+      autarky_ratio:          ratio(self_consumed, consumed),
+      self_consumption_ratio: ratio(self_consumed, produced)
     }
+  end
+
+  def ratio(numerator, denominator)
+    return 0.0 if denominator.nil? || denominator.zero?
+    (numerator.to_f / denominator).round(4)
   end
 
   def empty_summary
     {
-      produced_kwh: 0.0,
-      consumed_kwh: 0.0,
-      savings_eur: 0.0,
-      balance_kwh: 0.0,
-      avg_produced_kwh: 0.0,
-      avg_consumed_kwh: 0.0
+      produced_kwh:           0.0,
+      consumed_kwh:           0.0,
+      self_consumed_kwh:      0.0,
+      savings_eur:            0.0,
+      balance_kwh:            0.0,
+      avg_produced_kwh:       0.0,
+      avg_consumed_kwh:       0.0,
+      autarky_ratio:          0.0,
+      self_consumption_ratio: 0.0
     }
   end
 
@@ -213,8 +239,26 @@ class EnergyReport
       produced_kwh: daily_points.map { |point| point.fetch(:produced_kwh) },
       consumed_kwh: daily_points.map { |point| point.fetch(:consumed_kwh) },
       balance_kwh: daily_points.map { |point| point.fetch(:balance_kwh) },
-      consumer_series: consumer_daily_series(daily_points.map { |point| point.fetch(:date) })
+      consumer_series: consumer_daily_series(daily_points.map { |point| point.fetch(:date) }),
+      ratios: daily_points.map { |point| ratio_point(point) }
     }
+  end
+
+  def ratio_point(point)
+    if point.fetch(:covered)
+      {
+        date: point.fetch(:date),
+        autarky_pct:          ratio_pct(point.fetch(:self_consumed_kwh), point.fetch(:consumed_kwh)),
+        self_consumption_pct: ratio_pct(point.fetch(:self_consumed_kwh), point.fetch(:produced_kwh))
+      }
+    else
+      { date: point.fetch(:date), autarky_pct: nil, self_consumption_pct: nil }
+    end
+  end
+
+  def ratio_pct(numerator, denominator)
+    return 0.0 if denominator.nil? || denominator.zero?
+    ((numerator.to_f / denominator) * 100).round(1)
   end
 
   def consumer_daily_series(labels)

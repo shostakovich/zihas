@@ -1,0 +1,35 @@
+<%= turbo_frame_tag "weather_current" do %>
+  <% if current_weather %>
+    <section class="weather-current chart-card">
+      <div class="weather-current-head">
+        <%= image_tag current_weather.asset_name, class: "weather-current-icon", alt: current_weather.icon.to_s %>
+        <div class="weather-current-main">
+          <div class="tile-label">Jetzt</div>
+          <div class="weather-current-temp"><%= number_with_precision(current_weather.temperature, precision: 1, delimiter: ".", separator: ",") %> °C</div>
+          <div class="muted-text"><%= current_weather.condition || "Wetter" %> · Wind <%= number_with_precision(current_weather.wind_speed || 0, precision: 0, delimiter: ".", separator: ",") %> km/h</div>
+        </div>
+        <div class="weather-current-facts">
+          <div><strong><%= current_weather.relative_humidity || "—" %>%</strong><br>Luft</div>
+          <div><strong><%= current_weather.cloud_cover || "—" %>%</strong><br>Wolken</div>
+          <div><strong><%= number_with_precision(current_weather.precipitation || 0, precision: 1, delimiter: ".", separator: ",") %> mm</strong><br>Regen</div>
+          <div><strong><%= number_with_precision(current_weather.pressure_msl || 0, precision: 0, delimiter: ".", separator: ",") %></strong><br>hPa</div>
+        </div>
+      </div>
+      <div class="weather-current-solar">
+        <span class="weather-solar-label">
+          <%= image_tag "weather_clear_day.webp", class: "weather-inline-icon", alt: "" %>
+          Solar
+        </span>
+        <span class="weather-solar-value">
+          <% if current_weather.daytime == "night" %>
+            Nacht
+          <% elsif current_weather.solar_w_per_m2 %>
+            <%= number_with_precision(current_weather.solar_w_per_m2, precision: 0, delimiter: ".", separator: ",") %> W/m²
+          <% else %>
+            —
+          <% end %>
+        </span>
+      </div>
+    </section>
+  <% end %>
+<% end %>

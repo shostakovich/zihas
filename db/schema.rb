@@ -10,7 +10,13 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_04_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_06_000001) do
+  create_table "daily_energy_summary", primary_key: "date", id: :string, force: :cascade do |t|
+    t.float "consumed_wh", null: false
+    t.float "produced_wh", null: false
+    t.float "self_consumed_wh", null: false
+  end
+
   create_table "daily_totals", primary_key: ["plug_id", "date"], force: :cascade do |t|
     t.string "date", limit: 255, null: false
     t.float "energy_wh", null: false

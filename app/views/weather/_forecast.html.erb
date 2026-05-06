@@ -1,0 +1,47 @@
+<%= turbo_frame_tag "weather_forecast" do %>
+  <% if future_weather.any? %>
+    <div class="section-label">Nächste Tage</div>
+    <section class="weather-days">
+      <% future_weather.each do |day| %>
+        <article class="weather-day-card">
+          <header class="weather-day-head">
+            <div>
+              <div class="weather-day-name"><strong><%= day.weekday_label %></strong> <span class="weather-day-date"><%= day.date_label %></span></div>
+              <div class="weather-day-summary">
+                <%= number_with_precision(day.temp_min, precision: 0, delimiter: ".", separator: ",") %>
+                – <%= number_with_precision(day.temp_max, precision: 0, delimiter: ".", separator: ",") %> °C
+                <% if day.precip_sum.positive? %>
+                  · Regen <%= number_with_precision(day.precip_sum, precision: 1, delimiter: ".", separator: ",") %> mm
+                <% end %>
+              </div>
+            </div>
+            <% if day.solar_peak_w_per_m2 %>
+              <div class="weather-day-peak">
+                <%= image_tag "weather_clear_day.webp", class: "weather-inline-icon", alt: "" %>
+                Spitze <%= number_with_precision(day.solar_peak_w_per_m2, precision: 0, delimiter: ".", separator: ",") %> W/m²
+              </div>
+            <% end %>
+          </header>
+          <div class="weather-day-slots">
+            <% day.records.select { |r| (r.timestamp.hour % 3).zero? }.each do |record| %>
+              <div class="weather-day-slot">
+                <div class="weather-day-slot-time"><%= record.timestamp.strftime("%H") %></div>
+                <%= image_tag record.asset_name, class: "weather-day-icon", alt: record.icon.to_s %>
+                <strong><%= number_with_precision(record.temperature, precision: 0, delimiter: ".", separator: ",") %>°</strong>
+                <div class="weather-day-slot-solar<%= record.daytime == "night" ? " is-night" : "" %>">
+                  <% if record.daytime == "night" %>
+                    Nacht
+                  <% elsif record.solar_w_per_m2 %>
+                    <%= number_with_precision(record.solar_w_per_m2, precision: 0, delimiter: ".", separator: ",") %> W/m²
+                  <% else %>
+                    — W/m²
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </article>
+      <% end %>
+    </section>
+  <% end %>
+<% end %>

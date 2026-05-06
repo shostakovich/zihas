@@ -5,5 +5,7 @@ class WeatherForecastJob < ApplicationJob
     sync = WeatherSync.from_app_config
     return Rails.logger.info("weather: not configured") unless sync
     sync.sync_forecast(today: today)
+    WeatherBroadcaster.broadcast_today
+    WeatherBroadcaster.broadcast_forecast
   end
 end

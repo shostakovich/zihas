@@ -3,8 +3,9 @@ class EnergySummary
   # above any realistic single-circuit load, while counter glitches can imply
   # megawatts for a few seconds.
   MAX_PLAUSIBLE_W = 20_000
+  BUCKET_SECONDS = 300
 
-  attr_reader :produced_wh, :consumed_wh, :savings_eur, :date
+  attr_reader :produced_wh, :consumed_wh, :self_consumed_wh, :savings_eur, :date
 
   def initialize(config:)
     @config     = config
@@ -14,11 +15,22 @@ class EnergySummary
 
   def compute_today
     start_ts, end_ts, today = today_bounds_utc
-    @produced_wh = energy_delta_wh(producer_ids, start_ts, end_ts)
-    @consumed_wh = energy_delta_wh(consumer_ids, start_ts, end_ts)
-    @savings_eur = @calculator.savings_eur(@produced_wh)
-    @date        = today.to_s
+    @produced_wh      = energy_delta_wh(producer_ids, start_ts, end_ts)
+    @consumed_wh      = energy_delta_wh(consumer_ids, start_ts, end_ts)
+    @self_consumed_wh = [ compute_self_consumed_wh(start_ts, end_ts), @produced_wh, @consumed_wh ].min
+    @savings_eur      = @calculator.savings_eur(@produced_wh)
+    @date             = today.to_s
     self
+  end
+
+  def autarky_ratio
+    return 0.0 if @consumed_wh.nil? || @consumed_wh.zero?
+    @self_consumed_wh / @consumed_wh
+  end
+
+  def self_consumption_ratio
+    return 0.0 if @produced_wh.nil? || @produced_wh.zero?
+    @self_consumed_wh / @produced_wh
   end
 
   private
@@ -70,5 +82,46 @@ class EnergySummary
       ActiveRecord::Base.sanitize_sql_array([ sql, plug_ids, start_ts, end_ts ])
     )
     rows.sum { |row| row["delta"] || 0 }.to_f
+  end
+
+  def compute_self_consumed_wh(start_ts, end_ts)
+    plug_ids = @config.plugs.map(&:id)
+    return 0.0 if plug_ids.empty?
+
+    role_by_id = @config.plugs.each_with_object({}) { |p, h| h[p.id] = p.role }
+
+    # Self-consumption is the simultaneous power overlap. Computing it from
+    # cumulative-counter deltas would mis-state buckets where the plausibility
+    # cap zeroes one side's delta but apower_w stays real, so use bucketed
+    # average power directly. The caller clamps the result to the metered
+    # produced/consumed totals to keep the invariant.
+    rows = ActiveRecord::Base.connection.exec_query(
+      ActiveRecord::Base.sanitize_sql_array([
+        <<~SQL, plug_ids, start_ts, end_ts
+          SELECT plug_id,
+                 (ts / #{BUCKET_SECONDS}) * #{BUCKET_SECONDS} AS bucket_ts,
+                 AVG(apower_w) AS avg_w
+            FROM samples
+           WHERE plug_id IN (?) AND ts >= ? AND ts < ?
+           GROUP BY plug_id, bucket_ts
+        SQL
+      ])
+    )
+
+    bucket_h = BUCKET_SECONDS / 3600.0
+    by_bucket = rows.group_by { |r| r["bucket_ts"] }
+    total = 0.0
+    by_bucket.each_value do |bucket_rows|
+      prod_w = 0.0
+      cons_w = 0.0
+      bucket_rows.each do |row|
+        case role_by_id[row["plug_id"]]
+        when :producer then prod_w += row["avg_w"].to_f
+        when :consumer then cons_w += row["avg_w"].to_f
+        end
+      end
+      total += [ prod_w, cons_w ].min * bucket_h
+    end
+    total
   end
 end
