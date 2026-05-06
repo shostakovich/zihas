@@ -17,6 +17,20 @@ class WeatherControllerTest < ActionDispatch::IntegrationTest
     assert_select ".empty-state", text: /Noch keine Wetterdaten/
   end
 
+  test "subscribes to the weather turbo stream" do
+    get "/weather"
+
+    assert_select "turbo-cable-stream-source[channel=?]", "Turbo::StreamsChannel"
+  end
+
+  test "renders the three weather turbo frames" do
+    get "/weather"
+
+    assert_select "turbo-frame#weather_current"
+    assert_select "turbo-frame#weather_today"
+    assert_select "turbo-frame#weather_forecast"
+  end
+
   test "renders current weather today and next days" do
     WeatherRecord.create!(kind: "current", lat: 52.52, lon: 13.405, timestamp: Time.zone.parse("2026-05-04 12:00"), daytime: "day", icon: "cloudy", temperature: 16.2, condition: "dry", wind_speed: 9.7, relative_humidity: 80, cloud_cover: 100, precipitation: 0, pressure_msl: 1011.6)
     WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405, timestamp: Time.zone.parse("2026-05-04 13:00"), daytime: "day", icon: "partly-cloudy-day", temperature: 18, precipitation: 0, solar: 0.32, wind_speed: 11)
