@@ -79,6 +79,7 @@
                       data-weather-segments-target="tile"
                       data-action="click->weather-segments#toggle"
                       data-segment-index="<%= idx %>"
+                      data-segment-complete="<%= segment.complete? %>"
                       aria-expanded="false"
                       aria-controls="seg-<%= day.date.iso8601 %>-<%= idx %>">
                 <div class="weather-segment-label"><%= segment.label %></div>

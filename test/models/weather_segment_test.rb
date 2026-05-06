@@ -98,6 +98,30 @@ class WeatherSegmentTest < ActiveSupport::TestCase
     assert_equal "night", seg.dominant_daytime
   end
 
+  test "expected_hours, available_hours, complete?/partial?/empty? reflect record count" do
+    six = (12...18).map { |h| make_record(hour: h) }
+    seg = segment(six)
+    assert_equal 6, seg.expected_hours
+    assert_equal 6, seg.available_hours
+    assert seg.complete?
+    refute seg.partial?
+    refute seg.empty?
+
+    partial = segment(six.first(3))
+    assert_equal 6, partial.expected_hours
+    assert_equal 3, partial.available_hours
+    refute partial.complete?
+    assert partial.partial?
+    refute partial.empty?
+
+    empty = segment([])
+    assert_equal 6, empty.expected_hours
+    assert_equal 0, empty.available_hours
+    refute empty.complete?
+    refute empty.partial?
+    assert empty.empty?
+  end
+
   test "asset_name combines dominant icon and dominant daytime" do
     records = [
       make_record(hour: 12, icon: "clear-day", daytime: "day"),

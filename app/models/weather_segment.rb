@@ -5,6 +5,26 @@ WeatherSegment = Data.define(:label, :hour_range, :records) do
     thunderstorm hail snow sleet rain wind fog cloudy partly-cloudy clear unknown
   ].freeze
 
+  def expected_hours
+    hour_range.size
+  end
+
+  def available_hours
+    records.size
+  end
+
+  def complete?
+    available_hours >= expected_hours
+  end
+
+  def empty?
+    records.empty?
+  end
+
+  def partial?
+    !empty? && !complete?
+  end
+
   def temp_min
     records.map(&:temperature).compact.min
   end
