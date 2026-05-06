@@ -390,6 +390,7 @@ svg text[data-dashboard-target] {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 12px;
+  min-width: 0;
 }
 .weather-day-segments {
   display: grid;
