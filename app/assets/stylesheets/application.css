@@ -346,28 +346,35 @@ svg text[data-dashboard-target] {
   display: flex;
   gap: 10px;
   overflow-x: auto;
-  padding-bottom: 6px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
   margin-bottom: 16px;
 }
 .weather-hour-card {
-  min-width: 132px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px;
-  color: var(--muted);
+  min-width: 96px;
+  padding: 0;
+  color: var(--text);
   font-size: 12px;
+  text-align: center;
 }
-.weather-hour-top {
-  display: flex;
-  justify-content: space-between;
+.weather-hour-time {
+  color: var(--text);
+  font-weight: 600;
+  text-align: center;
+}
+.weather-hour-extras {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--muted);
 }
 .weather-hour-icon {
   width: 42px;
   height: 42px;
   object-fit: contain;
   display: block;
-  margin: 8px 0;
+  margin: 8px auto;
 }
 .weather-hour-card strong {
   color: var(--text);
@@ -383,27 +390,86 @@ svg text[data-dashboard-target] {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 12px;
+  min-width: 0;
 }
-.weather-day-slots {
+.weather-day-segments {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
-.weather-day-slot {
+.weather-segment {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
   color: var(--muted);
+  cursor: pointer;
+  font: inherit;
   font-size: 11px;
   text-align: center;
 }
-.weather-day-icon {
-  width: 56px;
-  height: 56px;
+.weather-segment:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.weather-segment.is-selected {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--border);
+  color: var(--text);
+}
+.weather-segment-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+.weather-segment-icon {
+  width: 72px;
+  height: 72px;
   object-fit: contain;
   display: block;
-  margin: 4px auto;
+  margin: 2px auto;
 }
-.weather-day-slot strong {
+.weather-segment-temp {
   color: var(--text);
-  font-size: 15px;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+.weather-segment-precip {
+  color: var(--text);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.weather-segment-solar {
+  color: var(--solar);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.weather-segment-solar.is-night {
+  color: var(--muted);
+  font-weight: 500;
+}
+.weather-day-hours {
+  margin-top: 12px;
+}
+.weather-day-hour-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+}
+.weather-day-hour-row[hidden] {
+  display: none;
+}
+.weather-hour-row .weather-hour-card,
+.weather-day-hour-row .weather-hour-card {
+  flex: 0 0 auto;
 }
 .weather-current-head {
   display: flex;
@@ -442,15 +508,6 @@ svg text[data-dashboard-target] {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
-.weather-hour-solar.is-night {
-  color: var(--muted);
-  font-weight: 500;
-}
-.weather-hour-wind {
-  margin-top: 4px;
-  font-size: 11px;
-  color: var(--muted);
-}
 .weather-day-head {
   display: flex;
   justify-content: space-between;
@@ -486,22 +543,6 @@ svg text[data-dashboard-target] {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
-.weather-day-slots {
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-}
-.weather-day-slot-time {
-  font-size: 11px;
-}
-.weather-day-slot-solar {
-  font-size: 10px;
-  color: var(--solar);
-  font-variant-numeric: tabular-nums;
-  margin-top: 2px;
-}
-.weather-day-slot-solar.is-night {
-  color: var(--muted);
-  font-weight: 400;
-}
 @media (max-width: 640px) {
   .weather-current-head {
     flex-wrap: wrap;
@@ -514,9 +555,13 @@ svg text[data-dashboard-target] {
   .weather-days {
     grid-template-columns: 1fr;
   }
-  .weather-day-slots {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    row-gap: 12px;
+  .weather-day-segments {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 8px;
+  }
+  .weather-segment-icon {
+    width: 80px;
+    height: 80px;
   }
 }
 
