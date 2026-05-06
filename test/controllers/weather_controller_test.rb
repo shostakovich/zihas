@@ -151,17 +151,61 @@ class WeatherControllerTest < ActionDispatch::IntegrationTest
     assert_select ".weather-day-card .weather-day-peak", count: 0
   end
 
-  test "day card renders Nacht in slots whose record is at night" do
-    WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
-      timestamp: Time.zone.parse("2026-05-06 03:00"), daytime: "night",
-      icon: "clear-night", temperature: 11)
+  test "day card renders Nacht in segment-solar when all hours are at night" do
+    (0...6).each do |h|
+      WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
+        timestamp: Time.zone.parse("2026-05-06 #{format('%02d', h)}:00"),
+        daytime: "night", icon: "clear-night", temperature: 10 + h)
+    end
     WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
       timestamp: Time.zone.parse("2026-05-06 12:00"), daytime: "day",
       icon: "clear-day", temperature: 17, solar: 480)
 
     get "/weather"
 
-    assert_select ".weather-day-slot .weather-day-slot-solar", text: /Nacht/
+    assert_select ".weather-segment-solar.is-night", text: /Nacht/
+  end
+
+  test "next-day card renders four segment tiles" do
+    WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
+      timestamp: Time.zone.parse("2026-05-05 14:00"), daytime: "day",
+      icon: "clear-day", temperature: 20)
+
+    get "/weather"
+
+    assert_select ".weather-day-card .weather-day-segments .weather-segment", count: 4
+    assert_select ".weather-day-card .weather-segment-label", text: "Nacht"
+    assert_select ".weather-day-card .weather-segment-label", text: "Vormittag"
+    assert_select ".weather-day-card .weather-segment-label", text: "Nachmittag"
+    assert_select ".weather-day-card .weather-segment-label", text: "Abend"
+  end
+
+  test "Nachmittag segment surfaces a 14:00 thunderstorm icon" do
+    WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
+      timestamp: Time.zone.parse("2026-05-05 12:00"), daytime: "day",
+      icon: "clear-day", temperature: 22)
+    WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
+      timestamp: Time.zone.parse("2026-05-05 14:00"), daytime: "day",
+      icon: "thunderstorm", temperature: 19)
+    WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
+      timestamp: Time.zone.parse("2026-05-05 15:00"), daytime: "day",
+      icon: "clear-day", temperature: 23)
+
+    get "/weather"
+
+    assert_select ".weather-segment", text: /Nachmittag/ do
+      assert_select "img.weather-segment-icon[src*=?]", "weather_thunderstorm_day"
+    end
+  end
+
+  test "next-day card emits hour rows hidden by default" do
+    WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
+      timestamp: Time.zone.parse("2026-05-05 14:00"), daytime: "day",
+      icon: "clear-day", temperature: 20)
+
+    get "/weather"
+
+    assert_select ".weather-day-hours .weather-day-hour-row[hidden]", count: 4
   end
 
   test "assigns future weather as WeatherDay instances with aggregates" do
