@@ -3,6 +3,7 @@ require "test_helper"
 class ReportsControllerTest < ActionDispatch::IntegrationTest
   setup do
     DailyTotal.delete_all
+    DailyEnergySummary.delete_all
   end
 
   test "reports page renders" do
@@ -27,9 +28,9 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     get "/reports"
 
     assert_response :success
-    assert_select ".tiles .tile", 6
+    assert_select ".tiles .tile", 8
     labels = css_select(".tiles .tile .tile-label").map { |node| node.text.squish }
-    assert_equal [ "Ertrag", "Verbrauch", "Gespart", "Bilanz", "Ø Ertrag/Tag", "Ø Verbrauch/Tag" ], labels
+    assert_equal [ "Ertrag", "Verbrauch", "Gespart", "Bilanz", "Autarkie", "Eigenverbrauch", "Ø Ertrag/Tag", "Ø Verbrauch/Tag" ], labels
     assert_select ".section-label", text: "Zeitraum", count: 0
     assert_select ".section-label", text: "Zusammenfassung", count: 0
     assert_select ".section-label", text: "Steckdosen"
@@ -50,7 +51,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     labels = css_select(".section-label").map { |node| node.text.squish }
     assert_equal "Steckdosen", labels[0]
     assert_match(/\AEnergie/, labels[1])
-    assert_match(/\ALeistung/, labels[2])
+    assert_match(/\AAutarkie/, labels[2])
+    assert_match(/\ALeistung/, labels[3])
   end
 
   test "reports page describes the power chart resolution" do
@@ -82,5 +84,16 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "nav.app-nav a[href='#{root_path}']", text: "Dashboard"
     assert_select "nav.app-nav a[href='#{reports_path}']", text: "Berichte"
     assert_select "nav.app-nav a[href='#{weather_path}']", text: "Wetter"
+  end
+
+  test "reports page renders Autarkie & Eigenverbrauchsquote section" do
+    DailyTotal.create!(plug_id: "bkw", date: "2026-04-10", energy_wh: 2000)
+    DailyEnergySummary.create!(date: "2026-04-10", produced_wh: 2000.0, consumed_wh: 1000.0, self_consumed_wh: 500.0)
+
+    get "/reports"
+
+    assert_response :success
+    assert_select ".section-label", text: "Autarkie & Eigenverbrauchsquote"
+    assert_select "[data-energy-report-target='ratiosCanvas']", 1
   end
 end
