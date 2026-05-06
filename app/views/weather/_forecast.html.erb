@@ -3,7 +3,9 @@
     <div class="section-label">Nächste Tage</div>
     <section class="weather-days">
       <% future_weather.each do |day| %>
-        <article class="weather-day-card">
+        <article class="weather-day-card"
+                 data-controller="weather-segments"
+                 data-weather-segments-day-value="<%= day.date.iso8601 %>">
           <header class="weather-day-head">
             <div>
               <div class="weather-day-name"><strong><%= day.weekday_label %></strong> <span class="weather-day-date"><%= day.date_label %></span></div>
@@ -22,21 +24,52 @@
               </div>
             <% end %>
           </header>
-          <div class="weather-day-slots">
-            <% day.records.select { |r| (r.timestamp.hour % 3).zero? }.each do |record| %>
-              <div class="weather-day-slot">
-                <div class="weather-day-slot-time"><%= record.timestamp.strftime("%H") %></div>
-                <%= image_tag record.asset_name, class: "weather-day-icon", alt: record.icon.to_s %>
-                <strong><%= number_with_precision(record.temperature, precision: 0, delimiter: ".", separator: ",") %>°</strong>
-                <div class="weather-day-slot-solar<%= record.daytime == "night" ? " is-night" : "" %>">
-                  <% if record.daytime == "night" %>
+          <div class="weather-day-segments">
+            <% day.segments.each_with_index do |segment, idx| %>
+              <button type="button"
+                      class="weather-segment"
+                      data-weather-segments-target="tile"
+                      data-action="click->weather-segments#toggle"
+                      data-segment-index="<%= idx %>"
+                      data-segment-complete="<%= segment.complete? %>"
+                      aria-expanded="false"
+                      aria-controls="seg-<%= day.date.iso8601 %>-<%= idx %>">
+                <div class="weather-segment-label"><%= segment.label %></div>
+                <%= image_tag segment.asset_name, class: "weather-segment-icon", alt: segment.dominant_icon.to_s %>
+                <% if segment.temp_min && segment.temp_max %>
+                  <strong class="weather-segment-temp">
+                    <%= number_with_precision(segment.temp_min, precision: 0, delimiter: ".", separator: ",") %>
+                    – <%= number_with_precision(segment.temp_max, precision: 0, delimiter: ".", separator: ",") %>°
+                  </strong>
+                <% end %>
+                <% if segment.precip_sum.positive? %>
+                  <div class="weather-segment-precip">
+                    <%= number_with_precision(segment.precip_sum, precision: 1, delimiter: ".", separator: ",") %> mm
+                  </div>
+                <% end %>
+                <div class="weather-segment-solar<%= segment.all_night? ? " is-night" : "" %>">
+                  <% if segment.all_night? %>
                     Nacht
-                  <% elsif record.solar_w_per_m2 %>
-                    <%= number_with_precision(record.solar_w_per_m2, precision: 0, delimiter: ".", separator: ",") %> W/m²
+                  <% elsif segment.avg_solar_w_per_m2 %>
+                    <%= number_with_precision(segment.avg_solar_w_per_m2, precision: 0, delimiter: ".", separator: ",") %> W/m²
                   <% else %>
                     — W/m²
                   <% end %>
                 </div>
+              </button>
+            <% end %>
+          </div>
+
+          <div class="weather-day-hours" data-weather-segments-target="hours">
+            <% day.segments.each_with_index do |segment, idx| %>
+              <div class="weather-day-hour-row"
+                   id="seg-<%= day.date.iso8601 %>-<%= idx %>"
+                   data-weather-segments-target="hourRow"
+                   data-segment-index="<%= idx %>"
+                   hidden>
+                <% segment.records.each do |record| %>
+                  <%= render "hour_card", record: record %>
+                <% end %>
               </div>
             <% end %>
           </div>
