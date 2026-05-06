@@ -453,6 +453,9 @@ svg text[data-dashboard-target] {
   overflow-x: auto;
   padding: 4px 0;
 }
+.weather-day-hour-row[hidden] {
+  display: none;
+}
 .weather-day-hour-row .weather-hour-card {
   flex: 0 0 auto;
 }
