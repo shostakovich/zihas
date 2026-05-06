@@ -11,7 +11,7 @@ class AggregatorTest < ActiveSupport::TestCase
     Sample.delete_all
     Sample5min.delete_all
     DailyTotal.delete_all
-    DailyEnergySummary.delete_all  # <-- add this line
+    DailyEnergySummary.delete_all
 
     @tz         = TZInfo::Timezone.get("Europe/Berlin")
     @aggregator = Aggregator.new(timezone: @tz, raw_retention_days: 7)
