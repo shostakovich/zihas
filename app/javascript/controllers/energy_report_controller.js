@@ -4,18 +4,21 @@ import "chart.js"
 // Connects to data-controller="energy-report"
 // Rails renders the report data; this controller only turns embedded JSON into charts.
 export default class extends Controller {
-  static targets = ["payload", "dailyCanvas", "detailCanvas"]
+  static targets = ["payload", "dailyCanvas", "ratiosCanvas", "detailCanvas"]
 
   connect() {
     this.dailyChart = null
+    this.ratiosChart = null
     this.detailChart = null
     this.payload = this._readPayload()
     this._buildDailyChart()
+    this._buildRatiosChart()
     this._buildDetailChart()
   }
 
   disconnect() {
     this.dailyChart?.destroy()
+    this.ratiosChart?.destroy()
     this.detailChart?.destroy()
   }
 
@@ -65,6 +68,57 @@ export default class extends Controller {
         scales: {
           x: { stacked: true },
           y: { stacked: true, beginAtZero: true, title: { display: true, text: "kWh" } },
+        },
+        plugins: { legend: { position: "bottom" } },
+        animation: false,
+      },
+    })
+  }
+
+  _buildRatiosChart() {
+    if (!this.hasRatiosCanvasTarget) return
+
+    const daily = this.payload.daily || {}
+    const ratios = daily.ratios || []
+    const labels = ratios.map((r) => {
+      const [, m, d] = r.date.split("-")
+      return `${d}.${m}.`
+    })
+    const autarky = ratios.map((r) => (r.autarky_pct === null ? null : r.autarky_pct))
+    const selfCons = ratios.map((r) => (r.self_consumption_pct === null ? null : r.self_consumption_pct))
+
+    this.ratiosChart = this._replaceChart(this.ratiosCanvasTarget, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          {
+            label: "Autarkie",
+            data: autarky,
+            borderColor: "#10b981",
+            backgroundColor: "#10b981",
+            spanGaps: false,
+            fill: false,
+            tension: 0.2,
+            pointRadius: 3,
+          },
+          {
+            label: "Eigenverbrauch",
+            data: selfCons,
+            borderColor: "#f59f00",
+            backgroundColor: "#f59f00",
+            spanGaps: false,
+            fill: false,
+            tension: 0.2,
+            pointRadius: 3,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { min: 0, max: 100, title: { display: true, text: "%" } },
         },
         plugins: { legend: { position: "bottom" } },
         animation: false,
