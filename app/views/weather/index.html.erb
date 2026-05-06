@@ -44,33 +44,7 @@
     <div class="section-label">Heute</div>
     <section class="weather-hour-row" aria-label="Heute">
       <% @today_weather.each do |record| %>
-        <article class="weather-hour-card">
-          <div class="weather-hour-top">
-            <span><%= record.timestamp.strftime("%H:%M") %></span>
-            <span>
-              <% if record.precipitation %>
-                <%= number_with_precision(record.precipitation, precision: 1, delimiter: ".", separator: ",") %> mm
-              <% elsif record.precipitation_probability %>
-                <%= record.precipitation_probability %>%
-              <% end %>
-            </span>
-          </div>
-          <%= image_tag record.asset_name, class: "weather-hour-icon", alt: record.icon.to_s %>
-          <strong><%= number_with_precision(record.temperature, precision: 0, delimiter: ".", separator: ",") %>°</strong>
-          <div class="weather-hour-solar<%= record.daytime == "night" ? " is-night" : "" %>">
-            <% if record.daytime == "night" %>
-              <%= image_tag "weather_clear_night.webp", class: "weather-inline-icon", alt: "" %>
-              Nacht
-            <% elsif record.solar_w_per_m2 %>
-              <%= image_tag "weather_clear_day.webp", class: "weather-inline-icon", alt: "" %>
-              <%= number_with_precision(record.solar_w_per_m2, precision: 0, delimiter: ".", separator: ",") %> W/m²
-            <% else %>
-              <%= image_tag "weather_clear_day.webp", class: "weather-inline-icon", alt: "" %>
-              — W/m²
-            <% end %>
-          </div>
-          <div class="weather-hour-wind">💨 <%= number_with_precision(record.wind_speed || 0, precision: 0, delimiter: ".", separator: ",") %> km/h</div>
-        </article>
+        <%= render "hour_card", record: record %>
       <% end %>
     </section>
 
