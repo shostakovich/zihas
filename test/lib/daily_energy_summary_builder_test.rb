@@ -86,4 +86,49 @@ class DailyEnergySummaryBuilderTest < ActiveSupport::TestCase
     assert_in_delta 100 * bucket_h, result.fetch(:consumed_wh)
     assert_in_delta 100 * bucket_h, result.fetch(:self_consumed_wh)
   end
+
+  test "self-consumption uses avg_power_w even when energy_delta_wh is clipped" do
+    bucket_h = 5.0 / 60.0
+
+    # Producer counter glitched: avg_power_w is real, but the per-sample
+    # plausibility cap zeroed every delta -> energy_delta_wh = 0 for the bucket.
+    Sample5min.create!(
+      plug_id: "pv", bucket_ts: @midnight, avg_power_w: 200.0,
+      energy_delta_wh: 0.0, sample_count: 60
+    )
+    # Consumer is healthy.
+    Sample5min.create!(
+      plug_id: "desk", bucket_ts: @midnight, avg_power_w: 150.0,
+      energy_delta_wh: 150.0 * bucket_h, sample_count: 60
+    )
+
+    result = DailyEnergySummaryBuilder.new(plugs: @plugs, timezone: @tz).build(@date)
+
+    # produced_wh stays at the metered (clipped) value — that's what the
+    # counter said. But self-consumption reflects the real overlap power.
+    # Clamp ensures self_consumed_wh ≤ produced_wh = 0 in this degenerate case.
+    assert_in_delta 0.0,           result.fetch(:produced_wh)
+    assert_in_delta 150 * bucket_h, result.fetch(:consumed_wh)
+    assert_in_delta 0.0,           result.fetch(:self_consumed_wh)
+  end
+
+  test "self-consumption clamps to consumed when overlap power exceeds metered consumption" do
+    bucket_h = 5.0 / 60.0
+
+    Sample5min.create!(
+      plug_id: "pv", bucket_ts: @midnight, avg_power_w: 200.0,
+      energy_delta_wh: 200.0 * bucket_h, sample_count: 60
+    )
+    # Consumer counter glitched: avg_power_w real, energy_delta_wh = 0.
+    Sample5min.create!(
+      plug_id: "desk", bucket_ts: @midnight, avg_power_w: 100.0,
+      energy_delta_wh: 0.0, sample_count: 60
+    )
+
+    result = DailyEnergySummaryBuilder.new(plugs: @plugs, timezone: @tz).build(@date)
+
+    assert_in_delta 200 * bucket_h, result.fetch(:produced_wh)
+    assert_in_delta 0.0,           result.fetch(:consumed_wh)
+    assert_in_delta 0.0,           result.fetch(:self_consumed_wh)
+  end
 end

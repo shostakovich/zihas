@@ -17,7 +17,7 @@ class EnergySummary
     start_ts, end_ts, today = today_bounds_utc
     @produced_wh      = energy_delta_wh(producer_ids, start_ts, end_ts)
     @consumed_wh      = energy_delta_wh(consumer_ids, start_ts, end_ts)
-    @self_consumed_wh = compute_self_consumed_wh(start_ts, end_ts)
+    @self_consumed_wh = [ compute_self_consumed_wh(start_ts, end_ts), @produced_wh, @consumed_wh ].min
     @savings_eur      = @calculator.savings_eur(@produced_wh)
     @date             = today.to_s
     self
@@ -90,50 +90,37 @@ class EnergySummary
 
     role_by_id = @config.plugs.each_with_object({}) { |p, h| h[p.id] = p.role }
 
-    # Use cumulative-energy deltas per bucket (same plausibility guard as
-    # energy_delta_wh) so partial buckets at the window edge contribute only
-    # the energy that was actually measured, not a full bucket's worth.
+    # Self-consumption is the simultaneous power overlap. Computing it from
+    # cumulative-counter deltas would mis-state buckets where the plausibility
+    # cap zeroes one side's delta but apower_w stays real, so use bucketed
+    # average power directly. The caller clamps the result to the metered
+    # produced/consumed totals to keep the invariant.
     rows = ActiveRecord::Base.connection.exec_query(
       ActiveRecord::Base.sanitize_sql_array([
         <<~SQL, plug_ids, start_ts, end_ts
-          WITH window_samples AS (
-            SELECT plug_id, ts, aenergy_wh,
-                   (ts / #{BUCKET_SECONDS}) * #{BUCKET_SECONDS} AS bucket_ts,
-                   LAG(ts)         OVER (PARTITION BY plug_id ORDER BY ts) AS prev_ts,
-                   LAG(aenergy_wh) OVER (PARTITION BY plug_id ORDER BY ts) AS prev_wh
-              FROM samples
-             WHERE plug_id IN (?) AND ts >= ? AND ts < ?
-          ),
-          deltas AS (
-            SELECT plug_id, bucket_ts,
-                   CASE
-                     WHEN prev_wh IS NULL      THEN 0
-                     WHEN aenergy_wh < prev_wh THEN 0
-                     WHEN aenergy_wh - prev_wh
-                          > #{MAX_PLAUSIBLE_W}.0 * (ts - prev_ts) / 3600.0 THEN 0
-                     ELSE aenergy_wh - prev_wh
-                   END AS delta_wh
-              FROM window_samples
-          )
-          SELECT plug_id, bucket_ts, SUM(delta_wh) AS bucket_wh
-            FROM deltas
+          SELECT plug_id,
+                 (ts / #{BUCKET_SECONDS}) * #{BUCKET_SECONDS} AS bucket_ts,
+                 AVG(apower_w) AS avg_w
+            FROM samples
+           WHERE plug_id IN (?) AND ts >= ? AND ts < ?
            GROUP BY plug_id, bucket_ts
         SQL
       ])
     )
 
+    bucket_h = BUCKET_SECONDS / 3600.0
     by_bucket = rows.group_by { |r| r["bucket_ts"] }
     total = 0.0
     by_bucket.each_value do |bucket_rows|
-      prod_wh = 0.0
-      cons_wh = 0.0
+      prod_w = 0.0
+      cons_w = 0.0
       bucket_rows.each do |row|
         case role_by_id[row["plug_id"]]
-        when :producer then prod_wh += row["bucket_wh"].to_f
-        when :consumer then cons_wh += row["bucket_wh"].to_f
+        when :producer then prod_w += row["avg_w"].to_f
+        when :consumer then cons_w += row["avg_w"].to_f
         end
       end
-      total += [ prod_wh, cons_wh ].min
+      total += [ prod_w, cons_w ].min * bucket_h
     end
     total
   end
