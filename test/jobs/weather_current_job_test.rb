@@ -11,7 +11,9 @@ class WeatherCurrentJobTest < ActiveJob::TestCase
   end
 
   test "does nothing when weather is not configured" do
-    WeatherSync.stub(:from_app_config, nil) { WeatherCurrentJob.perform_now }
+    assert_nothing_raised do
+      WeatherSync.stub(:from_app_config, nil) { WeatherCurrentJob.perform_now }
+    end
   end
 
   test "broadcasts current frame after sync" do

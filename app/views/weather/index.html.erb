@@ -3,13 +3,7 @@
 <%= turbo_stream_from "weather" %>
 
 <div class="weather-page">
-  <% if @current_weather.nil? && @today_weather.empty? && @future_weather.empty? %>
-    <section class="chart-card empty-state">
-      <h2>Noch keine Wetterdaten</h2>
-      <p>Die Wetteransicht erscheint, sobald Bright Sky Daten geladen hat.</p>
-    </section>
-  <% end %>
-
+  <%= render "empty", current_weather: @current_weather, today_weather: @today_weather, future_weather: @future_weather %>
   <%= render "current", current_weather: @current_weather %>
   <%= render "today", today_weather: @today_weather %>
   <%= render "forecast", future_weather: @future_weather %>
