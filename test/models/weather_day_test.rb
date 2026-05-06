@@ -99,4 +99,42 @@ class WeatherDayTest < ActiveSupport::TestCase
     assert_equal date, day.date
     assert_equal records, day.records
   end
+
+  test "segments returns four segments in display order with correct labels and hour ranges" do
+    date = Date.new(2026, 5, 6)
+    records = (0..23).map do |h|
+      make_record(timestamp: date.to_time + h.hours, temperature: 10 + h, daytime: h < 6 ? "night" : "day")
+    end
+
+    day = WeatherDay.from_records(date, records)
+    segs = day.segments
+
+    assert_equal 4, segs.size
+    assert_equal %w[Nacht Vormittag Nachmittag Abend], segs.map(&:label)
+    assert_equal [ 0...6, 6...12, 12...18, 18...24 ], segs.map(&:hour_range)
+    assert_equal 6, segs[0].records.size
+    assert_equal 6, segs[1].records.size
+    assert_equal 6, segs[2].records.size
+    assert_equal 6, segs[3].records.size
+  end
+
+  test "segments place a 06:00 record into Vormittag, not Nacht" do
+    date = Date.new(2026, 5, 6)
+    records = [
+      make_record(timestamp: date.to_time + 5.hours, temperature: 8, daytime: "night"),
+      make_record(timestamp: date.to_time + 6.hours, temperature: 9, daytime: "day")
+    ]
+    segs = WeatherDay.from_records(date, records).segments
+
+    assert_equal 1, segs[0].records.size
+    assert_equal 1, segs[1].records.size
+    assert_equal 0, segs[2].records.size
+    assert_equal 0, segs[3].records.size
+  end
+
+  test "segments are present even when day has no records" do
+    segs = WeatherDay.from_records(Date.new(2026, 5, 6), []).segments
+    assert_equal 4, segs.size
+    assert(segs.all? { |s| s.records.empty? })
+  end
 end

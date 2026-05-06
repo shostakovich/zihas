@@ -28,4 +28,21 @@ WeatherDay = Data.define(:date, :records, :temp_min, :temp_max, :precip_sum, :so
   def date_label
     date.strftime("%d.%m.")
   end
+
+  SEGMENTS = [
+    [ "Nacht",       0...6 ],
+    [ "Vormittag",   6...12 ],
+    [ "Nachmittag", 12...18 ],
+    [ "Abend",      18...24 ]
+  ].freeze
+
+  def segments
+    by_label = records.group_by do |r|
+      label, _range = SEGMENTS.find { |_l, range| range.cover?(r.timestamp.hour) }
+      label
+    end
+    SEGMENTS.map do |label, range|
+      WeatherSegment.new(label: label, hour_range: range, records: by_label[label] || [])
+    end
+  end
 end
