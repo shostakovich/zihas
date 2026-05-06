@@ -121,8 +121,8 @@ class WeatherDayTest < ActiveSupport::TestCase
   test "segments place a 06:00 record into Vormittag, not Nacht" do
     date = Date.new(2026, 5, 6)
     records = [
-      make_record(timestamp: date.to_time + 5.hours, temperature: 8, daytime: "night"),
-      make_record(timestamp: date.to_time + 6.hours, temperature: 9, daytime: "day")
+      make_record(timestamp: Time.zone.local(2026, 5, 6, 5), temperature: 8, daytime: "night"),
+      make_record(timestamp: Time.zone.local(2026, 5, 6, 6), temperature: 9, daytime: "day")
     ]
     segs = WeatherDay.from_records(date, records).segments
 
