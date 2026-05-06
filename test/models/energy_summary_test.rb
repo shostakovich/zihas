@@ -69,4 +69,29 @@ class EnergySummaryTest < ActiveSupport::TestCase
 
     assert_in_delta 5.0, summary.consumed_wh
   end
+
+  test "compute_today returns self_consumed_wh from simultaneous overlap" do
+    tz       = TZInfo::Timezone.get("Europe/Berlin")
+    midnight = tz.local_to_utc(Time.parse("#{Date.today} 00:00:00")).to_i
+
+    # 1h of producer 200W and consumer 100W simultaneously
+    (0..3600).step(60) do |dt|
+      Sample.create!(plug_id: "bkw",    ts: midnight + dt, apower_w: 200.0, aenergy_wh: 200.0 * dt / 3600.0)
+      Sample.create!(plug_id: "fridge", ts: midnight + dt, apower_w: 100.0, aenergy_wh: 100.0 * dt / 3600.0)
+    end
+
+    summary = EnergySummary.new(config: @config).compute_today
+
+    assert_in_delta 200.0, summary.produced_wh,      2.0
+    assert_in_delta 100.0, summary.consumed_wh,      2.0
+    assert_in_delta 100.0, summary.self_consumed_wh, 2.0
+    assert_in_delta 1.0,   summary.autarky_ratio,           0.05
+    assert_in_delta 0.5,   summary.self_consumption_ratio,  0.05
+  end
+
+  test "compute_today ratios are zero when denominator is zero" do
+    summary = EnergySummary.new(config: @config).compute_today
+    assert_equal 0.0, summary.autarky_ratio
+    assert_equal 0.0, summary.self_consumption_ratio
+  end
 end

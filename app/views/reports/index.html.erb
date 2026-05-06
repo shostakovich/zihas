@@ -48,6 +48,14 @@
         <div class="tile-value"><%= number_with_precision(@report.summary.fetch(:balance_kwh), precision: 2, delimiter: ".", separator: ",") %> kWh</div>
       </div>
       <div class="tile">
+        <div class="tile-label">Autarkie</div>
+        <div class="tile-value"><%= number_with_precision(@report.summary.fetch(:autarky_ratio) * 100, precision: 1, delimiter: ".", separator: ",") %> %</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">Eigenverbrauch</div>
+        <div class="tile-value"><%= number_with_precision(@report.summary.fetch(:self_consumption_ratio) * 100, precision: 1, delimiter: ".", separator: ",") %> %</div>
+      </div>
+      <div class="tile">
         <div class="tile-label">Ø Ertrag/Tag</div>
         <div class="tile-value"><%= number_with_precision(@report.summary.fetch(:avg_produced_kwh), precision: 2, delimiter: ".", separator: ",") %> kWh</div>
       </div>
@@ -64,6 +72,13 @@
     <div class="chart-card">
       <div class="chart-frame">
         <canvas data-energy-report-target="dailyCanvas"></canvas>
+      </div>
+    </div>
+
+    <div class="section-label">Autarkie & Eigenverbrauchsquote</div>
+    <div class="chart-card">
+      <div class="chart-frame">
+        <canvas data-energy-report-target="ratiosCanvas"></canvas>
       </div>
     </div>
 

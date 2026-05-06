@@ -1,4 +1,5 @@
 require "date"
+require "daily_energy_summary_builder"
 require "fileutils"
 require "set"
 require "time"
@@ -11,9 +12,10 @@ class Aggregator
   # megawatts for a few seconds.
   MAX_PLAUSIBLE_W = 20_000
 
-  def initialize(timezone:, raw_retention_days: DEFAULT_RAW_RETENTION_DAYS)
+  def initialize(timezone:, raw_retention_days: DEFAULT_RAW_RETENTION_DAYS, plugs: nil)
     @tz = timezone
     @raw_retention_days = raw_retention_days
+    @plugs = plugs
   end
 
   def aggregate_day(date_s)
@@ -88,6 +90,17 @@ class Aggregator
       ActiveRecord::Base.connection.execute(
         ActiveRecord::Base.sanitize_sql_array([ sql_daily, start_ts, end_ts, date_s ])
       )
+
+      if @plugs
+        DailyEnergySummary.where(date: date_s).delete_all
+        summary = DailyEnergySummaryBuilder.new(plugs: @plugs, timezone: @tz).build(date_s)
+        DailyEnergySummary.create!(
+          date: date_s,
+          produced_wh: summary.fetch(:produced_wh),
+          consumed_wh: summary.fetch(:consumed_wh),
+          self_consumed_wh: summary.fetch(:self_consumed_wh)
+        )
+      end
     end
   end
 
