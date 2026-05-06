@@ -8,18 +8,16 @@
   <div class="weather-hour-time"><%= record.timestamp.strftime("%H:%M") %></div>
   <%= image_tag record.asset_name, class: "weather-hour-icon", alt: record.icon.to_s %>
   <strong><%= number_with_precision(record.temperature, precision: 0, delimiter: ".", separator: ",") %>°</strong>
-  <div class="weather-hour-solar<%= record.daytime == "night" ? " is-night" : "" %>">
-    <% if record.daytime == "night" %>
-      <%= image_tag "weather_clear_night.webp", class: "weather-inline-icon", alt: "" %>
-      Nacht
-    <% elsif record.solar_w_per_m2 %>
+  <% if record.daytime != "night" %>
+    <div class="weather-hour-solar">
       <%= image_tag "weather_clear_day.webp", class: "weather-inline-icon", alt: "" %>
-      <%= number_with_precision(record.solar_w_per_m2, precision: 0, delimiter: ".", separator: ",") %> W/m²
-    <% else %>
-      <%= image_tag "weather_clear_day.webp", class: "weather-inline-icon", alt: "" %>
-      — W/m²
-    <% end %>
-  </div>
+      <% if record.solar_w_per_m2 %>
+        <%= number_with_precision(record.solar_w_per_m2, precision: 0, delimiter: ".", separator: ",") %> W/m²
+      <% else %>
+        — W/m²
+      <% end %>
+    </div>
+  <% end %>
   <% if has_extras %>
     <div class="weather-hour-extras">
       <% parts = [] %>

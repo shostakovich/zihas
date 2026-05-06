@@ -68,7 +68,7 @@ class WeatherControllerTest < ActionDispatch::IntegrationTest
     assert_select ".weather-hour-row .weather-hour-time", text: /22:00/, count: 1
   end
 
-  test "hourly card renders Nacht at night and never a W/m² value" do
+  test "hourly card omits the solar row entirely at night" do
     WeatherRecord.create!(kind: "forecast", lat: 52.52, lon: 13.405,
       timestamp: Time.zone.parse("2026-05-04 23:00"), daytime: "night",
       icon: "clear-night", temperature: 11, precipitation: 0,
@@ -76,8 +76,7 @@ class WeatherControllerTest < ActionDispatch::IntegrationTest
 
     get "/weather"
 
-    assert_select ".weather-hour-card .weather-hour-solar", text: /Nacht/
-    assert_select ".weather-hour-card .weather-hour-solar", text: /W\/m²/, count: 0
+    assert_select ".weather-hour-card .weather-hour-solar", count: 0
   end
 
   test "current weather card renders solar row with W/m² during the day" do
