@@ -54,8 +54,8 @@ class WeatherControllerTest < ActionDispatch::IntegrationTest
 
     get "/weather"
 
-    assert_select ".weather-hour-row .weather-hour-top span", text: /09:00/, count: 0
-    assert_select ".weather-hour-row .weather-hour-top span", text: /13:00/, count: 1
+    assert_select ".weather-hour-row .weather-hour-time", text: /09:00/, count: 0
+    assert_select ".weather-hour-row .weather-hour-time", text: /13:00/, count: 1
   end
 
   test "today row extends through end of tomorrow" do
@@ -65,7 +65,7 @@ class WeatherControllerTest < ActionDispatch::IntegrationTest
 
     get "/weather"
 
-    assert_select ".weather-hour-row .weather-hour-top span", text: /22:00/, count: 1
+    assert_select ".weather-hour-row .weather-hour-time", text: /22:00/, count: 1
   end
 
   test "hourly card renders Nacht at night and never a W/m² value" do

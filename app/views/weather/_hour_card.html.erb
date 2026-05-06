@@ -1,14 +1,11 @@
+<%
+  precip_mm = record.precipitation if record.precipitation && record.precipitation.positive?
+  precip_prob = record.precipitation_probability if record.precipitation_probability && record.precipitation_probability >= 30
+  wind = record.wind_speed if record.wind_speed && record.wind_speed >= 20
+  has_extras = precip_mm || precip_prob || wind
+%>
 <article class="weather-hour-card">
-  <div class="weather-hour-top">
-    <span class="weather-hour-time"><%= record.timestamp.strftime("%H:%M") %></span>
-    <span class="weather-hour-precip">
-      <% if record.precipitation && record.precipitation.positive? %>
-        <%= number_with_precision(record.precipitation, precision: 1, delimiter: ".", separator: ",") %> mm
-      <% elsif record.precipitation_probability && record.precipitation_probability.positive? %>
-        <%= record.precipitation_probability %>%
-      <% end %>
-    </span>
-  </div>
+  <div class="weather-hour-time"><%= record.timestamp.strftime("%H:%M") %></div>
   <%= image_tag record.asset_name, class: "weather-hour-icon", alt: record.icon.to_s %>
   <strong><%= number_with_precision(record.temperature, precision: 0, delimiter: ".", separator: ",") %>°</strong>
   <div class="weather-hour-solar<%= record.daytime == "night" ? " is-night" : "" %>">
@@ -23,5 +20,13 @@
       — W/m²
     <% end %>
   </div>
-  <div class="weather-hour-wind">💨 <%= number_with_precision(record.wind_speed || 0, precision: 0, delimiter: ".", separator: ",") %> km/h</div>
+  <% if has_extras %>
+    <div class="weather-hour-extras">
+      <% parts = [] %>
+      <% parts << "💨 #{number_with_precision(wind, precision: 0, delimiter: '.', separator: ',')} km/h" if wind %>
+      <% parts << "🌧 #{number_with_precision(precip_mm, precision: 1, delimiter: '.', separator: ',')} mm" if precip_mm %>
+      <% parts << "💧 #{precip_prob}%" if precip_prob %>
+      <%= parts.join(" · ") %>
+    </div>
+  <% end %>
 </article>
