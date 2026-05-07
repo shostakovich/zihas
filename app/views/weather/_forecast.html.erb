@@ -68,7 +68,7 @@
                    data-segment-index="<%= idx %>"
                    hidden>
                 <% segment.records.each do |record| %>
-                  <%= render "hour_card", record: record %>
+                  <%= render "weather/hour_card", record: record %>
                 <% end %>
               </div>
             <% end %>

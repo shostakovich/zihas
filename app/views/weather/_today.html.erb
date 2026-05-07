@@ -3,7 +3,7 @@
     <div class="section-label">Heute</div>
     <section class="weather-hour-row" aria-label="Heute">
       <% today_weather.each do |record| %>
-        <%= render "hour_card", record: record %>
+        <%= render "weather/hour_card", record: record %>
       <% end %>
     </section>
   <% end %>
