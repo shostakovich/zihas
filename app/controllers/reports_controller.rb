@@ -4,7 +4,8 @@ class ReportsController < ApplicationController
       params: report_params,
       plugs: app_config.plugs,
       timezone: app_config.timezone,
-      electricity_price_eur_per_kwh: app_config.electricity_price_eur_per_kwh
+      electricity_price_eur_per_kwh: app_config.electricity_price_eur_per_kwh,
+      weather_loader: WeatherReportLoader.from_app_config(app_config)
     ).build
   end
 

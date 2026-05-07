@@ -29,12 +29,13 @@ class EnergyReport
     "last_30" => 30
   }.freeze
 
-  def initialize(params:, plugs:, timezone: "UTC", electricity_price_eur_per_kwh: 0.32)
+  def initialize(params:, plugs:, timezone: "UTC", electricity_price_eur_per_kwh: 0.32, weather_loader: nil)
     @params = params.to_h.with_indifferent_access
     @plugs = plugs
     @plug_by_id = plugs.index_by(&:id)
     @timezone = TZInfo::Timezone.get(timezone)
     @savings_calculator = SavingsCalculator.new(price_eur_per_kwh: electricity_price_eur_per_kwh)
+    @weather_loader = weather_loader
     @messages = []
   end
 
@@ -64,7 +65,10 @@ class EnergyReport
       chart_payload: {
         daily: daily_chart_payload(daily_points),
         detail: detail_chart_payload(rows, detail_range.fetch(:start_date), detail_range.fetch(:end_date))
-      },
+      }.tap do |payload|
+        attach_daily_weather!(payload[:daily], range.fetch(:start_date), range.fetch(:end_date))
+        attach_detail_weather!(payload[:detail], detail_range.fetch(:start_date), detail_range.fetch(:end_date))
+      end,
       messages: @messages
     )
   end
@@ -358,6 +362,80 @@ class EnergyReport
 
   def average_power_w(energy_wh, role)
     watt_value(energy_wh.to_f / 24.0, role)
+  end
+
+  def attach_daily_weather!(daily_payload, start_date, end_date)
+    return unless @weather_loader
+
+    daily = @weather_loader.daily(start_date, end_date)
+    return if daily.empty?
+
+    show_icons = (end_date - start_date).to_i + 1 <= 7
+    dates = (start_date..end_date).map(&:to_s)
+    icons = if show_icons
+      dates.map do |d|
+        entry = daily[d]
+        entry ? { asset_name: entry[:asset_name], alt: entry[:alt] } : nil
+      end
+    else
+      []
+    end
+
+    daily_payload[:weather] = {
+      solar_kwh_per_m2: dates.map { |d| daily.dig(d, :solar_kwh_per_m2) },
+      icons: icons
+    }
+  end
+
+  def attach_detail_weather!(detail_payload, start_date, end_date)
+    return unless @weather_loader
+    return unless detail_payload[:chart_type] == "line"
+
+    hourly = @weather_loader.hourly(start_date, end_date)
+    return if hourly.empty?
+
+    by_hour = hourly.index_by { |p| Time.at(p[:ts]).utc.to_i }
+
+    start_ts = local_midnight_utc(start_date)
+    end_ts   = local_midnight_utc(end_date + 1)
+    timestamps = (start_ts...end_ts).step(300).to_a
+
+    solar = timestamps.map { |ts| by_hour.dig(hour_bucket_for(ts), :solar_w_per_m2) }
+
+    icons = if start_date == end_date
+      detail_icons_hourly(timestamps, by_hour)
+    else
+      detail_icons_one_per_day(timestamps, by_hour)
+    end
+
+    detail_payload[:weather] = {
+      solar_w_per_m2: solar,
+      icons: icons
+    }
+  end
+
+  def detail_icons_hourly(timestamps, by_hour)
+    timestamps.map.with_index do |ts, idx|
+      next nil unless ts % 3600 == 0
+      point = by_hour[hour_bucket_for(ts)]
+      next nil unless point
+      { label_index: idx, asset_name: point[:asset_name], alt: point[:alt] }
+    end.compact
+  end
+
+  def detail_icons_one_per_day(timestamps, by_hour)
+    # one icon per local day, at local noon (best dominant-day signal)
+    timestamps.map.with_index do |ts, idx|
+      local = @timezone.utc_to_local(Time.at(ts).utc)
+      next nil unless local.hour == 12 && local.min == 0
+      point = by_hour[hour_bucket_for(ts)]
+      next nil unless point
+      { label_index: idx, asset_name: point[:asset_name], alt: point[:alt] }
+    end.compact
+  end
+
+  def hour_bucket_for(ts)
+    ts - (ts % 3600)
   end
 
   def kwh(wh)
