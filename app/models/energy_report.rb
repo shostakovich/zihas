@@ -311,7 +311,8 @@ class EnergyReport
     {
       chart_type: "line",
       labels: timestamps.map { |ts| detail_label(ts, multi_day) },
-      series: series
+      series: series,
+      _timestamps: timestamps
     }
   end
 
@@ -388,17 +389,16 @@ class EnergyReport
   end
 
   def attach_detail_weather!(detail_payload, start_date, end_date)
+    timestamps = detail_payload.delete(:_timestamps) || []
+
     return unless @weather_loader
     return unless detail_payload[:chart_type] == "line"
+    return if timestamps.empty?
 
     hourly = @weather_loader.hourly(start_date, end_date)
     return if hourly.empty?
 
     by_hour = hourly.index_by { |p| Time.at(p[:ts]).utc.to_i }
-
-    start_ts = local_midnight_utc(start_date)
-    end_ts   = local_midnight_utc(end_date + 1)
-    timestamps = (start_ts...end_ts).step(300).to_a
 
     solar = timestamps.map { |ts| by_hour.dig(hour_bucket_for(ts), :solar_w_per_m2) }
 
