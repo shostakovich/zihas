@@ -35,6 +35,11 @@ aggregator_schedule: &aggregator_schedule
     queue: default
     schedule: at 3:45am every day
 
+  poll_sensors:
+    class: SensorPollJob
+    queue: default
+    schedule: every 15 minutes
+
 development:
   <<: *aggregator_schedule
 
