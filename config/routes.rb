@@ -3,6 +3,8 @@ Rails.application.routes.draw do
 
   get "/reports", to: "reports#index"
   get "/weather", to: "weather#index"
+  get "/sensors", to: "sensors#index", as: :sensors
+  get "/sensors/series", to: "sensors#series", as: :sensors_series
 
   get "/api/today", to: "api#today"
   get "/api/today/summary", to: "api#today_summary"
