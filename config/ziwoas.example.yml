@@ -30,9 +30,26 @@ plugs:
   # - id: kuehlschrank
   #   name: Kuehlschrank
   #   role: consumer
+  #   room: Küche
   #
   # - id: waschmaschine
   #   name: Waschmaschine
   #   role: consumer
   #   driver: fritz_dect
   #   ain: "11630 0206224"
+
+# SwitchBot integration. Token & Secret aus der SwitchBot-App holen:
+# Profil → Einstellungen → 10× auf "App-Version" tippen → Entwickleroptionen.
+# switchbot:
+#   token: "..."
+#   secret: "..."
+#
+# sensors:
+#   - id: "ABCDEF123456"           # 'bin/rails switchbot:list_devices' zeigt IDs
+#     name: "Wohnzimmer"
+#     type: meter_pro_co2           # meter_pro_co2 | outdoor_meter
+#     room: "Wohnzimmer"            # optional
+#
+#   - id: "112233445566"
+#     name: "Balkon"
+#     type: outdoor_meter
