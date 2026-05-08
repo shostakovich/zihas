@@ -105,10 +105,32 @@ export default class extends Controller {
       maintainAspectRatio: false,
       animation: false,
       scales: {
-        x: { type: "time", time: { unit: "hour" } },
+        x: {
+          type: "linear",
+          ticks: {
+            maxTicksLimit: 8,
+            callback: (value) => {
+              const d = new Date(value)
+              return d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
+            },
+          },
+        },
         y: { title: { display: true, text: unit } },
       },
-      plugins: { legend: { position: "bottom" } },
+      plugins: {
+        legend: { position: "bottom" },
+        tooltip: {
+          callbacks: {
+            title: (items) => {
+              if (!items.length) return ""
+              const d = new Date(items[0].parsed.x)
+              return d.toLocaleString("de-DE", {
+                weekday: "short", hour: "2-digit", minute: "2-digit"
+              })
+            },
+          },
+        },
+      },
     }
   }
 
