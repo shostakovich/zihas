@@ -1,18 +1,26 @@
 <%# app/views/sensors/_card.html.erb %>
 <article class="sensor-card chart-card">
-  <header class="sensor-card-head">
-    <h3 class="sensor-card-name"><%= sensor.name %></h3>
-    <% if reading&.battery_pct %>
-      <span class="sensor-card-battery <%= "is-low" if battery_low?(reading.battery_pct) %>">
-        🔋 <%= reading.battery_pct %> %
-      </span>
-    <% end %>
-  </header>
+  <% if sensor.type == :meter_pro_co2 && reading&.co2 %>
+    <div class="sensor-card-ampel">
+      <%= image_tag co2_icon_path(co2_level(reading.co2)),
+                    class: "sensor-ampel-icon",
+                    alt: "CO2-Ampel #{co2_level(reading.co2)}" %>
+    </div>
+  <% end %>
 
-  <% if reading.nil? %>
-    <p class="muted-text">Keine Daten</p>
-  <% else %>
-    <div class="sensor-card-body">
+  <div class="sensor-card-content">
+    <header class="sensor-card-head">
+      <h3 class="sensor-card-name"><%= sensor.name %></h3>
+      <% if reading&.battery_pct %>
+        <span class="sensor-card-battery <%= "is-low" if battery_low?(reading.battery_pct) %>">
+          🔋 <%= reading.battery_pct %> %
+        </span>
+      <% end %>
+    </header>
+
+    <% if reading.nil? %>
+      <p class="muted-text">Keine Daten</p>
+    <% else %>
       <ul class="sensor-card-values">
         <% if reading.temperature %>
           <li><strong><%= number_with_precision(reading.temperature, precision: 1, delimiter: ".", separator: ",") %></strong> °C</li>
@@ -25,17 +33,9 @@
         <% end %>
       </ul>
 
-      <% if sensor.type == :meter_pro_co2 && reading.co2 %>
-        <div class="sensor-card-ampel">
-          <%= image_tag co2_icon_path(co2_level(reading.co2)),
-                        class: "sensor-ampel-icon",
-                        alt: "CO2-Ampel #{co2_level(reading.co2)}" %>
-        </div>
-      <% end %>
-    </div>
-
-    <footer class="sensor-card-foot muted-text">
-      <%= relative_time(reading.taken_at) %>
-    </footer>
-  <% end %>
+      <footer class="sensor-card-foot muted-text">
+        <%= relative_time(reading.taken_at) %>
+      </footer>
+    <% end %>
+  </div>
 </article>

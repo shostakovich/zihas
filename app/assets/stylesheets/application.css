@@ -663,8 +663,32 @@ svg text[data-dashboard-target] {
 
 .sensor-card {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 1rem;
   padding: 1rem;
+}
+
+.sensor-card-ampel {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sensor-ampel-icon {
+  height: 100%;
+  width: auto;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.sensor-card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .sensor-card-head {
@@ -679,12 +703,6 @@ svg text[data-dashboard-target] {
 .sensor-card-battery { font-size: .85rem; color: #6b7280; }
 .sensor-card-battery.is-low { color: #b91c1c; font-weight: 600; }
 
-.sensor-card-body {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
 .sensor-card-values {
   list-style: none;
   margin: 0;
@@ -697,17 +715,6 @@ svg text[data-dashboard-target] {
 }
 
 .sensor-card-values strong { font-size: 1.5rem; }
-
-.sensor-card-ampel {
-  flex: 0 0 auto;
-}
-
-.sensor-ampel-icon {
-  height: 72px;
-  width: auto;
-  object-fit: contain;
-  display: block;
-}
 
 .sensor-card-foot { margin-top: .5rem; font-size: .85rem; }
 
