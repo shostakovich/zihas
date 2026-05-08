@@ -17,7 +17,7 @@ module SensorsHelper
 
   def battery_low?(pct)
     return false if pct.nil?
-    pct < BATTERY_LOW_PCT
+    pct <= BATTERY_LOW_PCT
   end
 
   def relative_time(time)

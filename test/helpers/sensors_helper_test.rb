@@ -29,9 +29,10 @@ class SensorsHelperTest < ActionView::TestCase
     assert_equal "co2_bad.png",  co2_icon_path(:bad)
   end
 
-  test "battery_low? returns true below 20" do
+  test "battery_low? returns true at or below 20" do
     assert battery_low?(19)
-    refute battery_low?(20)
+    assert battery_low?(20)
+    refute battery_low?(21)
     refute battery_low?(nil)
   end
 end
