@@ -670,16 +670,16 @@ svg text[data-dashboard-target] {
 }
 
 .sensor-card-ampel {
-  flex: 0 0 auto;
+  flex: 0 0 56px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .sensor-ampel-icon {
-  height: 100%;
-  width: auto;
-  max-height: 100%;
+  width: 100%;
+  height: auto;
+  max-height: 140px;
   object-fit: contain;
   display: block;
 }
