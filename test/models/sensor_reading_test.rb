@@ -24,4 +24,19 @@ class SensorReadingTest < ActiveSupport::TestCase
     rows = SensorReading.latest_per_device([ "A", "B" ]).order(:device_id)
     assert_equal [ a_new.id, b_new.id ], rows.pluck(:id)
   end
+
+  test "fresh_outdoor returns most recent reading within window" do
+    SensorReading.create!(device_id: "X", taken_at: 1.hour.ago, temperature: 5.0)
+    fresh = SensorReading.create!(device_id: "X", taken_at: 5.minutes.ago, temperature: 6.0)
+    assert_equal fresh.id, SensorReading.fresh_outdoor([ "X" ]).id
+  end
+
+  test "fresh_outdoor returns nil when readings are stale" do
+    SensorReading.create!(device_id: "X", taken_at: 1.hour.ago, temperature: 5.0)
+    assert_nil SensorReading.fresh_outdoor([ "X" ], within: 30.minutes)
+  end
+
+  test "fresh_outdoor returns nil for empty device_ids" do
+    assert_nil SensorReading.fresh_outdoor([])
+  end
 end

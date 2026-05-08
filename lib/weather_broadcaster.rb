@@ -53,12 +53,7 @@ module WeatherBroadcaster
     config = load_app_config
     return nil if config.nil?
     outdoor_ids = config.sensors.select { |s| s.type == :outdoor_meter }.map(&:id)
-    return nil if outdoor_ids.empty?
-    SensorReading
-      .where(device_id: outdoor_ids)
-      .where("taken_at >= ?", 30.minutes.ago)
-      .order(taken_at: :desc)
-      .first
+    SensorReading.fresh_outdoor(outdoor_ids)
   end
 
   def load_app_config
