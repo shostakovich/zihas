@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_06_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_08_000000) do
   create_table "daily_energy_summary", primary_key: "date", id: :string, force: :cascade do |t|
     t.float "consumed_wh", null: false
     t.float "produced_wh", null: false
@@ -37,6 +37,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_06_000001) do
     t.float "energy_delta_wh", null: false
     t.string "plug_id", limit: 255, null: false
     t.integer "sample_count", null: false
+  end
+
+  create_table "sensor_readings", force: :cascade do |t|
+    t.integer "battery_pct"
+    t.integer "co2"
+    t.datetime "created_at", null: false
+    t.string "device_id", null: false
+    t.string "firmware_version"
+    t.integer "humidity"
+    t.datetime "taken_at", null: false
+    t.float "temperature"
+    t.datetime "updated_at", null: false
+    t.index ["device_id", "taken_at"], name: "index_sensor_readings_on_device_id_and_taken_at"
+    t.index ["taken_at"], name: "index_sensor_readings_on_taken_at"
   end
 
   create_table "weather_records", force: :cascade do |t|
