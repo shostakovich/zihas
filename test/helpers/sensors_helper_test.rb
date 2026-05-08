@@ -24,9 +24,9 @@ class SensorsHelperTest < ActionView::TestCase
   end
 
   test "co2_icon_path maps level to asset filename" do
-    assert_equal "co2_good.png", co2_icon_path(:good)
-    assert_equal "co2_warn.png", co2_icon_path(:warn)
-    assert_equal "co2_bad.png",  co2_icon_path(:bad)
+    assert_equal "co2_good.webp", co2_icon_path(:good)
+    assert_equal "co2_warn.webp", co2_icon_path(:warn)
+    assert_equal "co2_bad.webp",  co2_icon_path(:bad)
   end
 
   test "battery_low? returns true at or below 20" do

@@ -12,7 +12,7 @@ module SensorsHelper
   end
 
   def co2_icon_path(level)
-    "co2_#{level}.png"
+    "co2_#{level}.webp"
   end
 
   def battery_low?(pct)
