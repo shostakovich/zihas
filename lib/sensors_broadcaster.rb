@@ -1,4 +1,5 @@
 require "config_loader"
+require "weather_broadcaster"
 
 module SensorsBroadcaster
   STREAM = "sensors".freeze
@@ -17,6 +18,8 @@ module SensorsBroadcaster
       partial: "sensors/dashboard",
       locals: { sensors: config.sensors, latest: latest }
     )
+
+    WeatherBroadcaster.broadcast_current
   end
 
   def load_config

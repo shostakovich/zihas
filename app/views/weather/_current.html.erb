@@ -5,8 +5,14 @@
         <%= image_tag current_weather.asset_name, class: "weather-current-icon", alt: current_weather.icon.to_s %>
         <div class="weather-current-main">
           <div class="tile-label">Jetzt</div>
-          <div class="weather-current-temp"><%= number_with_precision(current_weather.temperature, precision: 1, delimiter: ".", separator: ",") %> °C</div>
-          <div class="muted-text"><%= current_weather.condition || "Wetter" %> · Wind <%= number_with_precision(current_weather.wind_speed || 0, precision: 0, delimiter: ".", separator: ",") %> km/h</div>
+          <% sensor = local_assigns[:outdoor_sensor_reading] %>
+          <% if sensor %>
+            <div class="weather-current-temp"><%= number_with_precision(sensor.temperature, precision: 1, delimiter: ".", separator: ",") %> °C</div>
+            <div class="muted-text"><%= current_weather.condition || "Wetter" %> · Wind <%= number_with_precision(current_weather.wind_speed || 0, precision: 0, delimiter: ".", separator: ",") %> km/h · <span class="weather-source">eigener Sensor</span></div>
+          <% else %>
+            <div class="weather-current-temp"><%= number_with_precision(current_weather.temperature, precision: 1, delimiter: ".", separator: ",") %> °C</div>
+            <div class="muted-text"><%= current_weather.condition || "Wetter" %> · Wind <%= number_with_precision(current_weather.wind_speed || 0, precision: 0, delimiter: ".", separator: ",") %> km/h · <span class="weather-source">DWD</span></div>
+          <% end %>
         </div>
         <div class="weather-current-facts">
           <div><strong><%= current_weather.relative_humidity || "—" %>%</strong><br>Luft</div>

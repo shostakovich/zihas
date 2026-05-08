@@ -272,4 +272,35 @@ class WeatherControllerTest < ActionDispatch::IntegrationTest
     assert_in_delta 1.8, future.first.precip_sum, 0.001
     assert_equal 480, future.first.solar_peak
   end
+
+  test "GET /weather returns 200" do
+    get "/weather"
+    assert_response :success
+  end
+
+  test "uses outdoor sensor temperature when reading is fresh" do
+    SensorReading.delete_all
+    SensorReading.create!(device_id: "TEST_OUTDOOR", taken_at: 5.minutes.ago,
+                          temperature: 7.7, humidity: 80, battery_pct: 100)
+    WeatherRecord.delete_all
+    WeatherRecord.create!(kind: "current", lat: 52.52, lon: 13.405,
+                          timestamp: Time.current, temperature: 99.9, daytime: "day")
+
+    get "/weather"
+    assert_match("7,7", @response.body)
+    refute_match("99,9", @response.body)
+  end
+
+  test "falls back to brightsky temperature when sensor reading is stale" do
+    SensorReading.delete_all
+    SensorReading.create!(device_id: "TEST_OUTDOOR", taken_at: 2.hours.ago,
+                          temperature: 7.7, humidity: 80, battery_pct: 100)
+    WeatherRecord.delete_all
+    WeatherRecord.create!(kind: "current", lat: 52.52, lon: 13.405,
+                          timestamp: Time.current, temperature: 99.9, daytime: "day")
+
+    get "/weather"
+    assert_match("99,9", @response.body)
+    refute_match("7,7",  @response.body)
+  end
 end

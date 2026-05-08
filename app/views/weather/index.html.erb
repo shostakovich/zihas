@@ -4,7 +4,7 @@
 
 <div class="weather-page">
   <%= render "empty", current_weather: @current_weather, today_weather: @today_weather, future_weather: @future_weather %>
-  <%= render "current", current_weather: @current_weather %>
+  <%= render "current", current_weather: @current_weather, outdoor_sensor_reading: @outdoor_sensor_reading %>
   <%= render "today", today_weather: @today_weather %>
   <%= render "forecast", future_weather: @future_weather %>
 </div>
