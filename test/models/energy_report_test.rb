@@ -5,6 +5,7 @@ class EnergyReportTest < ActiveSupport::TestCase
     DailyTotal.delete_all
     Sample5min.delete_all
     DailyEnergySummary.delete_all
+    WeatherRecord.delete_all
 
     @plugs = [
       ConfigLoader::PlugCfg.new(id: "pv", name: "Balkonkraftwerk", role: :producer, driver: :shelly, ain: nil),
@@ -247,7 +248,50 @@ class EnergyReportTest < ActiveSupport::TestCase
     assert_in_delta 0.5, report.summary.fetch(:self_consumed_kwh)
   end
 
+  test "daily chart labels and solar values stay aligned across the Berlin DST day" do
+    seed_daily("2026-05-01", pv: 1000, desk: 100, washer: 200)
+    seed_daily("2026-05-02", pv: 2000, desk: 200, washer: 300)
+    seed_daily("2026-05-03", pv: 3000, desk: 300, washer: 400)
+
+    # Realistic BrightSky historic timestamps: noon Berlin local = 10:00 UTC in DST.
+    create_historic(Time.utc(2026, 5, 1, 10), solar: 0.55, icon: "clear-day", daytime: "day")
+    create_historic(Time.utc(2026, 5, 2, 10), solar: 0.33, icon: "rain", daytime: "day")
+    create_historic(Time.utc(2026, 5, 3, 10), solar: 0.77, icon: "clear-day", daytime: "day")
+    # Boundary record: UTC 22:00 on 05-01 = Berlin 00:00 on 05-02. Must
+    # attribute to local 05-02, not 05-01, otherwise the solar series drifts.
+    create_historic(Time.utc(2026, 5, 1, 22), solar: 0.0, icon: "clear-night", daytime: "night")
+
+    loader = WeatherReportLoader.new(lat: 48.15, lon: 11.26, timezone: "Europe/Berlin")
+    report = EnergyReport.new(
+      params: { start_date: "2026-05-01", end_date: "2026-05-03" },
+      plugs: @plugs,
+      timezone: "Europe/Berlin",
+      weather_loader: loader
+    ).build
+
+    daily = report.chart_payload.fetch(:daily)
+    assert_equal [ "01.05.", "02.05.", "03.05." ], daily.fetch(:labels)
+    weather = daily.fetch(:weather)
+    assert_equal [ 0.55, 0.33, 0.77 ], weather.fetch(:solar_kwh_per_m2)
+    assert_equal(
+      [ "weather_clear_day.webp", "weather_rain_day.webp", "weather_clear_day.webp" ],
+      weather.fetch(:icons).map { |i| i.fetch(:asset_name) }
+    )
+  end
+
   private
+
+  def create_historic(ts, solar:, icon:, daytime:)
+    WeatherRecord.create!(
+      kind: "historic",
+      timestamp: ts,
+      lat: 48.15,
+      lon: 11.26,
+      solar: solar,
+      icon: icon,
+      daytime: daytime
+    )
+  end
 
   def seed_daily(date, pv:, desk:, washer:)
     DailyTotal.create!(plug_id: "pv",     date: date, energy_wh: pv)
