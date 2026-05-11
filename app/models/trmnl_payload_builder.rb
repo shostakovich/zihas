@@ -1,6 +1,6 @@
 class TrmnlPayloadBuilder
-  BUCKET_SECONDS = 300
-  HOURS          = 24
+  BUCKET_SECONDS = 1800
+  BUCKETS        = 48
 
   def initialize(config:)
     @config = config
@@ -14,7 +14,7 @@ class TrmnlPayloadBuilder
     bilanz_kwh = (pv_kwh - cons_kwh).round(2)
     autarky    = (summary.autarky_ratio          * 100).round
     self_use   = (summary.self_consumption_ratio * 100).round
-    ev, es     = hourly_arrays
+    pv_w, cons_w = power_series
     ts = sample_ts(*window_bounds)
 
     {
@@ -25,49 +25,40 @@ class TrmnlPayloadBuilder
         "bilanz_kwh" => bilanz_kwh,
         "autarky"    => autarky,
         "self_use"   => self_use,
-        "ev"         => ev,
-        "es"         => es,
+        "pv_w"       => pv_w,
+        "cons_w"     => cons_w,
       },
     }
   end
 
   private
 
-  def hourly_arrays
+  def power_series
     start_ts, end_ts = window_bounds
     rows = bucket_rows(start_ts, end_ts)
     role_by_id = @config.plugs.each_with_object({}) { |p, h| h[p.id] = p.role }
 
-    ev = Array.new(HOURS, 0.0)
-    pv = Array.new(HOURS, 0.0)
-    rows.group_by { |r| r["bucket_ts"] }.each do |bucket_ts, bucket_rows|
-      prod_w = 0.0
-      cons_w = 0.0
-      bucket_rows.each do |row|
-        case role_by_id[row["plug_id"]]
-        when :producer then prod_w += row["avg_w"].to_f.abs
-        when :consumer then cons_w += row["avg_w"].to_f
-        end
-      end
-      hour_idx = ((bucket_ts - start_ts) / 3600).to_i
-      next if hour_idx < 0 || hour_idx >= HOURS
+    pv   = Array.new(BUCKETS, 0.0)
+    cons = Array.new(BUCKETS, 0.0)
+    rows.each do |row|
+      idx = ((row["bucket_ts"] - start_ts) / BUCKET_SECONDS).to_i
+      next if idx < 0 || idx >= BUCKETS
 
-      bucket_h = BUCKET_SECONDS / 3600.0
-      pv[hour_idx] += prod_w * bucket_h
-      ev[hour_idx] += [ prod_w, cons_w ].min * bucket_h
+      case role_by_id[row["plug_id"]]
+      when :producer then pv[idx]   += row["avg_w"].to_f.abs
+      when :consumer then cons[idx] += row["avg_w"].to_f
+      end
     end
 
-    ev_int = ev.map(&:round)
-    es_int = pv.zip(ev).map { |p, e| [ p - e, 0 ].max.round }
-    [ ev_int, es_int ]
+    [ pv.map(&:round), cons.map(&:round) ]
   end
 
   def window_bounds
-    now_utc   = Time.now.utc
-    local_now = @tz.utc_to_local(now_utc)
+    now_utc    = Time.now.utc
+    local_now  = @tz.utc_to_local(now_utc)
     hour_floor = Time.new(local_now.year, local_now.month, local_now.day, local_now.hour, 0, 0)
-    end_ts   = @tz.local_to_utc(hour_floor).to_i + 3600
-    start_ts = end_ts - HOURS * 3600
+    end_ts     = @tz.local_to_utc(hour_floor).to_i + 3600
+    start_ts   = end_ts - BUCKETS * BUCKET_SECONDS
     [ start_ts, end_ts ]
   end
 
