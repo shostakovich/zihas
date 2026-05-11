@@ -12,6 +12,7 @@ class ConfigLoader
   WeatherCfg  = Struct.new(:lat, :lon, keyword_init: true)
   Config      = Struct.new(:electricity_price_eur_per_kwh, :timezone,
                            :mqtt, :fritz_poll, :plugs, :fritz_box, :weather,
+                           :trmnl_webhook_url,
                            keyword_init: true)
 
   module StringRequirement
@@ -91,6 +92,7 @@ class ConfigLoader
     fritz_box  = build_fritz_box(@raw["fritz_box"])
     plugs      = build_plugs(@raw["plugs"])
     weather    = build_weather(@raw["weather"])
+    trmnl_webhook_url = build_trmnl_webhook_url(@raw["trmnl_webhook_url"])
 
     if plugs.any? { |p| p.driver == :fritz_dect } && fritz_box.nil?
       raise Error, "fritz_box config required when using driver: fritz_dect"
@@ -108,6 +110,7 @@ class ConfigLoader
       plugs:      plugs,
       fritz_box:  fritz_box,
       weather:    weather,
+      trmnl_webhook_url: trmnl_webhook_url,
     )
   end
 
@@ -150,6 +153,12 @@ class ConfigLoader
     raise Error, "weather.lon must be between -180 and 180" unless (-180..180).cover?(lon)
 
     WeatherCfg.new(lat: lat, lon: lon)
+  end
+
+  def build_trmnl_webhook_url(v)
+    return nil if v.nil?
+    raise Error, "trmnl_webhook_url must be a string" unless v.is_a?(String)
+    v
   end
 
   def require_coordinate(v, key)

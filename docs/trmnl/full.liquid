@@ -1,0 +1,126 @@
+{%- comment -%}
+  Zipfelmaus Energie — TRMNL full layout (800x480).
+  Source of truth: docs/trmnl/full.liquid in the ziwoas repo.
+  Update this file in the repo first, then paste into the TRMNL plugin UI.
+
+  Receives merge_variables: ts, pv_kwh, cons_kwh, bilanz_kwh, autarky, self_use, pv_w[48], cons_w[48].
+  pv_w / cons_w are average watts per 30-min bucket, oldest first.
+{%- endcomment -%}
+
+<script src="https://trmnl.com/js/highcharts/12.3.0/highcharts.js"></script>
+
+<div style="display:flex;flex-direction:column;height:100%;padding:10px 18px 0;box-sizing:border-box">
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div>
+      <span class="label">PV</span>
+      <div style="display:flex;align-items:baseline;gap:8px;white-space:nowrap">
+        <span class="value value--xlarge">{{ pv_kwh | replace: ".", "," }}</span>
+        <span class="label">kWh</span>
+      </div>
+    </div>
+    <div style="text-align:right">
+      <span class="label">Bilanz</span>
+      <div style="display:flex;align-items:baseline;gap:8px;white-space:nowrap;justify-content:flex-end">
+        <span class="value value--xlarge">
+          {%- if bilanz_kwh > 0 -%}+{%- endif -%}
+          {{ bilanz_kwh | replace: ".", "," }}
+        </span>
+        <span class="label">kWh</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:18px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-top:4px">
+    <span><span style="display:inline-block;width:16px;height:3px;background:#000;vertical-align:middle;margin-right:6px"></span>Ertrag</span>
+    <span><span style="display:inline-block;width:16px;height:3px;background:repeating-linear-gradient(90deg,#000 0 4px,transparent 4px 7px);vertical-align:middle;margin-right:6px"></span>Verbrauch</span>
+  </div>
+
+  <div id="zw-chart" style="flex:1;width:100%;min-height:0;margin-top:2px"></div>
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:14px 0 6px">
+    <div>
+      <span class="label">Verbraucht</span>
+      <div style="display:flex;align-items:baseline;gap:6px;white-space:nowrap">
+        <span class="value value--medium">{{ cons_kwh | replace: ".", "," }}</span>
+        <span class="label">kWh</span>
+      </div>
+    </div>
+    <div style="text-align:center">
+      <span class="label">Autarkie</span>
+      <div style="display:flex;align-items:baseline;gap:6px;white-space:nowrap;justify-content:center">
+        <span class="value value--medium">{{ autarky }}</span>
+        <span class="label">%</span>
+      </div>
+    </div>
+    <div style="text-align:right">
+      <span class="label">Eigenverbrauch</span>
+      <div style="display:flex;align-items:baseline;gap:6px;white-space:nowrap;justify-content:flex-end">
+        <span class="value value--medium">{{ self_use }}</span>
+        <span class="label">%</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="title_bar">
+  <span class="title">Zipfelmaus Energie</span>
+  <span class="instance">Stand {{ ts | date: "%H:%M" }}</span>
+</div>
+
+<script>
+  (function () {
+    var pv   = [{{ pv_w   | join: "," }}];
+    var cons = [{{ cons_w | join: "," }}];
+    var ertrag    = pv.map(function (v, i)   { return [ i, v ]; });
+    var verbrauch = cons.map(function (v, i) { return [ i, v ]; });
+
+    Highcharts.chart("zw-chart", {
+      chart: {
+        type: "spline",
+        animation: false,
+        spacing: [4, 4, 0, 4],
+        backgroundColor: "transparent"
+      },
+      title:   { text: null },
+      credits: { enabled: false },
+      tooltip: { enabled: false },
+      legend:  { enabled: false },
+      plotOptions: {
+        series: {
+          animation: false,
+          enableMouseTracking: false,
+          states: { hover: { enabled: false } },
+          marker: { enabled: false }
+        }
+      },
+      series: [
+        { name: "Ertrag",    data: ertrag,    lineWidth: 4, color: "#000000",                       zIndex: 2 },
+        { name: "Verbrauch", data: verbrauch, lineWidth: 4, color: "#000000", dashStyle: "ShortDash", zIndex: 1 }
+      ],
+      yAxis: {
+        title: { text: null },
+        labels: { style: { fontSize: "11px", color: "#000000" } },
+        gridLineDashStyle: "shortdot",
+        gridLineWidth: 1,
+        gridLineColor: "#000000",
+        tickAmount: 4
+      },
+      xAxis: {
+        labels: {
+          style: { fontSize: "11px", color: "#000000" },
+          formatter: function () {
+            var hoursAgo = Math.round((47 - this.value) * 0.5);
+            return hoursAgo === 0 ? "jetzt" : "−" + hoursAgo + " h";
+          }
+        },
+        lineWidth: 0,
+        tickWidth: 0,
+        gridLineDashStyle: "dot",
+        gridLineWidth: 1,
+        gridLineColor: "#000000",
+        tickPositions: [0, 12, 24, 36, 47]
+      }
+    });
+  })();
+</script>

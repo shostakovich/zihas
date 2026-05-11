@@ -20,6 +20,11 @@ aggregator_schedule: &aggregator_schedule
     queue: default
     schedule: every 15 minutes
 
+  push_trmnl_widget:
+    class: TrmnlPushJob
+    queue: default
+    schedule: every 15 minutes
+
   fetch_today_weather:
     class: WeatherTodayJob
     queue: default

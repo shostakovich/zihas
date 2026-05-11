@@ -22,6 +22,10 @@ mqtt:
 #   idle_threshold_w: 10
 #   timeout_seconds: 2
 
+# Optional: push compact widget data to a TRMNL custom plugin.
+# When unset (or commented out), the TrmnlPushJob is a no-op.
+# trmnl_webhook_url: https://trmnl.com/api/custom_plugins/<your-uuid>
+
 plugs:
   - id: bkw
     name: Balkonkraftwerk

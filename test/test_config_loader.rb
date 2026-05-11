@@ -207,4 +207,24 @@ class ConfigLoaderTest < Minitest::Test
 
     assert_match(/weather\.lon/i, err.message)
   end
+
+  def test_loads_optional_trmnl_webhook_url
+    yaml = valid_yaml + <<~YAML
+      trmnl_webhook_url: https://trmnl.com/api/custom_plugins/abc-123
+    YAML
+    cfg = load_yaml(yaml)
+    assert_equal "https://trmnl.com/api/custom_plugins/abc-123", cfg.trmnl_webhook_url
+  end
+
+  def test_trmnl_webhook_url_defaults_to_nil
+    cfg = load_yaml(valid_yaml)
+    assert_nil cfg.trmnl_webhook_url
+  end
+
+  def test_rejects_non_string_trmnl_webhook_url
+    yaml = valid_yaml + <<~YAML
+      trmnl_webhook_url: 42
+    YAML
+    assert_raises(ConfigLoader::Error) { load_yaml(yaml) }
+  end
 end
