@@ -26,8 +26,8 @@ class TrmnlPayloadBuilder
         "autarky"    => autarky,
         "self_use"   => self_use,
         "pv_w"       => pv_w,
-        "cons_w"     => cons_w,
-      },
+        "cons_w"     => cons_w
+      }
     }
   end
 
