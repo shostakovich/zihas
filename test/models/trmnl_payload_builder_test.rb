@@ -45,4 +45,45 @@ class TrmnlPayloadBuilderTest < ActiveSupport::TestCase
     assert_equal 0,   mv["autarky"]
     assert_equal 0,   mv["self_use"]
   end
+
+  test "build returns 24 hourly ev/es arrays aligned to local hours" do
+    now_utc   = Time.now.utc.to_i
+    local_now = @tz.utc_to_local(Time.at(now_utc).utc)
+    hour_floor_local = Time.new(local_now.year, local_now.month, local_now.day, local_now.hour, 0, 0)
+    end_ts   = @tz.local_to_utc(hour_floor_local).to_i + 3600  # upcoming local-hour boundary
+    start_ts = end_ts - 86_400
+
+    # Hour bucket index 5 is start_ts + 5*3600 .. start_ts + 6*3600.
+    bucket_start = start_ts + 5 * 3600
+    (0...3600).step(300) do |dt|
+      Sample.create!(plug_id: "bkw",    ts: bucket_start + dt, apower_w: 600.0, aenergy_wh: 0.0)
+      Sample.create!(plug_id: "fridge", ts: bucket_start + dt, apower_w: 200.0, aenergy_wh: 0.0)
+    end
+
+    payload = TrmnlPayloadBuilder.new(config: @config).build
+    mv = payload.fetch("merge_variables")
+
+    assert_equal 24, mv["ev"].length
+    assert_equal 24, mv["es"].length
+    assert(mv["ev"].all? { |v| v.is_a?(Integer) })
+    assert(mv["es"].all? { |v| v.is_a?(Integer) })
+
+    # bucket 5: producer 600 W, consumer 200 W → overlap 200 Wh, feed-in 400 Wh
+    assert_in_delta 200, mv["ev"][5], 5
+    assert_in_delta 400, mv["es"][5], 5
+
+    # all other buckets should be 0
+    (0...24).each do |i|
+      next if i == 5
+      assert_equal 0, mv["ev"][i], "ev bucket #{i}"
+      assert_equal 0, mv["es"][i], "es bucket #{i}"
+    end
+  end
+
+  test "build returns 24 zero buckets when no samples exist" do
+    payload = TrmnlPayloadBuilder.new(config: @config).build
+    mv = payload.fetch("merge_variables")
+    assert_equal Array.new(24, 0), mv["ev"]
+    assert_equal Array.new(24, 0), mv["es"]
+  end
 end
