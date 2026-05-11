@@ -56,8 +56,9 @@ class TrmnlPayloadBuilder
   def window_bounds
     now_utc    = Time.now.utc
     local_now  = @tz.utc_to_local(now_utc)
-    hour_floor = Time.new(local_now.year, local_now.month, local_now.day, local_now.hour, 0, 0)
-    end_ts     = @tz.local_to_utc(hour_floor).to_i + 3600
+    minute     = local_now.min < 30 ? 0 : 30
+    slot_floor = Time.new(local_now.year, local_now.month, local_now.day, local_now.hour, minute, 0)
+    end_ts     = @tz.local_to_utc(slot_floor).to_i + BUCKET_SECONDS
     start_ts   = end_ts - BUCKETS * BUCKET_SECONDS
     [ start_ts, end_ts ]
   end

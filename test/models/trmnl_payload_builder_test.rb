@@ -48,8 +48,9 @@ class TrmnlPayloadBuilderTest < ActiveSupport::TestCase
 
   test "build returns 48 half-hourly pv_w/cons_w arrays aligned to local hours" do
     local_now = @tz.utc_to_local(Time.now.utc)
-    hour_floor_local = Time.new(local_now.year, local_now.month, local_now.day, local_now.hour, 0, 0)
-    end_ts   = @tz.local_to_utc(hour_floor_local).to_i + 3600  # upcoming local-hour boundary
+    minute = local_now.min < 30 ? 0 : 30
+    slot_floor_local = Time.new(local_now.year, local_now.month, local_now.day, local_now.hour, minute, 0)
+    end_ts   = @tz.local_to_utc(slot_floor_local).to_i + 1800  # upcoming half-hour boundary
     start_ts = end_ts - 86_400
 
     # Bucket index 10 covers start_ts + 10*1800 .. start_ts + 11*1800 (30 min slot).
@@ -87,9 +88,10 @@ class TrmnlPayloadBuilderTest < ActiveSupport::TestCase
 
   test "build sets ts to the max Sample.ts inside the 24h window" do
     local_now = @tz.utc_to_local(Time.now.utc)
-    hour_floor_local = Time.new(local_now.year, local_now.month, local_now.day, local_now.hour, 0, 0)
-    end_ts = @tz.local_to_utc(hour_floor_local).to_i + 3600
-    newest_ts = end_ts - 600 # 10 minutes before the upcoming hour boundary
+    minute = local_now.min < 30 ? 0 : 30
+    slot_floor_local = Time.new(local_now.year, local_now.month, local_now.day, local_now.hour, minute, 0)
+    end_ts = @tz.local_to_utc(slot_floor_local).to_i + 1800
+    newest_ts = end_ts - 300 # 5 minutes before the upcoming half-hour boundary
     Sample.create!(plug_id: "bkw", ts: newest_ts, apower_w: 0, aenergy_wh: 0.0)
     Sample.create!(plug_id: "bkw", ts: newest_ts - 3600, apower_w: 0, aenergy_wh: 0.0)
 
