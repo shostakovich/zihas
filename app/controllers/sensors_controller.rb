@@ -13,7 +13,7 @@ class SensorsController < ApplicationController
     payload = {
       temperature: build_series(grouped, app_config.sensors, :temperature),
       humidity:    build_series(grouped, app_config.sensors, :humidity),
-      co2:         build_series(grouped, app_config.sensors.select { |s| s.type == :meter_pro_co2 }, :co2),
+      co2:         build_series(grouped, app_config.sensors.select { |s| s.type == :meter_pro_co2 }, :co2)
     }
     render json: payload
   end

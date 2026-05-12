@@ -14,7 +14,7 @@ class SensorsBroadcasterTest < ActiveSupport::TestCase
   test "refresh re-broadcasts the weather current frame" do
     called = false
     WeatherBroadcaster.stub(:broadcast_current, -> { called = true }) do
-      Turbo::StreamsChannel.stub(:broadcast_replace_to, ->(*args, **kw) {}) do
+      Turbo::StreamsChannel.stub(:broadcast_replace_to, ->(*args, **kw) { }) do
         SensorsBroadcaster.refresh
       end
     end
@@ -27,13 +27,13 @@ class SensorsBroadcasterTest < ActiveSupport::TestCase
                           temperature: 22.0, humidity: 40, co2: 600, battery_pct: 80)
     fake_config = Struct.new(:switchbot, :sensors).new(nil, [ sensor ])
     SensorsBroadcaster.stub(:load_config, fake_config) do
-      WeatherBroadcaster.stub(:broadcast_current, -> {}) do
+      WeatherBroadcaster.stub(:broadcast_current, -> { }) do
         captured = nil
         stub = ->(_stream, **opts) { captured = opts }
         Turbo::StreamsChannel.stub(:broadcast_replace_to, stub) do
           SensorsBroadcaster.refresh
         end
-        ApplicationController.render(partial: captured[:partial], locals: captured[:locals])
+        SensorsController.render(partial: captured[:partial], locals: captured[:locals])
       end
     end
   end
