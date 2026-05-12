@@ -15,15 +15,14 @@ logger.level = Rails.env.development? ? Logger::DEBUG : Logger::INFO
 config_path = Rails.root.join("config", "ziwoas.yml").to_s
 config      = ConfigLoader.load(config_path)
 
-fritz_plugs  = config.plugs.select { |p| p.driver == :fritz_dect }
-shelly_plugs = config.plugs.reject { |p| p.driver == :fritz_dect }
+fritz_plugs = config.plugs.select { |p| p.driver == :fritz_dect }
 
 threads    = []
 stoppables = []
 
 subscriber = MqttSubscriber.new(
   mqtt_config: config.mqtt,
-  plugs:       shelly_plugs,
+  plugs:       config.plugs,
   logger:      logger,
 )
 stoppables << subscriber
