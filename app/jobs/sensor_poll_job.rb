@@ -29,6 +29,7 @@ class SensorPollJob < ApplicationJob
       end
     end
 
+    TrmnlSensorPushJob.perform_later
     SensorsBroadcaster.refresh
   end
 

@@ -95,4 +95,52 @@ class SensorPollJobTest < ActiveJob::TestCase
     end
     assert called, "expected SensorsBroadcaster.refresh to be called"
   end
+
+  test "enqueues the TRMNL sensor push after polling, before broadcast" do
+    config = fake_config(
+      switchbot: fake_sb(token: "t", secret: "s"),
+      sensors: [ fake_sensor("A", :meter_pro_co2) ]
+    )
+    fake_client = Object.new
+    def fake_client.device_status(_)
+      { temperature: 1, humidity: 1, co2: 1, battery_pct: 1, firmware_version: "V", raw: {} }
+    end
+
+    order = []
+    ConfigLoader.stub(:load, config) do
+      SwitchBotClient.stub(:new, fake_client) do
+        TrmnlSensorPushJob.stub(:perform_later, -> { order << :push }) do
+          SensorsBroadcaster.stub(:refresh, -> { order << :broadcast }) do
+            SensorPollJob.perform_now
+          end
+        end
+      end
+    end
+
+    assert_equal [ :push, :broadcast ], order, "push must be enqueued before the broadcast"
+  end
+
+  test "enqueues the TRMNL sensor push even when the broadcast raises" do
+    config = fake_config(
+      switchbot: fake_sb(token: "t", secret: "s"),
+      sensors: [ fake_sensor("A", :meter_pro_co2) ]
+    )
+    fake_client = Object.new
+    def fake_client.device_status(_)
+      { temperature: 1, humidity: 1, co2: 1, battery_pct: 1, firmware_version: "V", raw: {} }
+    end
+
+    pushed = false
+    ConfigLoader.stub(:load, config) do
+      SwitchBotClient.stub(:new, fake_client) do
+        TrmnlSensorPushJob.stub(:perform_later, -> { pushed = true }) do
+          SensorsBroadcaster.stub(:refresh, -> { raise "broadcast boom" }) do
+            assert_raises(RuntimeError) { SensorPollJob.perform_now }
+          end
+        end
+      end
+    end
+
+    assert pushed, "push should already be enqueued before the broadcast raises"
+  end
 end
