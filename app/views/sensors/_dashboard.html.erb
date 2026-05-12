@@ -8,7 +8,7 @@
   <% else %>
     <%= render "battery_warning", sensors: sensors, latest: latest %>
     <section class="sensor-cards">
-      <% (indoor + outdoor).each do |s| %>
+      <% sensors.each do |s| %>
         <%= render "card", sensor: s, reading: latest[s.id] %>
       <% end %>
     </section>

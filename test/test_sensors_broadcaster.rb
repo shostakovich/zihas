@@ -21,6 +21,23 @@ class SensorsBroadcasterTest < ActiveSupport::TestCase
     assert called, "expected WeatherBroadcaster.broadcast_current to be invoked"
   end
 
+  test "dashboard partial renders with only sensors and latest locals" do
+    sensor = Struct.new(:id, :name, :type, :room).new("A", "Probe", :meter_pro_co2, nil)
+    SensorReading.create!(device_id: "A", taken_at: Time.current,
+                          temperature: 22.0, humidity: 40, co2: 600, battery_pct: 80)
+    fake_config = Struct.new(:switchbot, :sensors).new(nil, [ sensor ])
+    SensorsBroadcaster.stub(:load_config, fake_config) do
+      WeatherBroadcaster.stub(:broadcast_current, -> {}) do
+        captured = nil
+        stub = ->(_stream, **opts) { captured = opts }
+        Turbo::StreamsChannel.stub(:broadcast_replace_to, stub) do
+          SensorsBroadcaster.refresh
+        end
+        ApplicationController.render(partial: captured[:partial], locals: captured[:locals])
+      end
+    end
+  end
+
   test "refresh is a no-op when no sensors are configured" do
     fake_config = Struct.new(:switchbot, :sensors).new(nil, [])
     sensor_calls  = 0

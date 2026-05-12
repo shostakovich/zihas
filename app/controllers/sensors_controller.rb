@@ -3,8 +3,6 @@ class SensorsController < ApplicationController
   def index
     @sensors = app_config.sensors
     @latest  = SensorReading.latest_per_device(@sensors.map(&:id)).index_by(&:device_id)
-    @indoor  = @sensors.select { |s| s.type == :meter_pro_co2 }
-    @outdoor = @sensors.select { |s| s.type == :outdoor_meter }
   end
 
   def series
