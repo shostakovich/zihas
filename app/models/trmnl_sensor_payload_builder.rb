@@ -43,7 +43,7 @@ class TrmnlSensorPayloadBuilder
       "battery_low"  => presenter.battery_low?,
       "battery_pct"  => latest&.battery_pct,
       "age_label"    => presenter.age_label,
-      "offline"      => offline,
+      "offline"      => offline
     }
 
     return entry if offline
