@@ -37,6 +37,7 @@ plugs:
   #   name: Kuehlschrank
   #   role: consumer
   #   room: Küche
+  #   # switchable: true   # zeigt den Plug im "Schalten"-Tab (nur Shelly)
   #
   # - id: waschmaschine
   #   name: Waschmaschine

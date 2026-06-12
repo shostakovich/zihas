@@ -347,4 +347,28 @@ class ConfigLoaderTest < Minitest::Test
     err = assert_raises(ConfigLoader::Error) { load_yaml(yaml) }
     assert_match(/trmnl/i, err.message)
   end
+
+  def test_plug_switchable_defaults_to_false
+    cfg = load_yaml(valid_yaml)
+    assert_equal false, cfg.plugs.last.switchable
+  end
+
+  def test_plug_switchable_true_is_parsed
+    yaml = valid_yaml.sub("role: consumer", "role: consumer\n    switchable: true")
+    cfg = load_yaml(yaml)
+    assert_equal true, cfg.plugs.last.switchable
+    assert_equal false, cfg.plugs.first.switchable
+  end
+
+  def test_plug_switchable_must_be_boolean
+    yaml = valid_yaml.sub("role: consumer", "role: consumer\n    switchable: yes please")
+    e = assert_raises(ConfigLoader::Error) { load_yaml(yaml) }
+    assert_match(/switchable must be true or false/, e.message)
+  end
+
+  def test_switchable_producer_raises
+    yaml = valid_yaml.sub("role: producer", "role: producer\n    switchable: true")
+    e = assert_raises(ConfigLoader::Error) { load_yaml(yaml) }
+    assert_match(/producer.*switchable|switchable.*producer/i, e.message)
+  end
 end
