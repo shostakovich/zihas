@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_12_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_12_165251) do
   create_table "daily_energy_summary", primary_key: "date", id: :string, force: :cascade do |t|
     t.float "consumed_wh", null: false
     t.float "produced_wh", null: false
@@ -114,6 +114,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_12_000000) do
     t.float "wind_gust_speed"
     t.float "wind_speed"
     t.index ["kind", "lat", "lon", "timestamp"], name: "idx_weather_records_identity", unique: true
+    t.index ["kind", "timestamp"], name: "idx_weather_records_kind_ts"
     t.index ["lat", "lon", "timestamp"], name: "idx_weather_records_location_ts"
   end
 end
