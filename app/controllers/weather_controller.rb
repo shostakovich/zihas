@@ -10,7 +10,7 @@ class WeatherController < ApplicationController
 
   def fresh_outdoor_sensor_reading
     SensorReading.fresh_outdoor(outdoor_sensor_ids)
-  rescue Errno::ENOENT
+  rescue ConfigLoader::Error
     nil
   end
 

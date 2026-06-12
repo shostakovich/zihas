@@ -86,6 +86,8 @@ class ConfigLoader
     raise Error, "config root must be a mapping" unless raw.is_a?(Hash)
 
     new(raw).build
+  rescue Errno::ENOENT
+    raise Error, "config file not found"
   end
 
   def initialize(raw)
