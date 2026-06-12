@@ -378,4 +378,14 @@ class ConfigLoaderTest < Minitest::Test
     end
     assert_match(/config file not found/i, error.message)
   end
+
+  def test_app_config_memoizes_and_resets
+    ConfigLoader.reset_app_config!
+    first  = ConfigLoader.app_config
+    second = ConfigLoader.app_config
+    assert_same first, second
+
+    ConfigLoader.reset_app_config!
+    refute_same first, ConfigLoader.app_config
+  end
 end

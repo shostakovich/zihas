@@ -15,5 +15,7 @@ module ActiveSupport
   class TestCase
     parallelize(workers: 1)
     fixtures :all
+
+    teardown { ConfigLoader.reset_app_config! }
   end
 end

@@ -69,4 +69,13 @@ class SwitchRowTest < ActiveSupport::TestCase
       assert_equal 1, row.windows.size  # still listed for editing
     end
   end
+
+  test "build_all returns same rows as individual build" do
+    plugs = [ plug_struct("a"), plug_struct("b") ]
+    all   = SwitchRow.build_all(plugs, now: @now)
+    singles = plugs.map { |p| SwitchRow.build(p, now: @now) }
+    assert_equal singles.map(&:on?),       all.map(&:on?)
+    assert_equal singles.map(&:offline?),  all.map(&:offline?)
+    assert_equal singles.map { |r| r.windows.map(&:id) }, all.map { |r| r.windows.map(&:id) }
+  end
 end
