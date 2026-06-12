@@ -39,4 +39,9 @@ class SampleTest < ActiveSupport::TestCase
     s.aenergy_wh = nil
     refute s.valid?
   end
+
+  test "accepts post-2038 timestamps" do
+    sample = Sample.create!(plug_id: "bkw", ts: 2_200_000_000, apower_w: 1.0, aenergy_wh: 1.0)
+    assert_equal 2_200_000_000, sample.reload.ts
+  end
 end

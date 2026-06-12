@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_12_165251) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_12_171207) do
   create_table "daily_energy_summary", primary_key: "date", id: :string, force: :cascade do |t|
     t.float "consumed_wh", null: false
     t.float "produced_wh", null: false
@@ -35,13 +35,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_12_165251) do
     t.float "aenergy_wh", null: false
     t.float "apower_w", null: false
     t.string "plug_id", limit: 255, null: false
-    t.integer "ts", null: false
+    t.bigint "ts", null: false
     t.index ["ts"], name: "idx_samples_ts"
   end
 
   create_table "samples_5min", primary_key: ["plug_id", "bucket_ts"], force: :cascade do |t|
     t.float "avg_power_w", null: false
-    t.integer "bucket_ts", null: false
+    t.bigint "bucket_ts", null: false
     t.float "energy_delta_wh", null: false
     t.string "plug_id", limit: 255, null: false
     t.integer "sample_count", null: false
