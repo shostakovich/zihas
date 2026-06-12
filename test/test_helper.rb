@@ -1,7 +1,7 @@
 require "simplecov"
 SimpleCov.start "rails" do
   enable_coverage :branch
-  minimum_coverage line: 37, branch: 5
+  minimum_coverage line: 70, branch: 71
 end
 
 ENV["RAILS_ENV"] ||= "test"
@@ -15,5 +15,7 @@ module ActiveSupport
   class TestCase
     parallelize(workers: 1)
     fixtures :all
+
+    teardown { ConfigLoader.reset_app_config! }
   end
 end

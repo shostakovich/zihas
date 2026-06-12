@@ -8,10 +8,6 @@ class ApplicationController < ActionController::Base
   private
 
   def app_config
-    @app_config ||= ConfigLoader.load(Rails.root.join("config", config_file_name).to_s)
-  end
-
-  def config_file_name
-    Rails.env.test? ? "ziwoas.test.yml" : "ziwoas.yml"
+    ConfigLoader.app_config
   end
 end

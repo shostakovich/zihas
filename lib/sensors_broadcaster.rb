@@ -23,9 +23,8 @@ module SensorsBroadcaster
   end
 
   def load_config
-    path = Rails.root.join("config", Rails.env.test? ? "ziwoas.test.yml" : "ziwoas.yml").to_s
-    ConfigLoader.load(path)
-  rescue Errno::ENOENT
+    ConfigLoader.app_config
+  rescue ConfigLoader::Error
     nil
   end
 end

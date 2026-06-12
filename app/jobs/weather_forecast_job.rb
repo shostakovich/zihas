@@ -1,5 +1,8 @@
+require "brightsky_client"
+
 class WeatherForecastJob < ApplicationJob
   queue_as :default
+  retry_on BrightskyClient::Error, wait: :polynomially_longer, attempts: 3
 
   def perform(today: Date.current)
     sync = WeatherSync.from_app_config

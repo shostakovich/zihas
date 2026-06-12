@@ -1,5 +1,6 @@
 require "date"
 require "daily_energy_summary_builder"
+require "energy_deltas"
 require "fileutils"
 require "set"
 require "time"
@@ -7,10 +8,7 @@ require "time"
 class Aggregator
   DEFAULT_RAW_RETENTION_DAYS = 7
 
-  # Plausible per-sample power ceiling used to cap energy deltas. 20 kW is
-  # above any realistic single-circuit load, while counter glitches can imply
-  # megawatts for a few seconds.
-  MAX_PLAUSIBLE_W = 20_000
+  MAX_PLAUSIBLE_W = EnergyDeltas::MAX_PLAUSIBLE_W
 
   def initialize(timezone:, raw_retention_days: DEFAULT_RAW_RETENTION_DAYS, plugs: nil)
     @tz = timezone
@@ -26,29 +24,7 @@ class Aggregator
       Sample5min.where(bucket_ts: start_ts..(end_ts - 1)).delete_all
       DailyTotal.where(date: date_s).delete_all
 
-      # Cap each per-sample delta at MAX_PLAUSIBLE_W * dt to discard
-      # implausible counter jumps (e.g. a glitched 0-reading followed by a
-      # snap back to the lifetime cumulative value would otherwise contribute
-      # hundreds of kWh in a single delta).
-      sql_5min = <<~SQL
-        WITH window_samples AS (
-          SELECT plug_id, ts, apower_w, aenergy_wh,
-                 LAG(ts)         OVER (PARTITION BY plug_id ORDER BY ts) AS prev_ts,
-                 LAG(aenergy_wh) OVER (PARTITION BY plug_id ORDER BY ts) AS prev_wh
-            FROM samples
-           WHERE ts >= ? AND ts < ?
-        ),
-        deltas AS (
-          SELECT plug_id, ts, apower_w,
-                 CASE
-                   WHEN prev_wh IS NULL      THEN 0
-                   WHEN aenergy_wh < prev_wh THEN 0
-                   WHEN aenergy_wh - prev_wh
-                        > #{MAX_PLAUSIBLE_W}.0 * (ts - prev_ts) / 3600.0 THEN 0
-                   ELSE aenergy_wh - prev_wh
-                 END AS delta_wh
-            FROM window_samples
-        )
+      sql_5min = EnergyDeltas.cte + <<~SQL
         INSERT INTO samples_5min (plug_id, bucket_ts, avg_power_w, energy_delta_wh, sample_count)
         SELECT plug_id,
                (ts / 300) * 300 AS bucket_ts,
@@ -59,25 +35,7 @@ class Aggregator
          GROUP BY plug_id, bucket_ts
       SQL
 
-      sql_daily = <<~SQL
-        WITH window_samples AS (
-          SELECT plug_id, ts, aenergy_wh,
-                 LAG(ts)         OVER (PARTITION BY plug_id ORDER BY ts) AS prev_ts,
-                 LAG(aenergy_wh) OVER (PARTITION BY plug_id ORDER BY ts) AS prev_wh
-            FROM samples
-           WHERE ts >= ? AND ts < ?
-        ),
-        deltas AS (
-          SELECT plug_id,
-                 CASE
-                   WHEN prev_wh IS NULL      THEN 0
-                   WHEN aenergy_wh < prev_wh THEN 0
-                   WHEN aenergy_wh - prev_wh
-                        > #{MAX_PLAUSIBLE_W}.0 * (ts - prev_ts) / 3600.0 THEN 0
-                   ELSE aenergy_wh - prev_wh
-                 END AS delta_wh
-            FROM window_samples
-        )
+      sql_daily = EnergyDeltas.cte + <<~SQL
         INSERT INTO daily_totals (plug_id, date, energy_wh)
         SELECT plug_id, ?, SUM(delta_wh) AS energy_wh
           FROM deltas

@@ -6,14 +6,17 @@ require "weather_icon"
 
 class BrightskyClient
   BASE_URL = "https://api.brightsky.dev"
+  RETRIES = 2
+  RETRY_BASE_DELAY = 0.5
 
   class Error < StandardError; end
 
-  def initialize(lat:, lon:, timezone:, http_timeout: 5)
+  def initialize(lat:, lon:, timezone:, http_timeout: 5, retry_delay: RETRY_BASE_DELAY)
     @lat = lat
     @lon = lon
     @timezone = timezone
     @http_timeout = http_timeout
+    @retry_delay = retry_delay
   end
 
   def current_weather
@@ -32,6 +35,19 @@ class BrightskyClient
   private
 
   def get_json(path, params)
+    attempts = 0
+    begin
+      attempts += 1
+      fetch_json(path, params)
+    rescue Error => e
+      retryable = e.message.match?(/\ABright Sky HTTP 5/) || e.message.match?(/timeout|getaddrinfo|failed to open/i)
+      raise unless retryable && attempts <= RETRIES
+      sleep(@retry_delay * attempts)
+      retry
+    end
+  end
+
+  def fetch_json(path, params)
     uri = URI(BASE_URL + path)
     uri.query = URI.encode_www_form(params)
     response = Net::HTTP.start(uri.host, uri.port, use_ssl: true, read_timeout: @http_timeout, open_timeout: @http_timeout) do |http|

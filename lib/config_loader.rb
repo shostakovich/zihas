@@ -86,6 +86,24 @@ class ConfigLoader
     raise Error, "config root must be a mapping" unless raw.is_a?(Hash)
 
     new(raw).build
+  rescue Errno::ENOENT
+    raise Error, "config file not found"
+  end
+
+  APP_CONFIG_MUTEX = Mutex.new
+
+  def self.app_config
+    @app_config || APP_CONFIG_MUTEX.synchronize do
+      @app_config ||= load(default_path)
+    end
+  end
+
+  def self.reset_app_config!
+    APP_CONFIG_MUTEX.synchronize { @app_config = nil }
+  end
+
+  def self.default_path
+    Rails.root.join("config", Rails.env.test? ? "ziwoas.test.yml" : "ziwoas.yml").to_s
   end
 
   def initialize(raw)

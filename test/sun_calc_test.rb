@@ -63,4 +63,9 @@ class SunCalcTest < Minitest::Test
         "expected polar night at hour #{hour}"
     end
   end
+
+  def test_solar_event_minutes_utc_clamps_cos_ha_outside_unit_range
+    minutes = SunCalc.solar_event_minutes_utc(Date.new(2026, 6, 21), 11.26, 1.0000000000000002, :sunrise)
+    refute minutes.nan?
+  end
 end

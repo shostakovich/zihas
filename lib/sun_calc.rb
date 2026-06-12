@@ -75,7 +75,7 @@ module SunCalc
 
   def solar_event_minutes_utc(date, lon, cos_ha, event)
     eqtime, _ = solar_terms(date)
-    ha_deg = Math.acos(cos_ha) * 180.0 / Math::PI
+    ha_deg = Math.acos(cos_ha.clamp(-1.0, 1.0)) * 180.0 / Math::PI
     case event
     when :sunrise then 720 - 4 * (lon + ha_deg) - eqtime
     when :sunset  then 720 - 4 * (lon - ha_deg) - eqtime

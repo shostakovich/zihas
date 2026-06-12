@@ -16,4 +16,12 @@ class SchedulerStateTest < ActiveSupport::TestCase
     assert_equal t2, SchedulerState.last_tick_at
     assert_equal 1, SchedulerState.count
   end
+
+  test "advance! returns false when watermark moved concurrently" do
+    SchedulerState.advance!(Time.current)
+    seen = SchedulerState.last_tick_at
+    SchedulerState.advance!(seen + 60)                  # simulated concurrent worker
+    assert_equal false, SchedulerState.advance!(seen + 30, expected: seen)
+    assert_in_delta (seen + 60).to_f, SchedulerState.last_tick_at.to_f, 1.0
+  end
 end

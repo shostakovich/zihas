@@ -26,14 +26,15 @@ class ScheduleTickJob < ApplicationJob
       Rails.logger.warn("ScheduleTick: #{edge.plug_id} #{edge.action} failed: #{e.message}")
     end
 
-    # Keep the watermark so the next tick retries; repeated on/off is idempotent.
+    # Advance watermark only after all commands dispatched successfully.
+    # If anything fails (including a crash beyond our rescue scope), the
+    # watermark stays put so the next tick retries these edges.
     SchedulerState.advance!(now) unless failed
   end
 
   private
 
   def load_config
-    path = Rails.root.join("config", Rails.env.test? ? "ziwoas.test.yml" : "ziwoas.yml").to_s
-    ConfigLoader.load(path)
+    ConfigLoader.app_config
   end
 end
