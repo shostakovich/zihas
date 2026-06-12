@@ -70,6 +70,19 @@ class SwitchEdgeCalculatorTest < ActiveSupport::TestCase
     assert_equal :on,  fan.action   # only 18:20 inside (off is 23:00, outside)
   end
 
+  test "on edge wins a same-timestamp tie in latest_edge_per_plug" do
+    c = calc(
+      W.new(plug_id: "lamp", on_at: 1080, off_at: 1140, days: [ 1 ]),  # Mo 18:00-19:00
+      W.new(plug_id: "lamp", on_at: 1140, off_at: 1200, days: [ 1 ])   # Mo 19:00-20:00
+    )
+    edges = c.latest_edge_per_plug(tz.local(2026, 6, 15, 17, 0), tz.local(2026, 6, 15, 19, 0))
+    assert_equal 1, edges.length
+    assert_equal :on, edges.first.action
+    # And edges_between orders :off before :on at the same instant
+    all = c.edges_between(tz.local(2026, 6, 15, 17, 0), tz.local(2026, 6, 15, 19, 0))
+    assert_equal [ :on, :off, :on ], all.map(&:action)
+  end
+
   test "spring-forward gap shifts the edge forward" do
     # 2026-03-29 (Sunday) 02:00 -> 03:00 in Europe/Berlin; 02:30 does not exist.
     c = calc(W.new(plug_id: "lamp", on_at: 150, off_at: 240, days: [ 7 ]))  # So 02:30-04:00

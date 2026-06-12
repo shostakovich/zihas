@@ -3,6 +3,10 @@
 class SwitchEdgeCalculator
   Edge = Struct.new(:plug_id, :action, :at, keyword_init: true)
 
+  # Total order for simultaneous edges: :off sorts before :on, so that
+  # "last edge wins" resolves a tie in favor of switching on.
+  ACTION_ORDER = { off: 0, on: 1 }.freeze
+
   def initialize(windows:, timezone: Time.zone)
     @windows = windows
     @tz      = timezone
@@ -17,7 +21,7 @@ class SwitchEdgeCalculator
     (first_date..last_date)
       .flat_map { |date| edges_for_date(date) }
       .select { |e| e.at > from && e.at <= to }
-      .sort_by(&:at)
+      .sort_by { |e| [ e.at, ACTION_ORDER[e.action] ] }
   end
 
   # At most one edge per plug: the latest within the interval.
