@@ -37,9 +37,13 @@ class SwitchRow
     @now          = now
   end
 
+  # The fresher signal wins: a command newer than the last confirmed device
+  # state shows optimistically until the Shelly status message catches up.
   def on?
+    if last_command && (state.nil? || state.updated_at.nil? || last_command.created_at >= state.updated_at)
+      return last_command.action == "on"
+    end
     return state.output if state
-    return last_command.action == "on" if last_command
     false
   end
 

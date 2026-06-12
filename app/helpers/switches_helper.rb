@@ -21,7 +21,7 @@ module SwitchesHelper
     cmd        = row.last_command
     first_part =
       if cmd && (cmd.action == "on") == row.on?
-        "#{state_word} seit #{cmd.created_at.in_time_zone.strftime('%H:%M')} (#{SOURCE_LABEL[cmd.source]})"
+        "#{state_word} seit #{cmd.created_at.strftime('%H:%M')} (#{SOURCE_LABEL[cmd.source]})"
       else
         state_word
       end

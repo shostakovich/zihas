@@ -45,6 +45,21 @@ class SwitchRowTest < ActiveSupport::TestCase
     assert SwitchRow.build(@plug).on?
   end
 
+  test "on? lets a manual command fresher than the plug state win" do
+    travel_to Time.zone.local(2026, 6, 15, 17, 0) do
+      PlugState.record_output("fridge", false)
+    end
+    travel_to Time.zone.local(2026, 6, 15, 17, 5) do
+      SwitchCommand.create!(plug_id: "fridge", action: "on", source: "manual")
+      assert SwitchRow.build(@plug).on?
+    end
+    # Device confirms afterwards: plug state is fresher again and wins.
+    travel_to Time.zone.local(2026, 6, 15, 17, 6) do
+      PlugState.find_by(plug_id: "fridge").touch
+      refute SwitchRow.build(@plug).on?
+    end
+  end
+
   test "disabled windows do not produce a next edge" do
     travel_to Time.zone.local(2026, 6, 15, 17, 0) do
       SwitchWindow.create!(plug_id: "fridge", on_at: 1080, off_at: 1380, days: [ 1 ], enabled: false)
