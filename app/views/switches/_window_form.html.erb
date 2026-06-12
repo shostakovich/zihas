@@ -1,0 +1,30 @@
+<%= tag.div id: (dom_id(window) if window.persisted?), class: "sw-form-wrapper" do %>
+  <%= form_with model: window,
+                url: window.persisted? ? switch_window_path(plug_id: plug.id, id: window.id)
+                                       : switch_windows_path(plug_id: plug.id),
+                class: "sw-form" do |f| %>
+    <% if window.errors.any? %>
+      <div class="sw-form-errors"><%= window.errors.full_messages.join(", ") %></div>
+    <% end %>
+    <div class="sw-form-row">
+      <%= f.time_field :on_at_time, class: "sw-time" %>
+      <span class="sw-hint">bis</span>
+      <%= f.time_field :off_at_time, class: "sw-time" %>
+    </div>
+    <div class="sw-form-row">
+      <input type="hidden" name="switch_window[days][]" value="">
+      <% SwitchesHelper::DAY_ABBR.each do |num, label| %>
+        <label class="sw-day">
+          <%= check_box_tag "switch_window[days][]", num, window.days.include?(num),
+                            id: "sw_day_#{plug.id}_#{window.id || 'new'}_#{num}" %>
+          <span><%= label %></span>
+        </label>
+      <% end %>
+    </div>
+    <div class="sw-form-row sw-form-actions">
+      <%= f.submit "Speichern", class: "sw-btn" %>
+      <%= link_to "Abbrechen", switches_path, class: "sw-btn ghost" %>
+      <span class="sw-hint">Über Mitternacht? Einfach 22:00–06:00 eintragen.</span>
+    </div>
+  <% end %>
+<% end %>

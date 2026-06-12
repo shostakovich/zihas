@@ -1,0 +1,7 @@
+<div class="sw-card<%= ' sw-offline' if row.offline? %>" id="sw_card_<%= row.plug.id %>" data-plug-id="<%= row.plug.id %>">
+  <%= render "switches/head", row: row %>
+  <details class="sw-details">
+    <summary>Zeitfenster<%= " (#{row.windows.size})" if row.windows.any? %></summary>
+    <%= render "switches/windows", plug: row.plug, windows: row.windows %>
+  </details>
+</div>

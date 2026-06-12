@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_08_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_12_000000) do
   create_table "daily_energy_summary", primary_key: "date", id: :string, force: :cascade do |t|
     t.float "consumed_wh", null: false
     t.float "produced_wh", null: false
@@ -21,6 +21,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_08_000000) do
     t.string "date", limit: 255, null: false
     t.float "energy_wh", null: false
     t.string "plug_id", limit: 255, null: false
+  end
+
+  create_table "plug_states", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.boolean "output", null: false
+    t.string "plug_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["plug_id"], name: "index_plug_states_on_plug_id", unique: true
   end
 
   create_table "samples", primary_key: ["plug_id", "ts"], force: :cascade do |t|
@@ -39,6 +47,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_08_000000) do
     t.integer "sample_count", null: false
   end
 
+  create_table "scheduler_states", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "last_tick_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
   create_table "sensor_readings", force: :cascade do |t|
     t.integer "battery_pct"
     t.integer "co2"
@@ -51,6 +65,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_08_000000) do
     t.datetime "updated_at", null: false
     t.index ["device_id", "taken_at"], name: "index_sensor_readings_on_device_id_and_taken_at"
     t.index ["taken_at"], name: "index_sensor_readings_on_taken_at"
+  end
+
+  create_table "switch_commands", force: :cascade do |t|
+    t.string "action", null: false
+    t.datetime "created_at", null: false
+    t.string "plug_id", null: false
+    t.string "source", null: false
+    t.datetime "updated_at", null: false
+    t.index ["plug_id", "created_at"], name: "index_switch_commands_on_plug_id_and_created_at"
+  end
+
+  create_table "switch_windows", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.json "days", null: false
+    t.boolean "enabled", default: true, null: false
+    t.integer "off_at", null: false
+    t.integer "on_at", null: false
+    t.string "plug_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["plug_id"], name: "index_switch_windows_on_plug_id"
   end
 
   create_table "weather_records", force: :cascade do |t|

@@ -4,7 +4,7 @@ require "tzinfo"
 class ConfigLoader
   class Error < StandardError; end
 
-  PlugCfg     = Struct.new(:id, :name, :role, :ain, :driver, :room, keyword_init: true)
+  PlugCfg     = Struct.new(:id, :name, :role, :ain, :driver, :room, :switchable, keyword_init: true)
   MqttCfg     = Struct.new(:host, :port, :topic_prefix, keyword_init: true)
   FritzPollCfg = Struct.new(:active_interval_seconds, :idle_interval_seconds,
                              :idle_threshold_w, :timeout_seconds, keyword_init: true)
@@ -50,19 +50,28 @@ class ConfigLoader
       raise ConfigLoader::Error, "plug '#{id}' driver must be one of #{ConfigLoader::VALID_DRIVERS}" unless ConfigLoader::VALID_DRIVERS.include?(driver)
 
       name = require_string(@h["name"], "plugs[#{@index}].name")
-      build_plug(id, name, role, driver)
+
+      switchable = @h.key?("switchable") ? @h["switchable"] : false
+      unless [ true, false ].include?(switchable)
+        raise ConfigLoader::Error, "plugs[#{@index}].switchable must be true or false"
+      end
+      if switchable && role == :producer
+        raise ConfigLoader::Error, "plug '#{id}' with role: producer cannot be switchable"
+      end
+
+      build_plug(id, name, role, driver, switchable)
     end
 
     private
 
-    def build_plug(id, name, role, driver)
+    def build_plug(id, name, role, driver, switchable)
       room = @h["room"].nil? ? nil : require_string(@h["room"], "plugs[#{@index}].room")
       if driver == :shelly
         raise ConfigLoader::Error, "plugs[#{@index}].ain must not be set for driver: shelly" if @h["ain"]
-        ConfigLoader::PlugCfg.new(id: id, name: name, role: role, driver: :shelly, ain: nil, room: room)
+        ConfigLoader::PlugCfg.new(id: id, name: name, role: role, driver: :shelly, ain: nil, room: room, switchable: switchable)
       else
         raise ConfigLoader::Error, "plugs[#{@index}].ain is required for driver: fritz_dect" if @h["ain"].nil? || @h["ain"].to_s.empty?
-        ConfigLoader::PlugCfg.new(id: id, name: name, role: role, driver: :fritz_dect, ain: @h["ain"].to_s, room: room)
+        ConfigLoader::PlugCfg.new(id: id, name: name, role: role, driver: :fritz_dect, ain: @h["ain"].to_s, room: room, switchable: switchable)
       end
     end
   end

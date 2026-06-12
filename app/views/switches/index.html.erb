@@ -1,0 +1,23 @@
+<% content_for :title, "Schalten" %>
+<h1>Schalten</h1>
+
+<div data-controller="switches">
+  <% if @rows.empty? %>
+    <p class="sw-empty">Keine schaltbaren Steckdosen konfiguriert. Markiere Verbraucher in <code>ziwoas.yml</code> mit <code>switchable: true</code>.</p>
+  <% end %>
+
+  <% @rows.each do |row| %>
+    <%= render "switches/plug_card", row: row %>
+  <% end %>
+
+  <% if @orphaned_windows.any? %>
+    <div class="section-label">Verwaiste Zeitfenster</div>
+    <% @orphaned_windows.each do |window| %>
+      <div class="sw-card sw-orphan" id="orphan_window_<%= window.id %>">
+        <span class="sw-pill paused"><%= window.plug_id %> · <%= window_label(window) %></span>
+        <%= button_to "🗑", switch_window_path(plug_id: window.plug_id, id: window.id),
+                      method: :delete, class: "sw-icon-btn", form_class: "sw-inline-form" %>
+      </div>
+    <% end %>
+  <% end %>
+</div>

@@ -1,0 +1,11 @@
+<div class="sw-window" id="<%= dom_id(window) %>">
+  <span class="sw-pill<%= ' paused' unless window.enabled %>"><%= window_label(window) %></span>
+  <%= button_to window.enabled ? "⏸" : "▶",
+                switch_window_path(plug_id: plug.id, id: window.id),
+                method: :patch, params: { switch_window: { enabled: (!window.enabled).to_s } },
+                class: "sw-icon-btn", form_class: "sw-inline-form" %>
+  <%= link_to "✏️", edit_switch_window_path(plug_id: plug.id, id: window.id),
+              class: "sw-icon-btn", data: { turbo_stream: true } %>
+  <%= button_to "🗑", switch_window_path(plug_id: plug.id, id: window.id),
+                method: :delete, class: "sw-icon-btn", form_class: "sw-inline-form" %>
+</div>

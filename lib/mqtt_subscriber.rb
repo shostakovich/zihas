@@ -45,13 +45,17 @@ class MqttSubscriber
     data       = JSON.parse(payload)
     apower_w   = data["apower"].to_f
     aenergy_wh = data.dig("aenergy", "total").to_f
+    output     = data["output"]
     ts         = @clock.call.to_i
 
     Sample.create!(plug_id: plug_id, ts: ts, apower_w: apower_w, aenergy_wh: aenergy_wh)
+    PlugState.record_output(plug_id, output) unless output.nil?
     @logger.debug("MqttSubscriber: #{plug_id} #{apower_w} W / #{aenergy_wh} Wh")
-    accumulate(plug, ts, apower_w, aenergy_wh)
+    accumulate(plug, ts, apower_w, aenergy_wh, output)
   rescue ActiveRecord::RecordNotUnique
     # duplicate ts within same second — skip silently
+  rescue ActiveRecord::RecordInvalid => e
+    @logger.warn("MqttSubscriber: invalid output on #{topic}: #{e.message}")
   rescue JSON::ParserError => e
     @logger.warn("MqttSubscriber: invalid JSON on #{topic}: #{e.message}")
   end
@@ -69,7 +73,7 @@ class MqttSubscriber
     begin; @client&.disconnect; rescue StandardError; nil; end
   end
 
-  def accumulate(plug, ts, apower_w, aenergy_wh)
+  def accumulate(plug, ts, apower_w, aenergy_wh, output = nil)
     bucket_ts = (ts / 60) * 60
     bucket    = @buckets[plug.id]
     if bucket && bucket[:bucket_ts] == bucket_ts
@@ -90,7 +94,8 @@ class MqttSubscriber
       bucket_ts:   bucket_ts,
       apower_w:    apower_w,
       avg_power_w: avg_power_w,
-      aenergy_wh:  aenergy_wh
+      aenergy_wh:  aenergy_wh,
+      output:      output
     }
 
     now = @clock.call

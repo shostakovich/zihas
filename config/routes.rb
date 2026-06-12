@@ -6,6 +6,13 @@ Rails.application.routes.draw do
   get "/sensors", to: "sensors#index", as: :sensors
   get "/sensors/series", to: "sensors#series", as: :sensors_series
 
+  get "/switches", to: "switches#index", as: :switches
+
+  scope "/plugs/:plug_id" do
+    post "switch", to: "plug_switches#create", as: :plug_switch
+    resources :switch_windows, only: %i[new create edit update destroy]
+  end
+
   get "/api/today", to: "api#today"
   get "/api/today/summary", to: "api#today_summary"
   get "/api/history", to: "api#history"

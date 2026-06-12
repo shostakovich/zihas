@@ -14,6 +14,7 @@ plugs:
   - id: fridge
     name: Kühlschrank
     role: consumer
+    switchable: true
 
 switchbot:
   token: "test-tok"

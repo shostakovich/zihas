@@ -30,6 +30,7 @@
       <% end %>
       <nav class="app-nav" aria-label="Hauptnavigation">
         <%= link_to "Dashboard", root_path, class: [ "app-nav-link", ("active" if current_page?(root_path)) ] %>
+        <%= link_to "Schalten", switches_path, class: [ "app-nav-link", ("active" if current_page?(switches_path)) ] %>
         <%= link_to "Berichte", reports_path, class: [ "app-nav-link", ("active" if current_page?(reports_path)) ] %>
         <%= link_to "Wetter", weather_path, class: [ "app-nav-link", ("active" if current_page?(weather_path)) ] %>
         <%= link_to "Sensoren", sensors_path, class: [ "app-nav-link", ("active" if current_page?(sensors_path)) ] %>

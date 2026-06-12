@@ -7,6 +7,7 @@ require "stringio"
 class MqttSubscriberTest < ActiveSupport::TestCase
   setup do
     Sample.delete_all
+    PlugState.delete_all
     @log_io = StringIO.new
     @logger = Logger.new(@log_io)
     @now    = 1_700_000_000.0
@@ -26,8 +27,10 @@ class MqttSubscriberTest < ActiveSupport::TestCase
     )
   end
 
-  def status_payload(apower:, total:)
-    JSON.generate({ "apower" => apower, "aenergy" => { "total" => total } })
+  def status_payload(apower:, total:, output: nil)
+    h = { "apower" => apower, "aenergy" => { "total" => total } }
+    h["output"] = output unless output.nil?
+    JSON.generate(h)
   end
 
   def capture_broadcasts
@@ -133,5 +136,47 @@ class MqttSubscriberTest < ActiveSupport::TestCase
       assert_includes plug_ids, "fridge"
       assert_includes plug_ids, "bkw"
     end
+  end
+
+  test "handle_message records output state" do
+    @subscriber.handle_message("shellies/fridge/status/switch:0",
+                               status_payload(apower: 50.0, total: 1.0, output: true))
+    assert_equal true, PlugState.find_by(plug_id: "fridge").output
+  end
+
+  test "handle_message updates output state on change" do
+    @subscriber.handle_message("shellies/fridge/status/switch:0",
+                               status_payload(apower: 50.0, total: 1.0, output: true))
+    @now += 1
+    @subscriber.handle_message("shellies/fridge/status/switch:0",
+                               status_payload(apower: 0.0, total: 1.0, output: false))
+    assert_equal false, PlugState.find_by(plug_id: "fridge").output
+    assert_equal 1, PlugState.count
+  end
+
+  test "handle_message without output field leaves plug_states untouched" do
+    @subscriber.handle_message("shellies/fridge/status/switch:0",
+                               status_payload(apower: 50.0, total: 1.0))
+    assert_equal 0, PlugState.count
+  end
+
+  test "handle_message includes output in the broadcast payload" do
+    capture_broadcasts do |broadcasts|
+      @subscriber.handle_message("shellies/fridge/status/switch:0",
+                                 status_payload(apower: 50.0, total: 1.0, output: true))
+      _, payload = broadcasts.first
+      assert_equal true, payload[:plugs].first[:output]
+    end
+  end
+
+  test "handle_message tolerates non-boolean output without raising" do
+    # An empty string casts to nil for the boolean `output` column, which
+    # fails PlugState's inclusion validation and raises RecordInvalid.
+    assert_nothing_raised do
+      @subscriber.handle_message("shellies/fridge/status/switch:0",
+                                 status_payload(apower: 50.0, total: 1.0, output: ""))
+    end
+    assert_equal 0, PlugState.count
+    assert_match(/invalid output/i, @log_io.string)
   end
 end

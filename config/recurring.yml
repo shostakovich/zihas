@@ -45,6 +45,11 @@ aggregator_schedule: &aggregator_schedule
     queue: default
     schedule: every 15 minutes
 
+  schedule_tick:
+    class: ScheduleTickJob
+    queue: default
+    schedule: every minute
+
 development:
   <<: *aggregator_schedule
 

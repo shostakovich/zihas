@@ -1,0 +1,8 @@
+<div id="sw_windows_<%= plug.id %>">
+  <% windows.each do |window| %>
+    <%= render "switches/window", plug: plug, window: window %>
+  <% end %>
+  <div id="sw_editor_<%= plug.id %>"></div>
+  <%= link_to "+ Zeitfenster", new_switch_window_path(plug_id: plug.id),
+              class: "sw-add", data: { turbo_stream: true } %>
+</div>

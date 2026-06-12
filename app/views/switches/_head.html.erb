@@ -1,0 +1,13 @@
+<div class="sw-row" id="sw_head_<%= row.plug.id %>">
+  <%= button_to "", plug_switch_path(plug_id: row.plug.id, state: row.on? ? "off" : "on"),
+                class: "sw-toggle#{' off' unless row.on?}",
+                disabled: row.offline?,
+                form_class: "sw-inline-form",
+                aria: { label: "#{row.plug.name} #{row.on? ? 'ausschalten' : 'einschalten'}" } %>
+  <div class="sw-info">
+    <span class="sw-name"><%= row.plug.name %></span>
+    <span class="sw-watt" data-switches-watt="<%= row.plug.id %>">· <%= row.offline? ? "offline" : "#{row.watt&.round || 0} W" %></span>
+    <div class="sw-sub"><%= switch_status_line(row) %></div>
+    <div class="sw-error" id="sw_error_<%= row.plug.id %>"></div>
+  </div>
+</div>
