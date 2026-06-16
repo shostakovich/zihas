@@ -13,9 +13,10 @@ class ConfigLoader
   SwitchbotCfg = Struct.new(:token, :secret, keyword_init: true)
   SensorCfg    = Struct.new(:id, :name, :type, :room, keyword_init: true)
   TrmnlCfg     = Struct.new(:energy_webhook_url, :sensors_webhook_url, keyword_init: true)
+  SolakonCfg   = Struct.new(:host, :port, :unit_id, :enabled, :stale_after_s, keyword_init: true)
   Config       = Struct.new(:electricity_price_eur_per_kwh, :timezone,
                             :mqtt, :fritz_poll, :plugs, :fritz_box, :weather,
-                            :switchbot, :sensors, :trmnl,
+                            :switchbot, :sensors, :trmnl, :solakon,
                             keyword_init: true)
 
   module StringRequirement
@@ -127,6 +128,7 @@ class ConfigLoader
     switchbot  = build_switchbot(@raw["switchbot"])
     sensors    = build_sensors(@raw["sensors"])
     trmnl = build_trmnl(@raw["trmnl"])
+    solakon = build_solakon(@raw["solakon"])
 
     if plugs.any? { |p| p.driver == :fritz_dect } && fritz_box.nil?
       raise Error, "fritz_box config required when using driver: fritz_dect"
@@ -146,7 +148,8 @@ class ConfigLoader
       weather:    weather,
       switchbot:  switchbot,
       sensors:    sensors,
-      trmnl: trmnl,
+      trmnl:      trmnl,
+      solakon:    solakon,
     )
   end
 
@@ -229,6 +232,18 @@ class ConfigLoader
     TrmnlCfg.new(
       energy_webhook_url:  require_optional_string(h["energy_webhook_url"],  "trmnl.energy_webhook_url"),
       sensors_webhook_url: require_optional_string(h["sensors_webhook_url"], "trmnl.sensors_webhook_url"),
+    )
+  end
+
+  def build_solakon(h)
+    return nil if h.nil?
+    h = require_hash(h, "solakon")
+    SolakonCfg.new(
+      host:          require_string(h["host"], "solakon.host"),
+      port:          (h["port"] || 502).to_i,
+      unit_id:       (h["unit_id"] || 1).to_i,
+      enabled:       h.key?("enabled") ? !!h["enabled"] : true,
+      stale_after_s: (h["stale_after_s"] || 120).to_i,
     )
   end
 
