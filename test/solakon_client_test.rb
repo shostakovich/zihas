@@ -23,7 +23,7 @@ class SolakonClientTest < Minitest::Test
       [ 39424, 1 ] => [ 55 ],                                   # soc 55 %
       [ 39248, 2 ] => [ 0x0000, 0x012C ],                       # active 300 W
       [ 39279, 8 ] => [ 0, 0x0064, 0, 0x0032, 0, 0, 0, 0 ],     # PV1 100W + PV2 50W (+0+0)
-      [ 39230, 2 ] => [ 0xFFFF, 0xFF38 ],                       # battery -200 W
+      [ 39230, 2 ] => [ 0xFFFF, 0xFF38 ]                       # battery -200 W
     })
     state = client_for(slave).read_state
     assert_equal 55, state.battery_soc
@@ -39,7 +39,7 @@ class SolakonClientTest < Minitest::Test
       [ 39248, 2 ] => [ 0, 0 ],
       [ 39279, 8 ] => [ 0, 0, 0, 0, 0, 0, 0, 0 ],
       [ 39230, 2 ] => [ 0, 100 ],
-      [ 46609, 1 ] => [ min_soc ],
+      [ 46609, 1 ] => [ min_soc ]
     }
   end
 
@@ -50,7 +50,7 @@ class SolakonClientTest < Minitest::Test
     assert_equal [
       [ :single, 46001, SolakonClient::REMOTE_CONTROL_ENABLE ],
       [ :single, 46002, SolakonClient::REMOTE_TIMEOUT_S ],
-      [ :multi, 46003, [ 0x0000, 0x012C ] ],
+      [ :multi, 46003, [ 0x0000, 0x012C ] ]
     ], slave.writes
   end
 

@@ -55,11 +55,11 @@ class ZeroExportTickJob < ApplicationJob
     was = Rails.cache.read(RECOVERY_CACHE_KEY) || false
     now = if soc <= ZeroExportController::ENTER_RECOVERY_SOC
             true
-          elsif soc >= ZeroExportController::EXIT_RECOVERY_SOC
+    elsif soc >= ZeroExportController::EXIT_RECOVERY_SOC
             false
-          else
+    else
             was
-          end
+    end
     Rails.cache.write(RECOVERY_CACHE_KEY, now)
     now
   end
