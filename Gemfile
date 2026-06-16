@@ -49,3 +49,4 @@ end
 gem "tzinfo", "~> 2.0"
 gem "rexml", "~> 3.4"
 gem "mqtt"
+gem "rmodbus"

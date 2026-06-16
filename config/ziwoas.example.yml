@@ -11,6 +11,15 @@ mqtt:
   port: 1883
   topic_prefix: shellies
 
+# Solakon One – Null-Einspeisung (Steuerung per Modbus TCP).
+# Ohne diesen Block ist die Regelung aus.
+# solakon:
+#   host: 192.168.1.50      # Modbus-TCP-Host der Solakon One
+#   port: 502               # Modbus-TCP-Port (Default 502)
+#   unit_id: 1              # Modbus Unit/Slave ID
+#   enabled: true           # false schaltet die Regelung ab
+#   stale_after_s: 120      # Samples älter als das fallen aus der Live-Summe
+
 # fritz_box:
 #   host: 192.168.178.1
 #   user: fritz6584

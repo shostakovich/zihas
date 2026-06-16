@@ -388,4 +388,45 @@ class ConfigLoaderTest < Minitest::Test
     ConfigLoader.reset_app_config!
     refute_same first, ConfigLoader.app_config
   end
+
+  def valid_yaml_with_solakon
+    valid_yaml + <<~YAML
+      solakon:
+        host: 192.168.1.50
+        port: 502
+        unit_id: 1
+        enabled: true
+        stale_after_s: 90
+    YAML
+  end
+
+  def test_solakon_is_nil_when_absent
+    assert_nil load_yaml(valid_yaml).solakon
+  end
+
+  def test_solakon_parses_full_block
+    sol = load_yaml(valid_yaml_with_solakon).solakon
+    assert_equal "192.168.1.50", sol.host
+    assert_equal 502, sol.port
+    assert_equal 1, sol.unit_id
+    assert_equal true, sol.enabled
+    assert_equal 90, sol.stale_after_s
+  end
+
+  def test_solakon_applies_defaults
+    yaml = valid_yaml + <<~YAML
+      solakon:
+        host: 10.0.0.9
+    YAML
+    sol = load_yaml(yaml).solakon
+    assert_equal 502, sol.port
+    assert_equal 1, sol.unit_id
+    assert_equal true, sol.enabled
+    assert_equal 120, sol.stale_after_s
+  end
+
+  def test_solakon_requires_host
+    yaml = valid_yaml + "solakon:\n  port: 502\n"
+    assert_raises(ConfigLoader::Error) { load_yaml(yaml) }
+  end
 end
