@@ -11,11 +11,15 @@ class ZeroExportTickJobTest < ActiveSupport::TestCase
 
     def apply_control!(power_w:, min_soc:)
       @calls << [ :apply, power_w, min_soc ]
-      raise SolakonClient::Error, "down" if @fail
     end
 
     def release_control! = (@calls << :release)
-    def read_state       = @state
+
+    # read_state runs first in the job; a Modbus failure surfaces here.
+    def read_state
+      raise SolakonClient::Error, "down" if @fail
+      @state
+    end
   end
 
   Plug = Struct.new(:id, :role, :name, keyword_init: true)
@@ -44,6 +48,10 @@ class ZeroExportTickJobTest < ActiveSupport::TestCase
     SolakonClient::State.new(battery_soc: 55, active_power_w: 250, pv_power_w: 0, battery_power_w: 0)
   end
 
+  def state_with(soc:, pv: 100)
+    SolakonClient::State.new(battery_soc: soc, active_power_w: 0, pv_power_w: pv, battery_power_w: 0)
+  end
+
   test "applies control derived from measured consumption, with min_soc guard" do
     now = Time.at(1_000_000)
     Sample.create!(plug_id: "fridge", ts: now.to_i - 5, apower_w: 250, aenergy_wh: 1)
@@ -68,6 +76,32 @@ class ZeroExportTickJobTest < ActiveSupport::TestCase
     client = FakeClient.new(state: healthy_state)
     run_job(client: client, now: now)
     assert_equal [ [ :apply, 146, 10 ] ], client.calls
+  end
+
+  test "recovery mode caps the setpoint so the battery charges instead of toggling" do
+    now = Time.at(1_000_000)
+    Sample.create!(plug_id: "fridge", ts: now.to_i - 5, apower_w: 170, aenergy_wh: 1)
+    client = FakeClient.new(state: state_with(soc: 12, pv: 100))
+    run_job(client: client, now: now)
+    assert_equal [ [ :apply, 70, 10 ] ], client.calls # min(170, 100-30)
+  end
+
+  test "recovery hysteresis holds between the thresholds" do
+    now = Time.at(1_000_000)
+    Sample.create!(plug_id: "fridge", ts: now.to_i - 5, apower_w: 170, aenergy_wh: 1)
+    run_job(client: FakeClient.new(state: state_with(soc: 12, pv: 100)), now: now) # enter recovery
+    held = FakeClient.new(state: state_with(soc: 14, pv: 100))                      # between 13 and 15
+    run_job(client: held, now: now)
+    assert_equal [ [ :apply, 70, 10 ] ], held.calls # still recovery -> still capped
+  end
+
+  test "recovery exits at the upper threshold and resumes discharge" do
+    now = Time.at(1_000_000)
+    Sample.create!(plug_id: "fridge", ts: now.to_i - 5, apower_w: 170, aenergy_wh: 1)
+    run_job(client: FakeClient.new(state: state_with(soc: 12, pv: 100)), now: now) # enter recovery
+    exited = FakeClient.new(state: state_with(soc: 15, pv: 100))                    # >= 15 -> normal
+    run_job(client: exited, now: now)
+    assert_equal [ [ :apply, 170, 10 ] ], exited.calls # discharge allowed again, follows load
   end
 
   test "no-op when disabled" do
