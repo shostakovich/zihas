@@ -53,7 +53,7 @@ aggregator_schedule: &aggregator_schedule
   zero_export_tick:
     class: ZeroExportTickJob
     queue: default
-    schedule: every minute
+    schedule: every 30 seconds
 
 development:
   <<: *aggregator_schedule

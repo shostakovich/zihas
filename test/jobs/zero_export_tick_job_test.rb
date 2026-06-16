@@ -9,17 +9,16 @@ class ZeroExportTickJobTest < ActiveSupport::TestCase
       @calls = []
     end
 
-    def apply_control!(power_w:, min_soc:)
-      @calls << [ :apply, power_w, min_soc ]
+    # The job drives a tick through control_tick!: a Modbus failure surfaces
+    # here (the read happens first), otherwise the block decides the setpoint.
+    def control_tick!(min_soc:)
+      raise SolakonClient::Error, "down" if @fail
+      power = yield(@state)
+      @calls << [ :apply, power, min_soc ]
+      @state
     end
 
     def release_control! = (@calls << :release)
-
-    # read_state runs first in the job; a Modbus failure surfaces here.
-    def read_state
-      raise SolakonClient::Error, "down" if @fail
-      @state
-    end
   end
 
   Plug = Struct.new(:id, :role, :name, keyword_init: true)

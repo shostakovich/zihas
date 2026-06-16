@@ -32,9 +32,21 @@ class SolakonClientTest < Minitest::Test
     assert_equal(-200, state.battery_power_w)
   end
 
-  def test_apply_control_skips_min_soc_write_when_already_correct
-    slave = FakeSlave.new(holdings: { [ 46609, 1 ] => [ 10 ] })
-    client_for(slave).apply_control!(power_w: 300, min_soc: 10)
+  # full register set so read_state_from works inside control_tick!
+  def sensor_holdings(min_soc: 10)
+    {
+      [ 39424, 1 ] => [ 16 ],
+      [ 39248, 2 ] => [ 0, 0 ],
+      [ 39279, 8 ] => [ 0, 0, 0, 0, 0, 0, 0, 0 ],
+      [ 39230, 2 ] => [ 0, 100 ],
+      [ 46609, 1 ] => [ min_soc ],
+    }
+  end
+
+  def test_control_tick_reads_state_then_writes_one_pass_skipping_min_soc_when_ok
+    slave = FakeSlave.new(holdings: sensor_holdings(min_soc: 10))
+    state = client_for(slave).control_tick!(min_soc: 10) { |_st| 300 }
+    assert_equal 16, state.battery_soc
     assert_equal [
       [ :single, 46001, SolakonClient::REMOTE_CONTROL_ENABLE ],
       [ :single, 46002, SolakonClient::REMOTE_TIMEOUT_S ],
@@ -42,16 +54,18 @@ class SolakonClientTest < Minitest::Test
     ], slave.writes
   end
 
-  def test_apply_control_writes_min_soc_when_device_value_differs
-    slave = FakeSlave.new(holdings: { [ 46609, 1 ] => [ 5 ] })
-    client_for(slave).apply_control!(power_w: 300, min_soc: 10)
+  def test_control_tick_writes_min_soc_when_device_value_differs
+    slave = FakeSlave.new(holdings: sensor_holdings(min_soc: 5))
+    client_for(slave).control_tick!(min_soc: 10) { |_st| 300 }
     assert_equal [ :single, 46609, 10 ], slave.writes.first
     assert_includes slave.writes, [ :multi, 46003, [ 0x0000, 0x012C ] ]
   end
 
-  def test_apply_control_encodes_negative_power
-    slave = FakeSlave.new(holdings: { [ 46609, 1 ] => [ 10 ] })
-    client_for(slave).apply_control!(power_w: -200, min_soc: 10)
+  def test_control_tick_yields_state_and_encodes_negative_power
+    slave = FakeSlave.new(holdings: sensor_holdings(min_soc: 10))
+    seen = nil
+    client_for(slave).control_tick!(min_soc: 10) { |st| seen = st; -200 }
+    assert_equal 16, seen.battery_soc
     assert_includes slave.writes, [ :multi, 46003, [ 0xFFFF, 0xFF38 ] ]
   end
 

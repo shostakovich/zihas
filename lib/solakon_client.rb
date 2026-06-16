@@ -48,34 +48,20 @@ class SolakonClient
   end
 
   def read_state
-    with_slave do |slave|
-      pv_regs = slave.read_holding_registers(REG_PV_POWER_BASE, PV_STRINGS * 2)
-      pv_w    = (0...PV_STRINGS).sum { |n| to_i32(pv_regs[n * 2, 2]) }
-      State.new(
-        battery_soc:     to_i16(slave.read_holding_registers(REG_BATTERY_SOC, 1).first),
-        active_power_w:  to_i32(slave.read_holding_registers(REG_ACTIVE_POWER, 2)),
-        pv_power_w:      pv_w,
-        battery_power_w: to_i32(slave.read_holding_registers(REG_BATTERY_POWER, 2)),
-      )
-    end
+    with_slave { |slave| read_state_from(slave) }
   end
 
-  # Apply the control command over a single connection: ensure the minimum-SoC
-  # guard is set, enable remote control, (re)arm the inverter watchdog, then
-  # write the active-power setpoint last.
-  #
-  # min_soc is the persisted battery-discharge floor. It is written only when it
-  # differs from the desired value, so the loop self-heals an out-of-band/reset
-  # device without wearing flash on every tick.
-  def apply_control!(power_w:, min_soc:)
+  # A full control cycle over a SINGLE Modbus connection: read inverter state,
+  # let the caller decide the setpoint from it (the yielded block returns the
+  # desired watts), then write the control command. Returns the State that was
+  # read. Doing read+write on one connection halves connection churn, which
+  # matters at higher tick rates (e.g. every 30s).
+  def control_tick!(min_soc:)
     with_slave do |slave|
-      desired_soc = min_soc.to_i
-      if slave.read_holding_registers(REG_MINIMUM_SOC, 1).first != desired_soc
-        slave.write_holding_register(REG_MINIMUM_SOC, desired_soc)
-      end
-      slave.write_holding_register(REG_REMOTE_CONTROL, REMOTE_CONTROL_ENABLE)
-      slave.write_holding_register(REG_REMOTE_TIMEOUT, REMOTE_TIMEOUT_S)
-      slave.write_holding_registers(REG_REMOTE_ACTIVE_POWER, from_i32(power_w.to_i))
+      state   = read_state_from(slave)
+      power_w = yield(state)
+      write_control!(slave, power_w: power_w, min_soc: min_soc)
+      state
     end
   end
 
@@ -85,6 +71,31 @@ class SolakonClient
   end
 
   private
+
+  def read_state_from(slave)
+    pv_regs = slave.read_holding_registers(REG_PV_POWER_BASE, PV_STRINGS * 2)
+    pv_w    = (0...PV_STRINGS).sum { |n| to_i32(pv_regs[n * 2, 2]) }
+    State.new(
+      battery_soc:     to_i16(slave.read_holding_registers(REG_BATTERY_SOC, 1).first),
+      active_power_w:  to_i32(slave.read_holding_registers(REG_ACTIVE_POWER, 2)),
+      pv_power_w:      pv_w,
+      battery_power_w: to_i32(slave.read_holding_registers(REG_BATTERY_POWER, 2)),
+    )
+  end
+
+  # Ensure the minimum-SoC guard, enable remote control, (re)arm the inverter
+  # watchdog, then write the active-power setpoint last. min_soc is written only
+  # when it differs from the desired value, so the loop self-heals a reset/
+  # out-of-band device without wearing flash on every tick.
+  def write_control!(slave, power_w:, min_soc:)
+    desired_soc = min_soc.to_i
+    if slave.read_holding_registers(REG_MINIMUM_SOC, 1).first != desired_soc
+      slave.write_holding_register(REG_MINIMUM_SOC, desired_soc)
+    end
+    slave.write_holding_register(REG_REMOTE_CONTROL, REMOTE_CONTROL_ENABLE)
+    slave.write_holding_register(REG_REMOTE_TIMEOUT, REMOTE_TIMEOUT_S)
+    slave.write_holding_registers(REG_REMOTE_ACTIVE_POWER, from_i32(power_w.to_i))
+  end
 
   def default_open(&blk)
     # ModBus::TCPClient.connect returns the client, not the block's value, so
