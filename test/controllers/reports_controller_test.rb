@@ -73,7 +73,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".empty-state", text: /Noch keine Berichtsdaten/
   end
 
-  test "layout includes dashboard and reports navigation" do
+  test "layout includes accessible navigation labels and decorative plush icons" do
     get "/reports"
 
     assert_response :success
@@ -81,9 +81,36 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "link[href^='/assets/application'][data-turbo-track='reload']", 1
     assert_select "header.app-header", 1
     assert_select ".app-brand img[alt='Ziwoas — Startseite']", 1
-    assert_select "nav.app-nav a[href='#{root_path}']", text: "Dashboard"
-    assert_select "nav.app-nav a[href='#{reports_path}']", text: "Berichte"
-    assert_select "nav.app-nav a[href='#{weather_path}']", text: "Wetter"
+
+    expected_links = {
+      root_path => [ "Home", "nav_dashboard_plush.webp" ],
+      switches_path => [ "Schalten", "nav_switches_plush.webp" ],
+      reports_path => [ "Berichte", "nav_reports_plush.webp" ],
+      weather_path => [ "Wetter", "nav_weather_plush.webp" ],
+      sensors_path => [ "Sensoren", "nav_sensors_plush.webp" ]
+    }
+
+    expected_links.each do |path, (label, icon)|
+      # Propshaft digests asset filenames (nav_dashboard_plush-<digest>.webp),
+      # so match the digest-tolerant basename rather than the literal filename.
+      icon_basename = File.basename(icon, ".webp")
+      assert_select "nav.app-nav a[href='#{path}']" do
+        assert_select ".app-nav-label", text: label, count: 1
+        assert_select "img.app-nav-icon[alt=''][aria-hidden='true'][src*='#{icon_basename}']", count: 1
+      end
+    end
+
+    stylesheet = Rails.root.join("app/assets/stylesheets/application.css").read
+    assert_includes stylesheet, ".app-nav-icon"
+    assert_includes stylesheet, "display: none;"
+    assert_includes stylesheet, ".app-nav-label"
+
+    assert_includes stylesheet, "@media (max-width: 640px)"
+    assert_includes stylesheet, "bottom: calc(14px + env(safe-area-inset-bottom));"
+    assert_includes stylesheet, "backdrop-filter: blur(40px) saturate(1.8);"
+    assert_includes stylesheet, "grid-template-columns: repeat(5, minmax(0, 1fr));"
+    assert_includes stylesheet, "width: 32px;"
+    assert_includes stylesheet, "font-weight: 500;"
   end
 
   test "reports page renders Autarkie & Eigenverbrauchsquote section" do
