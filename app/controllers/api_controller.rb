@@ -36,14 +36,15 @@ class ApiController < ApplicationController
   def live
     threshold = 120
     @now_ts   = Time.now.to_i
-    plug_ids  = app_config.plugs.map(&:id)
+    config    = app_config
+    plug_ids  = config.plugs.map(&:id)
 
     latest_by_plug = Sample
       .where(plug_id: plug_ids)
       .where("(plug_id, ts) IN (SELECT plug_id, MAX(ts) FROM samples WHERE plug_id IN (?) GROUP BY plug_id)", plug_ids)
       .index_by(&:plug_id)
 
-    @plugs = app_config.plugs.map do |plug|
+    @plugs = config.plugs.map do |plug|
       latest = latest_by_plug[plug.id]
       online = latest.present? && (@now_ts - latest.ts) <= threshold
       {
@@ -57,10 +58,10 @@ class ApiController < ApplicationController
     end
 
     consumer_w = @plugs
-      .select { |p| p[:role].to_sym == :consumer && p[:online] }
+      .select { |p| p[:role] == :consumer && p[:online] }
       .sum { |p| p[:apower_w].to_f }
 
-    solakon_cfg = app_config.solakon
+    solakon_cfg = config.solakon
     stale_after_s = solakon_cfg&.stale_after_s || threshold
     reading = if solakon_cfg&.monitoring_enabled
       SolakonReading.latest_fresh(stale_after_s: stale_after_s, now: Time.zone.at(@now_ts))
