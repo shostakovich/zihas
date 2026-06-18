@@ -50,8 +50,8 @@ aggregator_schedule: &aggregator_schedule
     queue: default
     schedule: every minute
 
-  zero_export_tick:
-    class: ZeroExportTickJob
+  solakon_monitor:
+    class: SolakonMonitorJob
     queue: default
     schedule: every 30 seconds
 
