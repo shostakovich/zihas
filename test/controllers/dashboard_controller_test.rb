@@ -5,10 +5,31 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     get root_path
 
     assert_response :success
+    assert_select "svg[viewBox='0 0 400 320']", 1
+
+    assert_select "text", text: "PV-Anlage"
+    assert_select "text", text: "Stromnetz"
+    assert_select "text", text: "Verbraucher"
     assert_select "text", text: "Batterie"
+
+    assert_select "image[x='184'][y='55'][width='32'][height='32']", 1
+    assert_select "image[href*='icon_netz']"
+    assert_select "image[href*='icon_haus']"
     assert_select "image[href*='icon_batterie']"
+
+    assert_select "[data-dashboard-target='efPvW']"
+    assert_select "[data-dashboard-target='efGridW']"
+    assert_select "[data-dashboard-target='efConsumerW']"
     assert_select "[data-dashboard-target='efBatterySoc']"
     assert_select "[data-dashboard-target='efBatteryW']"
+
+    assert_select "[data-dashboard-target='efLineSolarHome']"
+    assert_select "[data-dashboard-target='efLineSolarGrid']"
+    assert_select "[data-dashboard-target='efLineSolarBattery']"
+    assert_select "[data-dashboard-target='efLineGridHome']"
+    assert_select "[data-dashboard-target='efLineGridBattery']"
+    assert_select "[data-dashboard-target='efLineBatteryHome']"
+
     assert_select "[data-dashboard-target='efDotsSolarHome']"
     assert_select "[data-dashboard-target='efDotsSolarGrid']"
     assert_select "[data-dashboard-target='efDotsSolarBattery']"
