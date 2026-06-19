@@ -220,12 +220,12 @@ export default class extends Controller {
         batteryW < 0 ? "−" + Math.abs(batteryW).toFixed(0) + " W" : "0 W"
 
     const EF_PATHS = {
-      solarHome: "M 200,120 L 200,175 L 298,175",
-      solarGrid: "M 200,120 L 200,175 L 98,175",
-      solarBattery: "M 200,120 L 200,220",
-      gridHome: "M 98,175 L 298,175",
-      gridBattery: "M 98,175 L 200,220",
-      batteryHome: "M 200,220 L 298,175",
+      solarHome: "M 200,122 C 205,150 250,176 290,180",
+      solarGrid: "M 200,122 C 195,150 150,176 110,180",
+      solarBattery: "M 200,122 L 200,218",
+      gridHome: "M 110,180 L 290,180",
+      gridBattery: "M 104,206 C 135,235 160,255 200,218",
+      batteryHome: "M 200,218 C 240,255 265,235 296,206",
     }
     const EF_LENS = {
       solarHome: 153,
@@ -240,16 +240,8 @@ export default class extends Controller {
     this._efSetDots("efDotsSolarGridTarget", EF_PATHS.solarGrid, "#8b5cf6", solarToGrid, EF_LENS.solarGrid)
     this._efSetDots("efDotsSolarBatteryTarget", EF_PATHS.solarBattery, "#ec4899", solarToBattery, EF_LENS.solarBattery)
     this._efSetDots("efDotsGridHomeTarget", EF_PATHS.gridHome, "#3b82f6", gridToHome, EF_LENS.gridHome)
-    this._efSetDots("efDotsGridBatteryTarget", EF_PATHS.gridBattery, "#adb5bd", 0, EF_LENS.gridBattery)
+    this._efSetDots("efDotsGridBatteryTarget", EF_PATHS.gridBattery, "#94a3b8", 0, EF_LENS.gridBattery)
     this._efSetDots("efDotsBatteryHomeTarget", EF_PATHS.batteryHome, "#14b8a6", batteryToHome, EF_LENS.batteryHome)
-
-    const GRAY = "#dee2e6"
-    this._efLine("efLineSolarHomeTarget", solarToHome > 0 ? "#f59f00" : GRAY)
-    this._efLine("efLineSolarGridTarget", solarToGrid > 0 ? "#8b5cf6" : GRAY)
-    this._efLine("efLineSolarBatteryTarget", solarToBattery > 0 ? "#ec4899" : GRAY)
-    this._efLine("efLineGridHomeTarget", gridToHome > 0 ? "#3b82f6" : GRAY)
-    this._efLine("efLineGridBatteryTarget", GRAY)
-    this._efLine("efLineBatteryHomeTarget", batteryToHome > 0 ? "#14b8a6" : GRAY)
   }
 
   _efDur(w, len) {
@@ -288,11 +280,6 @@ export default class extends Controller {
         )
       }
     }
-  }
-
-  _efLine(targetName, color) {
-    const el = this[targetName]
-    if (el) el.setAttribute("stroke", color)
   }
 
   // --- Summary tiles (periodic HTTP) ---
