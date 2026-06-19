@@ -1,6 +1,22 @@
 require "test_helper"
 
 class DashboardControllerTest < ActionDispatch::IntegrationTest
+  test "energy flow renders four nodes and six live flow targets" do
+    get root_path
+
+    assert_response :success
+    assert_select "text", text: "Batterie"
+    assert_select "image[href*='icon_batterie']"
+    assert_select "[data-dashboard-target='efBatterySoc']"
+    assert_select "[data-dashboard-target='efBatteryW']"
+    assert_select "[data-dashboard-target='efDotsSolarHome']"
+    assert_select "[data-dashboard-target='efDotsSolarGrid']"
+    assert_select "[data-dashboard-target='efDotsSolarBattery']"
+    assert_select "[data-dashboard-target='efDotsGridHome']"
+    assert_select "[data-dashboard-target='efDotsGridBattery']"
+    assert_select "[data-dashboard-target='efDotsBatteryHome']"
+  end
+
   test "energy flow node contents are vertically centered in circles" do
     get "/"
     assert_response :ok
