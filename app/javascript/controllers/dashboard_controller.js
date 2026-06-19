@@ -17,6 +17,7 @@ export default class extends Controller {
     "efLineGridHome", "efLineGridBattery", "efLineBatteryHome",
     "efDotsSolarHome", "efDotsSolarGrid", "efDotsSolarBattery",
     "efDotsGridHome", "efDotsGridBattery", "efDotsBatteryHome",
+    "efConsumerRing",
   ]
 
   connect() {
@@ -218,26 +219,28 @@ export default class extends Controller {
     if (this.hasEfBatterySocTarget)
       this.efBatterySocTarget.textContent = batterySoc == null ? "— %" : batterySoc.toFixed(0) + "%"
     if (this.hasEfBatteryWTarget)
+      // Charging (positive display power) is drawn from the household, so it
+      // gets a "−"; discharging feeds the house and is shown without a sign.
       this.efBatteryWTarget.textContent =
         batteryW == null ? "— W" :
-        batteryW > 0 ? "+" + batteryW.toFixed(0) + " W" :
-        batteryW < 0 ? "−" + Math.abs(batteryW).toFixed(0) + " W" : "0 W"
+        batteryW > 0 ? "−" + batteryW.toFixed(0) + " W" :
+        batteryW < 0 ? Math.abs(batteryW).toFixed(0) + " W" : "0 W"
 
     const EF_PATHS = {
-      solarHome: "M 200,122 C 205,150 250,176 290,180",
-      solarGrid: "M 200,122 C 195,150 150,176 110,180",
+      solarHome: "M 200,122 C 205,150 250,166 306,170",
+      solarGrid: "M 200,122 C 195,150 150,166 94,170",
       solarBattery: "M 200,122 L 200,218",
-      gridHome: "M 110,180 L 290,180",
-      gridBattery: "M 104,206 C 135,235 160,255 200,218",
-      batteryHome: "M 200,218 C 240,255 265,235 296,206",
+      gridHome: "M 94,170 L 306,170",
+      gridBattery: "M 94,170 C 150,174 195,190 200,218",
+      batteryHome: "M 200,218 C 205,190 250,174 306,170",
     }
     const EF_LENS = {
-      solarHome: 153,
-      solarGrid: 157,
-      solarBattery: 100,
-      gridHome: 200,
-      gridBattery: 111,
-      batteryHome: 108,
+      solarHome: 123,
+      solarGrid: 123,
+      solarBattery: 96,
+      gridHome: 212,
+      gridBattery: 123,
+      batteryHome: 123,
     }
 
     this._efSetDots("efDotsSolarHomeTarget", EF_PATHS.solarHome, "#f59f00", solarToHome, EF_LENS.solarHome)
@@ -246,6 +249,41 @@ export default class extends Controller {
     this._efSetDots("efDotsGridHomeTarget", EF_PATHS.gridHome, "#3b82f6", gridToHome, EF_LENS.gridHome)
     this._efSetDots("efDotsGridBatteryTarget", EF_PATHS.gridBattery, "#94a3b8", gridToBattery, EF_LENS.gridBattery)
     this._efSetDots("efDotsBatteryHomeTarget", EF_PATHS.batteryHome, "#14b8a6", batteryToHome, EF_LENS.batteryHome)
+
+    // Verbraucher ring: share of consumption by source (solar / grid / battery).
+    this._efSetConsumerRing([
+      { w: solarToHome,   color: "#f59f00" },
+      { w: gridToHome,    color: "#3b82f6" },
+      { w: batteryToHome, color: "#14b8a6" },
+    ])
+  }
+
+  // Renders the Verbraucher node ring as colored arcs proportional to each
+  // energy source feeding the household. Empty input leaves the grey base ring.
+  _efSetConsumerRing(sources) {
+    const g = this.hasEfConsumerRingTarget ? this.efConsumerRingTarget : null
+    if (!g) return
+    const segs = sources.filter(s => s.w > 0.5)
+    const total = segs.reduce((s, x) => s + x.w, 0)
+    g.innerHTML = ""
+    if (total <= 0) return
+
+    let acc = 0
+    for (const s of segs) {
+      const pct = (s.w / total) * 100
+      const c = document.createElementNS("http://www.w3.org/2000/svg", "circle")
+      c.setAttribute("cx", "342")
+      c.setAttribute("cy", "170")
+      c.setAttribute("r", "40")
+      c.setAttribute("fill", "none")
+      c.setAttribute("stroke", s.color)
+      c.setAttribute("stroke-width", "2.5")
+      c.setAttribute("pathLength", "100")
+      c.setAttribute("stroke-dasharray", `${pct} ${100 - pct}`)
+      c.setAttribute("stroke-dashoffset", `${-acc}`)
+      g.appendChild(c)
+      acc += pct
+    }
   }
 
   _efDur(w, len) {

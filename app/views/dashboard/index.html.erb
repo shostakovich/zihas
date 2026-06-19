@@ -51,16 +51,16 @@
     <svg viewBox="0 0 400 320" style="width:100%;height:auto;display:block">
       <defs>
         <clipPath id="ef-clip">
-          <path fill-rule="evenodd" d="M 0,0 H 400 V 320 H 0 Z M 200,40 A 40,40 0 1,0 200,120 A 40,40 0 1,0 200,40 Z M 58,135 A 40,40 0 1,0 58,215 A 40,40 0 1,0 58,135 Z M 342,131 A 44,44 0 1,0 342,219 A 44,44 0 1,0 342,131 Z M 200,220 A 40,40 0 1,0 200,300 A 40,40 0 1,0 200,220 Z"/>
+          <path fill-rule="evenodd" d="M 0,0 H 400 V 320 H 0 Z M 200,40 A 40,40 0 1,0 200,120 A 40,40 0 1,0 200,40 Z M 58,130 A 40,40 0 1,0 58,210 A 40,40 0 1,0 58,130 Z M 342,130 A 40,40 0 1,0 342,210 A 40,40 0 1,0 342,130 Z M 200,220 A 40,40 0 1,0 200,300 A 40,40 0 1,0 200,220 Z"/>
         </clipPath>
       </defs>
 
-      <path data-dashboard-target="efLineSolarHome" d="M 200,122 C 205,150 250,176 290,180" fill="none" stroke="#f59f00" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-      <path data-dashboard-target="efLineSolarGrid" d="M 200,122 C 195,150 150,176 110,180" fill="none" stroke="#8b5cf6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <path data-dashboard-target="efLineSolarHome" d="M 200,122 C 205,150 250,166 306,170" fill="none" stroke="#f59f00" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <path data-dashboard-target="efLineSolarGrid" d="M 200,122 C 195,150 150,166 94,170" fill="none" stroke="#8b5cf6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
       <path data-dashboard-target="efLineSolarBattery" d="M 200,122 L 200,218" fill="none" stroke="#ec4899" stroke-width="3" stroke-linecap="round"/>
-      <path data-dashboard-target="efLineGridHome" d="M 110,180 L 290,180" fill="none" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>
-      <path data-dashboard-target="efLineGridBattery" d="M 104,206 C 135,235 160,255 200,218" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/>
-      <path data-dashboard-target="efLineBatteryHome" d="M 200,218 C 240,255 265,235 296,206" fill="none" stroke="#14b8a6" stroke-width="3" stroke-linecap="round"/>
+      <path data-dashboard-target="efLineGridHome" d="M 94,170 L 306,170" fill="none" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>
+      <path data-dashboard-target="efLineGridBattery" d="M 94,170 C 150,174 195,190 200,218" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/>
+      <path data-dashboard-target="efLineBatteryHome" d="M 200,218 C 205,190 250,174 306,170" fill="none" stroke="#14b8a6" stroke-width="3" stroke-linecap="round"/>
 
       <g data-dashboard-target="efDotsSolarHome" clip-path="url(#ef-clip)"></g>
       <g data-dashboard-target="efDotsSolarGrid" clip-path="url(#ef-clip)"></g>
@@ -74,21 +74,22 @@
       <text data-dashboard-target="efPvW" x="200" y="102" text-anchor="middle" font-size="12" font-weight="600" fill="#7c5e00">— W</text>
       <text x="200" y="22" text-anchor="middle" font-size="11" fill="#6c757d">PV-Anlage</text>
 
-      <circle cx="58" cy="175" r="40" fill="white" stroke="#3b82f6" stroke-width="2.5"/>
-      <image href="<%= asset_path "icon_netz.webp" %>" x="42" y="150" width="32" height="32"/>
-      <text data-dashboard-target="efGridW" x="58" y="197" text-anchor="middle" font-size="12" font-weight="600" fill="#1d4ed8">— W</text>
-      <text x="58" y="229" text-anchor="middle" font-size="11" fill="#6c757d">Stromnetz</text>
+      <circle cx="58" cy="170" r="40" fill="white" stroke="#3b82f6" stroke-width="2.5"/>
+      <image href="<%= asset_path "icon_netz.webp" %>" x="42" y="145" width="32" height="32"/>
+      <text data-dashboard-target="efGridW" x="58" y="192" text-anchor="middle" font-size="12" font-weight="600" fill="#1d4ed8">— W</text>
+      <text x="58" y="224" text-anchor="middle" font-size="11" fill="#6c757d">Stromnetz</text>
 
-      <circle cx="342" cy="175" r="44" fill="none" stroke="#e9ecef" stroke-width="2.5"/>
-      <circle cx="342" cy="175" r="40" fill="white" stroke="none"/>
-      <image href="<%= asset_path "icon_haus.webp" %>" x="326" y="150" width="32" height="32"/>
-      <text data-dashboard-target="efConsumerW" x="342" y="197" text-anchor="middle" font-size="12" font-weight="600" fill="#065f46">— W</text>
-      <text x="342" y="229" text-anchor="middle" font-size="11" fill="#6c757d">Verbraucher</text>
+      <circle cx="342" cy="170" r="40" fill="white" stroke="none"/>
+      <circle cx="342" cy="170" r="40" fill="none" stroke="#e9ecef" stroke-width="2.5"/>
+      <g data-dashboard-target="efConsumerRing" transform="rotate(-90 342 170)" fill="none" stroke-linecap="butt"></g>
+      <image href="<%= asset_path "icon_haus.webp" %>" x="326" y="145" width="32" height="32"/>
+      <text data-dashboard-target="efConsumerW" x="342" y="192" text-anchor="middle" font-size="12" font-weight="600" fill="#065f46">— W</text>
+      <text x="342" y="224" text-anchor="middle" font-size="11" fill="#6c757d">Verbraucher</text>
 
       <circle cx="200" cy="260" r="40" fill="white" stroke="#22c55e" stroke-width="2.5"/>
-      <image href="<%= asset_path "icon_batterie.webp" %>" x="184" y="233" width="32" height="32"/>
-      <text data-dashboard-target="efBatterySoc" x="200" y="279" text-anchor="middle" font-size="11" font-weight="600" fill="#15803d">— %</text>
-      <text data-dashboard-target="efBatteryW" x="200" y="293" text-anchor="middle" font-size="11" font-weight="600" fill="#15803d">— W</text>
+      <image href="<%= asset_path "icon_batterie.webp" %>" x="184" y="235" width="32" height="32" preserveAspectRatio="xMidYMid meet"/>
+      <text data-dashboard-target="efBatteryW" x="200" y="282" text-anchor="middle" font-size="11" font-weight="600" fill="#15803d">— W</text>
+      <text data-dashboard-target="efBatterySoc" x="200" y="291" text-anchor="middle" font-size="9" font-weight="600" fill="#6c757d">— %</text>
       <text x="200" y="315" text-anchor="middle" font-size="11" fill="#6c757d">Batterie</text>
     </svg>
   </div>

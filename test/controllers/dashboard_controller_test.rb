@@ -44,11 +44,11 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
 
     assert_select "text[data-dashboard-target='efPvW'][x='200'][y='102'][text-anchor='middle']", 1
 
-    assert_select "image[x='42'][y='150'][width='32'][height='32']", 1
-    assert_select "text[data-dashboard-target='efGridW'][x='58'][y='197'][text-anchor='middle']", 1
+    assert_select "image[x='42'][y='145'][width='32'][height='32']", 1
+    assert_select "text[data-dashboard-target='efGridW'][x='58'][y='192'][text-anchor='middle']", 1
 
-    assert_select "image[x='326'][y='150'][width='32'][height='32']", 1
-    assert_select "text[data-dashboard-target='efConsumerW'][x='342'][y='197'][text-anchor='middle']", 1
+    assert_select "image[x='326'][y='145'][width='32'][height='32']", 1
+    assert_select "text[data-dashboard-target='efConsumerW'][x='342'][y='192'][text-anchor='middle']", 1
   end
 
   test "uses current weather icon in hero and pv energy flow node" do
