@@ -21,13 +21,17 @@ class ZeroExportController
 
   def self.decide(reading:, load:, sun:, previous_state:, smoothed_load_w:)
     state = choose_state(reading: reading, sun: sun, load: load, previous_state: previous_state)
-    raw, smoothed = target_for(state, reading: reading, load: load, smoothed_load_w: smoothed_load_w)
+    raw, evening_smoothed = target_for(state, reading: reading, load: load, smoothed_load_w: smoothed_load_w)
+    target = raw.to_f.clamp(0.0, MAX_OUTPUT_W).round
 
     Decision.new(
       state: state,
-      target_w: raw.to_f.clamp(0.0, MAX_OUTPUT_W).round,
+      target_w: target,
       deadband_w: state == :night_base ? BASE_DEADBAND_W : NORMAL_DEADBAND_W,
-      smoothed_load_w: smoothed
+      # Carry the real output forward across all states so the first
+      # evening_catch_up tick ramps up from the last setpoint instead of
+      # re-seeding to the current load (which would bypass the slow-up cap).
+      smoothed_load_w: state == :evening_catch_up ? evening_smoothed : target.to_f
     )
   end
 
@@ -58,7 +62,9 @@ class ZeroExportController
     when :pv_priority
       [ pv_priority_target(reading, load), nil ]
     when :evening_catch_up
-      smoothed = rise_slow_fall_fast(load.effective_w, smoothed_load_w || load.effective_w)
+      # Cold start (no carried setpoint) seeds from base load, not the current
+      # load, so even a first-ever tick ramps up rather than jumping.
+      smoothed = rise_slow_fall_fast(load.effective_w, smoothed_load_w || load.night_base_w)
       [ [ smoothed, load.effective_w, EVENING_DISCHARGE_LIMIT_W ].min, smoothed ]
     when :night_base
       [ [ load.night_base_w - NIGHT_BASE_RESERVE_W, load.effective_w ].min, nil ]

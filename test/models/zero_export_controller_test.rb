@@ -76,6 +76,30 @@ class ZeroExportControllerTest < ActiveSupport::TestCase
     assert_equal 800, d.target_w
   end
 
+  test "pv priority carries its real output forward for the next state's smoothing" do
+    d = decide(reading: reading(soc: 90, pv: 250), load: load(current: 250), now: DAY.call)
+    assert_equal :pv_priority, d.state
+    assert_equal 250, d.target_w
+    assert_in_delta 250.0, d.smoothed_load_w, 0.001
+  end
+
+  test "first evening tick ramps from the carried-forward output, not the current load" do
+    # Simulates the sunset transition: the prior pv_priority tick output 250 W,
+    # carried into smoothed_load_w. The evening target must ramp by <= 50 W, not
+    # jump straight to the 800 W load (which would bypass the slow-up cap).
+    d = decide(reading: reading(soc: 90, pv: 0), load: load(current: 800),
+               now: EVENING.call, smoothed_load_w: 250.0)
+    assert_equal :evening_catch_up, d.state
+    assert_equal 300, d.target_w # 250 + min(550*0.25, 50) = 300
+  end
+
+  test "cold-start evening seeds from base load rather than jumping to full load" do
+    d = decide(reading: reading(soc: 90, pv: 0), load: load(current: 800, night_base: 85),
+               now: EVENING.call, smoothed_load_w: nil)
+    assert_equal :evening_catch_up, d.state
+    assert_equal 135, d.target_w # rise_slow_fall_fast(800, 85) = 85 + min(178.75, 50) = 135
+  end
+
   test "night base uses base target minus reserve" do
     d = decide(reading: reading(soc: 20, pv: 0), load: load(current: 300, night_base: 85),
                now: NIGHT.call)
