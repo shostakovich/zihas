@@ -4,7 +4,7 @@
 
 **Goal:** Build a dedicated Solakon/PV page with live energy flow, EPS outside-socket control, zero-export runtime pause/resume, panel/storage details, Solakon history, balance rows, status messages, and plush battery visuals.
 
-**Architecture:** Keep Modbus register work inside `SolakonClient`, keep fast live control data in `SolakonReading`, and add `SolakonSnapshot` as the 10-minute history/detail source. Reuse the existing dashboard energy-flow SVG through a shared partial, follow the existing Rails controller/view plus Stimulus pattern, and render history with Chart.js in the same `chart-card`/`chart-frame` style as reports.
+**Architecture:** Keep Modbus register knowledge inside `SolakonClient` as declarative field specs plus small decode helpers, so reads describe intent instead of repeating register plumbing. Keep fast live control data in `SolakonReading`, add `SolakonSnapshot` as the 10-minute history/detail source, reuse the dashboard energy-flow SVG through a shared partial, and render history with Chart.js in the existing `chart-card`/`chart-frame` report style.
 
 **Tech Stack:** Rails 8.1, ActiveRecord, ActiveJob, Minitest, Stimulus, Chart.js via importmap, ActionCable dashboard refreshes, Propshaft assets, existing Ziwoas CSS components.
 
@@ -12,7 +12,7 @@
 
 ## File Structure
 
-- Modify `lib/solakon_client.rb`: add fast read fields, snapshot read fields, EPS read/write helpers, and human-readable status/alarm decoding helpers while keeping register constants internal.
+- Modify `lib/solakon_client.rb`: add table-driven fast/snapshot field specs, reusable register decode helpers, EPS write helpers, and human-readable status/alarm decoding while keeping register addresses out of UI/application code.
 - Modify `app/models/solakon_reading.rb`: extend the fast live model with voltage/current/temperature/status/alarm fields needed by the page and control path.
 - Create `db/migrate/*_extend_solakon_readings_for_live_details.rb`: nullable fast live columns.
 - Create `db/migrate/*_create_solakon_snapshots.rb`: slow snapshot table with panel, storage, EPS, status/alarm, grid, and energy-counter fields.
@@ -63,6 +63,7 @@
 - `solakon.control_enabled` remains the master flag. Runtime Auto-Regelung can pause a permitted config, but cannot enable control when config disables it.
 - Use Chart.js, existing `chart-card`/`chart-frame`, and report-style progressbar rows.
 - Keep the fast Solakon tick lean; only add values needed for live/control/status. Historical cards and summaries come from `SolakonSnapshot`.
+- Solakon reads must be DRY: field addresses/scales live in `SolakonClient::FIELD_SPECS`, raw conversion lives in `decode_register_value`, and callers use named fields, not repeated `read_holding_registers` plus inline math.
 - Commit after each task. Keep commits small enough that a failed task can be reverted without disturbing other layers.
 
 ---
@@ -99,7 +100,7 @@ def test_read_state_includes_fast_detail_and_eps_values
     [ 39067, 1 ] => [ 0 ],
     [ 39068, 1 ] => [ 0b1000 ],
     [ 39069, 1 ] => [ 0 ],
-    [ 46613, 1 ] => [ SolakonClient::EPS_OUTPUT_EPS ],
+    [ 46613, 1 ] => [ SolakonClient::EPS_OUTPUT_VALUES.fetch(:eps) ],
     [ 39201, 1 ] => [ 2301 ],
     [ 39216, 2 ] => [ 0, 125 ]
   })
@@ -124,8 +125,8 @@ def test_set_eps_output_writes_directly_to_solakon_register
   client_for(slave).set_eps_output!(enabled: false)
 
   assert_equal [
-    [ :single, SolakonClient::REG_EPS_OUTPUT, SolakonClient::EPS_OUTPUT_EPS ],
-    [ :single, SolakonClient::REG_EPS_OUTPUT, SolakonClient::EPS_OUTPUT_OFF ]
+    [ :single, SolakonClient::WRITE_REGISTERS.fetch(:eps_output), SolakonClient::EPS_OUTPUT_VALUES.fetch(:eps) ],
+    [ :single, SolakonClient::WRITE_REGISTERS.fetch(:eps_output), SolakonClient::EPS_OUTPUT_VALUES.fetch(:off) ]
   ], slave.writes
 end
 
@@ -153,27 +154,47 @@ Run:
 rtk bin/rails test test/solakon_client_test.rb
 ```
 
-Expected: FAIL because the struct members, EPS constants, detail reads, and decoder do not exist.
+Expected: FAIL because the struct members, EPS value map, field specs, detail reads, and decoder do not exist.
 
-- [ ] **Step 3: Implement registers, struct fields, and EPS writer**
+- [ ] **Step 3: Implement declarative register specs, struct fields, and EPS writer**
 
-In `lib/solakon_client.rb`, add constants near the existing sensor/control constants:
+In `lib/solakon_client.rb`, keep read addresses in a field-spec hash instead of scattering `REG_*` constants through the class. Leave write-only control registers as named constants where they already exist, and add EPS output to a write-register hash:
 
 ```ruby
-REG_STATUS1              = 39063
-REG_STATUS3              = 39065
-REG_ALARM1               = 39067
-REG_ALARM2               = 39068
-REG_ALARM3               = 39069
-REG_BATTERY_VOLTAGE      = 39227
-REG_BATTERY_CURRENT      = 39228
-REG_INVERTER_TEMP        = 39141
-REG_EPS_PHASE_R_VOLTAGE  = 39201
-REG_EPS_COMBINED_POWER   = 39216
-REG_EPS_OUTPUT           = 46613
+WRITE_REGISTERS = {
+  eps_output: 46613
+}.freeze
 
-EPS_OUTPUT_OFF = 0
-EPS_OUTPUT_EPS = 2
+EPS_OUTPUT_VALUES = {
+  off: 0,
+  eps: 2
+}.freeze
+
+FAST_FIELD_SPECS = {
+  battery_soc: { addr: 39424, type: :i16 },
+  active_power_w: { addr: 39248, count: 2, type: :i32 },
+  battery_power_w: { addr: 39230, count: 2, type: :i32 },
+  battery_temperature_c: { addr: 37617, type: :i16, scale: 10.0 },
+  battery_voltage_v: { addr: 39227, type: :i16, scale: 10.0 },
+  battery_current_a: { addr: 39228, count: 2, type: :i32, scale: 1000.0 },
+  inverter_temperature_c: { addr: 39141, type: :i16, scale: 10.0 },
+  status1: { addr: 39063, type: :u16 },
+  status3: { addr: 39065, count: 2, type: :u32 },
+  alarm1: { addr: 39067, type: :u16 },
+  alarm2: { addr: 39068, type: :u16 },
+  alarm3: { addr: 39069, type: :u16 },
+  eps_mode: { addr: 46613, type: :u16 },
+  eps_voltage_v: { addr: 39201, type: :u16, scale: 10.0 },
+  eps_power_w: { addr: 39216, count: 2, type: :i32 }
+}.freeze
+
+FIELD_SPECS = {
+  fast: FAST_FIELD_SPECS
+}.freeze
+
+GROUPED_READ_SPECS = {
+  pv_power: { addr: 39279, count: -> { PV_STRINGS * 2 } }
+}.freeze
 ```
 
 Extend the struct:
@@ -186,47 +207,72 @@ State = Struct.new(:battery_soc, :active_power_w, :pv_power_w, :battery_power_w,
                    keyword_init: true)
 ```
 
-Add to `read_state_from`:
+Add a small read/decode pipeline. This is the key DRY abstraction for all current and future Solakon reads:
 
 ```ruby
-eps_output = slave.read_holding_registers(REG_EPS_OUTPUT, 1).first
+def read_fields(slave, group)
+  FIELD_SPECS.fetch(group).transform_values { |spec| read_field(slave, spec) }
+end
 
-State.new(
-  battery_soc:     to_i16(slave.read_holding_registers(REG_BATTERY_SOC, 1).first),
-  active_power_w:  to_i32(slave.read_holding_registers(REG_ACTIVE_POWER, 2)),
-  pv_power_w:      pv_w,
-  battery_power_w: to_i32(slave.read_holding_registers(REG_BATTERY_POWER, 2)),
-  battery_temperature_c: to_i16(slave.read_holding_registers(REG_BMS_MAX_TEMP, 1).first) / 10.0,
-  battery_voltage_v: to_i16(slave.read_holding_registers(REG_BATTERY_VOLTAGE, 1).first) / 10.0,
-  battery_current_a: to_i32(slave.read_holding_registers(REG_BATTERY_CURRENT, 2)) / 1000.0,
-  inverter_temperature_c: to_i16(slave.read_holding_registers(REG_INVERTER_TEMP, 1).first) / 10.0,
-  status1: slave.read_holding_registers(REG_STATUS1, 1).first,
-  status3: to_u32(slave.read_holding_registers(REG_STATUS3, 2)),
-  alarm1: slave.read_holding_registers(REG_ALARM1, 1).first,
-  alarm2: slave.read_holding_registers(REG_ALARM2, 1).first,
-  alarm3: slave.read_holding_registers(REG_ALARM3, 1).first,
-  eps_enabled: eps_output == EPS_OUTPUT_EPS,
-  eps_voltage_v: slave.read_holding_registers(REG_EPS_PHASE_R_VOLTAGE, 1).first / 10.0,
-  eps_power_w: to_i32(slave.read_holding_registers(REG_EPS_COMBINED_POWER, 2)),
-)
+def read_field(slave, spec)
+  regs = slave.read_holding_registers(spec.fetch(:addr), spec.fetch(:count, 1))
+  value = decode_register_value(regs, spec.fetch(:type))
+  scale = spec.fetch(:scale, 1.0)
+  value = value / scale if scale != 1.0
+  spec[:map] ? spec.fetch(:map).call(value) : value
+end
+
+def decode_register_value(regs, type)
+  case type
+  when :u16 then regs.first.to_i
+  when :i16 then to_i16(regs.first)
+  when :u32 then to_u32(regs)
+  when :i32 then to_i32(regs)
+  else raise Error, "unknown register type: #{type}"
+  end
+end
+
+def to_u32(regs)
+  ((regs[0] & 0xFFFF) << 16) | (regs[1] & 0xFFFF)
+end
+```
+
+Then make `read_state_from` read like prose:
+
+```ruby
+def read_state_from(slave)
+  fields = read_fields(slave, :fast)
+
+  State.new(
+    **fields.slice(:battery_soc, :active_power_w, :battery_power_w,
+                   :battery_temperature_c, :battery_voltage_v, :battery_current_a,
+                   :inverter_temperature_c, :status1, :status3, :alarm1, :alarm2,
+                   :alarm3, :eps_voltage_v, :eps_power_w),
+    pv_power_w: read_pv_power_w(slave),
+    eps_enabled: fields.fetch(:eps_mode) == EPS_OUTPUT_VALUES.fetch(:eps)
+  )
+end
+
+def read_pv_power_w(slave)
+  regs = read_register_group(slave, :pv_power)
+  (0...PV_STRINGS).sum { |idx| decode_register_value(regs[idx * 2, 2], :i32) }
+end
+
+def read_register_group(slave, key)
+  spec = GROUPED_READ_SPECS.fetch(key)
+  count = spec.fetch(:count)
+  slave.read_holding_registers(spec.fetch(:addr), count.respond_to?(:call) ? count.call : count)
+end
 ```
 
 Add public writer:
 
 ```ruby
 def set_eps_output!(enabled:)
-  value = enabled ? EPS_OUTPUT_EPS : EPS_OUTPUT_OFF
-  with_slave { |slave| slave.write_holding_register(REG_EPS_OUTPUT, value) }
+  value = enabled ? EPS_OUTPUT_VALUES.fetch(:eps) : EPS_OUTPUT_VALUES.fetch(:off)
+  with_slave { |slave| slave.write_holding_register(WRITE_REGISTERS.fetch(:eps_output), value) }
 rescue StandardError => e
   raise Error, e.message
-end
-```
-
-Add unsigned decoder helper:
-
-```ruby
-def to_u32(regs)
-  ((regs[0] & 0xFFFF) << 16) | (regs[1] & 0xFFFF)
 end
 ```
 
@@ -607,9 +653,9 @@ rtk bin/rails test test/solakon_client_test.rb
 
 Expected: FAIL because `read_snapshot` and snapshot structs are missing.
 
-- [ ] **Step 3: Implement snapshot structs and reader**
+- [ ] **Step 3: Extend the field specs and implement snapshot reader through shared helpers**
 
-In `lib/solakon_client.rb`, add:
+In `lib/solakon_client.rb`, add the snapshot structs, then edit the existing `FIELD_SPECS`/`GROUPED_READ_SPECS` definitions so they include slow snapshot fields. Do not append a second constant definition below the first one; the final class should have one field-spec map and one grouped-read map:
 
 ```ruby
 PanelData = Struct.new(:index, :voltage_v, :current_a, :power_w, keyword_init: true)
@@ -624,21 +670,30 @@ SnapshotData = Struct.new(
   keyword_init: true
 )
 
-REG_PV_VOLTAGE_CURRENT_BASE = 39070
-REG_BMS1_VOLTAGE            = 37609
-REG_BMS1_CURRENT            = 37610
-REG_BMS1_AMBIENT_TEMP       = 37611
-REG_BMS1_MIN_TEMP           = 37618
-REG_BMS1_SOH                = 37624
-REG_BMS1_FAULT_BASE         = 37626
-REG_BMS1_REMAIN_ENERGY      = 37632
-REG_BMS1_FCC_CAPACITY       = 37633
-REG_BMS1_DESIGN_ENERGY      = 37635
-REG_METER_ACTIVE_POWER      = 39168
-REG_ENERGY_COUNTER_BASE     = 39601
+FIELD_SPECS = {
+  fast: FAST_FIELD_SPECS,
+  snapshot: FAST_FIELD_SPECS.merge(
+    battery_voltage_v: { addr: 37609, type: :u16, scale: 10.0 },
+    battery_current_a: { addr: 37610, type: :i16, scale: 10.0 },
+    battery_temperature_c: { addr: 37611, type: :i16, scale: 10.0 },
+    battery_min_temperature_c: { addr: 37618, type: :i16, scale: 10.0 },
+    battery_health_pct: { addr: 37624, type: :u16 },
+    remaining_energy_wh: { addr: 37632, type: :u16, scale: 10.0 },
+    full_charge_capacity_ah: { addr: 37633, type: :u16, scale: 10.0 },
+    design_energy_wh: { addr: 37635, type: :u16, scale: 10.0 },
+    grid_power_w: { addr: 39168, count: 2, type: :i32, map: ->(value) { -value } }
+  )
+}.freeze
+
+GROUPED_READ_SPECS = {
+  pv_power: { addr: 39279, count: -> { PV_STRINGS * 2 } },
+  pv_voltage_current: { addr: 39070, count: -> { PV_STRINGS * 2 } },
+  bms_faults: { addr: 37626, count: 6 },
+  energy_counters: { addr: 39601, count: 20 }
+}.freeze
 ```
 
-Add public method:
+Add the public method:
 
 ```ruby
 def read_snapshot
@@ -646,53 +701,67 @@ def read_snapshot
 end
 ```
 
-Add private method:
+Implement snapshot reading in small named helpers. `read_snapshot_from` should contain no register addresses and no inline scaling math:
 
 ```ruby
 def read_snapshot_from(slave)
-  pv_vi = slave.read_holding_registers(REG_PV_VOLTAGE_CURRENT_BASE, PV_STRINGS * 2)
-  pv_powers = slave.read_holding_registers(REG_PV_POWER_BASE, PV_STRINGS * 2)
-  panels = (0...PV_STRINGS).map do |idx|
-    PanelData.new(
-      index: idx + 1,
-      voltage_v: to_i16(pv_vi[idx * 2]) / 10.0,
-      current_a: to_i16(pv_vi[idx * 2 + 1]) / 100.0,
-      power_w: to_i32(pv_powers[idx * 2, 2])
-    )
-  end
-
-  energy = slave.read_holding_registers(REG_ENERGY_COUNTER_BASE, 20)
-  eps_output = slave.read_holding_registers(REG_EPS_OUTPUT, 1).first
+  fields = read_fields(slave, :snapshot)
+  groups = read_snapshot_groups(slave)
+  energy = decode_energy_counters(groups.fetch(:energy_counters))
 
   SnapshotData.new(
-    panels: panels,
-    battery_voltage_v: slave.read_holding_registers(REG_BMS1_VOLTAGE, 1).first / 10.0,
-    battery_current_a: to_i16(slave.read_holding_registers(REG_BMS1_CURRENT, 1).first) / 10.0,
-    battery_temperature_c: to_i16(slave.read_holding_registers(REG_BMS1_AMBIENT_TEMP, 1).first) / 10.0,
-    battery_min_temperature_c: to_i16(slave.read_holding_registers(REG_BMS1_MIN_TEMP, 1).first) / 10.0,
-    battery_health_pct: slave.read_holding_registers(REG_BMS1_SOH, 1).first,
-    remaining_energy_wh: slave.read_holding_registers(REG_BMS1_REMAIN_ENERGY, 1).first / 10.0,
-    full_charge_capacity_ah: slave.read_holding_registers(REG_BMS1_FCC_CAPACITY, 1).first / 10.0,
-    design_energy_wh: slave.read_holding_registers(REG_BMS1_DESIGN_ENERGY, 1).first / 10.0,
-    inverter_temperature_c: to_i16(slave.read_holding_registers(REG_INVERTER_TEMP, 1).first) / 10.0,
-    grid_power_w: -to_i32(slave.read_holding_registers(REG_METER_ACTIVE_POWER, 2)),
-    eps_enabled: eps_output == EPS_OUTPUT_EPS,
-    eps_voltage_v: slave.read_holding_registers(REG_EPS_PHASE_R_VOLTAGE, 1).first / 10.0,
-    eps_power_w: to_i32(slave.read_holding_registers(REG_EPS_COMBINED_POWER, 2)),
-    status1: slave.read_holding_registers(REG_STATUS1, 1).first,
-    status3: to_u32(slave.read_holding_registers(REG_STATUS3, 2)),
-    alarm1: slave.read_holding_registers(REG_ALARM1, 1).first,
-    alarm2: slave.read_holding_registers(REG_ALARM2, 1).first,
-    alarm3: slave.read_holding_registers(REG_ALARM3, 1).first,
-    bms_faults: slave.read_holding_registers(REG_BMS1_FAULT_BASE, 6),
-    pv_total_kwh: to_u32(energy[0, 2]) / 100.0,
-    battery_charge_total_kwh: to_u32(energy[4, 2]) / 100.0,
-    battery_discharge_total_kwh: to_u32(energy[8, 2]) / 100.0,
-    grid_export_total_kwh: to_u32(energy[12, 2]) / 100.0,
-    grid_import_total_kwh: to_u32(energy[16, 2]) / 100.0
+    **fields.slice(:battery_voltage_v, :battery_current_a, :battery_temperature_c,
+                   :battery_min_temperature_c, :battery_health_pct, :remaining_energy_wh,
+                   :full_charge_capacity_ah, :design_energy_wh, :inverter_temperature_c,
+                   :grid_power_w, :eps_voltage_v, :eps_power_w,
+                   :status1, :status3, :alarm1, :alarm2, :alarm3),
+    panels: read_panels(groups),
+    eps_enabled: fields.fetch(:eps_mode) == EPS_OUTPUT_VALUES.fetch(:eps),
+    bms_faults: groups.fetch(:bms_faults),
+    **energy
   )
 end
+
+def read_snapshot_groups(slave)
+  %i[pv_voltage_current pv_power bms_faults energy_counters].to_h do |key|
+    [ key, read_register_group(slave, key) ]
+  end
+end
+
+def read_panels(groups)
+  vi = groups.fetch(:pv_voltage_current)
+  powers = groups.fetch(:pv_power)
+
+  (0...PV_STRINGS).map do |idx|
+    PanelData.new(
+      index: idx + 1,
+      voltage_v: scaled(decode_register_value([ vi[idx * 2] ], :i16), 10),
+      current_a: scaled(decode_register_value([ vi[idx * 2 + 1] ], :i16), 100),
+      power_w: decode_register_value(powers[idx * 2, 2], :i32)
+    )
+  end
+end
+
+def decode_energy_counters(regs)
+  {
+    pv_total_kwh: energy_counter_kwh(regs[0, 2]),
+    battery_charge_total_kwh: energy_counter_kwh(regs[4, 2]),
+    battery_discharge_total_kwh: energy_counter_kwh(regs[8, 2]),
+    grid_export_total_kwh: energy_counter_kwh(regs[12, 2]),
+    grid_import_total_kwh: energy_counter_kwh(regs[16, 2])
+  }
+end
+
+def energy_counter_kwh(regs)
+  scaled(decode_register_value(regs, :u32), 100)
+end
+
+def scaled(value, divisor)
+  value.to_f / divisor
+end
 ```
+
+`read_panels` is the only remaining grouped-read special case because PV voltage/current and power live in two compact register ranges; keeping that translation behind one helper avoids four future copies when PV3/PV4 are enabled.
 
 - [ ] **Step 4: Verify client snapshot test**
 
@@ -2928,5 +2997,6 @@ No task uses `TBD`, `TODO`, `implement later`, or unconstrained "add appropriate
 
 - Runtime state consistently uses `SolakonControlState`, `auto_regulation_paused`, `auto_regulation_active?`, `pause_auto_regulation!`, and `resume_auto_regulation!`.
 - Snapshot history consistently uses `SolakonSnapshot`, `SolakonHistory`, `battery_health_pct` for UI label `Batteriegesundheit`, and signed `grid_power_w` where positive means import.
+- Solakon register access consistently uses `FIELD_SPECS`, `read_fields`, `decode_register_value`, `read_panels`, and `decode_energy_counters`; new fields should extend specs instead of duplicating `read_holding_registers` and scaling math.
 - Stimulus target prefix is consistently `solakon` for Solakon page and `dashboard` for dashboard page.
 - Chart dataset labels are consistently `PV`, `Akku`, `Netz`, `0 W`.
