@@ -1,8 +1,9 @@
 class SolakonReading < ApplicationRecord
   MIN_SOC_PCT       = 10
   RESUME_SOC_PCT    = 11
-  HOT_TEMP_C        = 42.0
-  HOT_RESUME_TEMP_C = 41.8
+  HOT_TEMP_C        = 42.0   # start of thermal de-rating (full output ceiling)
+  HOT_RESUME_TEMP_C = 41.8   # hysteresis: leave de-rating once cooled to here
+  CUTOFF_TEMP_C     = 48.0   # de-rating reaches zero: no battery discharge above this
   PV_PRESENT_W      = 50
   USABLE_CAPACITY_WH = 1920
 

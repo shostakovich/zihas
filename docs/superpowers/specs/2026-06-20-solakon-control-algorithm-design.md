@@ -251,14 +251,15 @@ Thermal protection is **not** merely a cap layered on top of another state — i
 - Enter `PROTECTED` when `battery_temperature_c >= 42.0 C` (`HOT_TEMP_C`).
 - Leave only when `battery_temperature_c <= 41.8 C` (`HOT_RESUME_TEMP_C`) **and** SoC has resumed.
 
-While in `PROTECTED` for thermal reasons (SoC already resumed), the target **follows actual household load down**, capped at 400 W (`HOT_OUTPUT_LIMIT_W`):
+While in `PROTECTED` for thermal reasons (SoC already resumed), the target **follows actual household load down**, capped by a linear thermal de-rating ceiling that ramps from `HOT_OUTPUT_LIMIT_W` (400 W) at `HOT_TEMP_C` (42 °C) down to 0 W at `CUTOFF_TEMP_C` (48 °C):
 
 ```text
-ceiling_w = battery_cooled? ? 800 W : 400 W
+ceiling_w = battery_cooled? ? 800 W
+                            : (400 W * (48 - temp_c) / (48 - 42)).round.clamp(0, 400)
 target_w  = min(household_load_w, ceiling_w)
 ```
 
-This cap applies to the whole AC target, not only to battery help, and it is **not** limited by the daytime `DAY_BATTERY_HELP_W` (250 W) cap — that cap is specific to `PV_PRIORITY`. Lower total AC output is preferred while hot because it means less inverter throughput and therefore less internal heat. The Solakon One splits battery power vs. PV power internally to meet the active-power setpoint; the controller does not manage that split and does not use the discharge-current-limit register for this purpose (see Current Limit Registers).
+So 42 °C → 400 W, 45 °C → 200 W, 48 °C and above → 0 W (no battery discharge). The de-rating is **independent of SoC**: a full, hot battery is throttled too — the inverter simply curtails PV when there is nowhere for the energy to go, which lets the battery rest and cool. This cap applies to the whole AC target, not only to battery help, and it is **not** limited by the daytime `DAY_BATTERY_HELP_W` (250 W) cap — that cap is specific to `PV_PRIORITY`. Lower total AC output is preferred while hot because it means less inverter throughput and therefore less internal heat. The Solakon One splits battery power vs. PV power internally to meet the active-power setpoint; the controller does not manage that split and does not use the discharge-current-limit register for this purpose (see Current Limit Registers).
 
 ## Discharge Limits
 
@@ -270,7 +271,7 @@ battery_help_w = min(remaining_load_w, mode_discharge_limit_w)
 
 - `PV_PRIORITY`: `mode_discharge_limit_w = DAY_BATTERY_HELP_W` (250 W).
 - `PROTECTED` (SoC at or below 10%, until resume at 11%): no intentional discharge — target is at most PV power.
-- `PROTECTED` (thermal, SoC already resumed): no separate `mode_discharge_limit_w` — the whole target follows household load, capped at `HOT_OUTPUT_LIMIT_W` (400 W); the 250 W daytime battery-help cap does not apply here.
+- `PROTECTED` (thermal, SoC already resumed): no separate `mode_discharge_limit_w` — the whole target follows household load, capped by the linear thermal de-rating ceiling (400 W at 42 °C ramping to 0 W at 48 °C); the 250 W daytime battery-help cap does not apply here.
 - `EVENING_CATCH_UP`: bounded by `EVENING_DISCHARGE_LIMIT_W` (800 W), the asymmetric smoothing, and the measured-load clamp.
 - `NIGHT_BASE`: target equals the base load target (`night_base_w - NIGHT_BASE_RESERVE_W`), clamped to measured load.
 
@@ -290,6 +291,7 @@ All algorithm thresholds are Ruby constants, not config values. `solakon.yml` on
 - `RESUME_SOC_PCT` = 11
 - `HOT_TEMP_C` = 42.0
 - `HOT_RESUME_TEMP_C` = 41.8
+- `CUTOFF_TEMP_C` = 48.0
 - `PV_PRESENT_W` = 50
 - `USABLE_CAPACITY_WH` = 1920
 
@@ -298,7 +300,7 @@ All algorithm thresholds are Ruby constants, not config values. `solakon.yml` on
 - `MAX_OUTPUT_W` = 800
 - `DAY_BATTERY_HELP_W` = 250
 - `EVENING_DISCHARGE_LIMIT_W` = 800
-- `HOT_OUTPUT_LIMIT_W` = 400
+- `HOT_OUTPUT_LIMIT_W` = 400 (ceiling at `HOT_TEMP_C`; ramps linearly to 0 at `CUTOFF_TEMP_C`)
 - `NORMAL_DEADBAND_W` = 50
 - `BASE_DEADBAND_W` = 15
 - `NIGHT_BASE_RESERVE_W` = 5

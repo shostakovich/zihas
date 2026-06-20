@@ -5,7 +5,7 @@ class ZeroExportController
   MAX_OUTPUT_W             = 800   # legal balcony-PV feed limit
   DAY_BATTERY_HELP_W       = 250   # max daytime battery assist
   EVENING_DISCHARGE_LIMIT_W = 800
-  HOT_OUTPUT_LIMIT_W       = 400   # thermal throttle ceiling (still follows load)
+  HOT_OUTPUT_LIMIT_W       = 400   # output ceiling at HOT_TEMP_C; ramps linearly to 0 at CUTOFF_TEMP_C
   NORMAL_DEADBAND_W        = 50
   BASE_DEADBAND_W          = 15
   NIGHT_BASE_RESERVE_W     = 5
@@ -72,13 +72,25 @@ class ZeroExportController
   end
 
   # Below resume SoC: no intentional discharge (PV only). Above it: normal PV
-  # priority. While the battery is still warm, throttle the *whole* AC output to
-  # the hot ceiling — but always follow the (lower) load, since less throughput
+  # priority. While the battery is warm, throttle the *whole* AC output to the
+  # thermal ceiling — but always follow the (lower) load, since less throughput
   # means less inverter heat.
   def self.protected_target(reading, load)
     base = reading.soc_at_resume? ? load.effective_w : [ reading.pv_power_w, load.effective_w ].min
-    ceiling = reading.battery_cooled? ? MAX_OUTPUT_W : HOT_OUTPUT_LIMIT_W
-    [ base, ceiling ].min
+    [ base, thermal_ceiling_w(reading) ].min
+  end
+
+  # Linear thermal de-rating, independent of SoC: at HOT_TEMP_C the ceiling is
+  # the full HOT_OUTPUT_LIMIT_W, ramping straight down to 0 at CUTOFF_TEMP_C
+  # (above which the battery must not discharge). A full, hot battery is throttled
+  # too — the inverter simply curtails PV when there is nowhere for it to go.
+  # Cooled below the resume threshold lifts the cap entirely (hysteresis).
+  def self.thermal_ceiling_w(reading)
+    return MAX_OUTPUT_W if reading.battery_cooled?
+
+    span  = SolakonReading::CUTOFF_TEMP_C - SolakonReading::HOT_TEMP_C
+    ratio = (SolakonReading::CUTOFF_TEMP_C - reading.battery_temperature_c) / span
+    (HOT_OUTPUT_LIMIT_W * ratio).round.clamp(0, HOT_OUTPUT_LIMIT_W)
   end
 
   def self.pv_priority_target(reading, load)

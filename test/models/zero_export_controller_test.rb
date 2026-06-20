@@ -50,6 +50,32 @@ class ZeroExportControllerTest < ActiveSupport::TestCase
     assert_equal 180, d.target_w
   end
 
+  test "thermal ceiling ramps linearly from 400W at 42C to 0W at 48C" do
+    high = load(current: 900)
+    assert_equal 400, decide(reading: reading(soc: 55, pv: 700, temp: 42.0), load: high, now: DAY.call).target_w
+    assert_equal 300, decide(reading: reading(soc: 55, pv: 700, temp: 43.5), load: high, now: DAY.call).target_w
+    assert_equal 200, decide(reading: reading(soc: 55, pv: 700, temp: 45.0), load: high, now: DAY.call).target_w
+    assert_equal 100, decide(reading: reading(soc: 55, pv: 700, temp: 46.5), load: high, now: DAY.call).target_w
+    assert_equal 0,   decide(reading: reading(soc: 55, pv: 700, temp: 48.0), load: high, now: DAY.call).target_w
+  end
+
+  test "above 48C discharge stays at zero" do
+    d = decide(reading: reading(soc: 55, pv: 700, temp: 52.0), load: load(current: 900), now: DAY.call)
+    assert_equal :protected, d.state
+    assert_equal 0, d.target_w
+  end
+
+  test "throttled output still tracks a lower load" do
+    d = decide(reading: reading(soc: 55, pv: 0, temp: 45.0), load: load(current: 150), now: DAY.call)
+    assert_equal :protected, d.state
+    assert_equal 150, d.target_w # below the 200W ceiling at 45C
+  end
+
+  test "thermal de-rating applies even at full charge" do
+    d = decide(reading: reading(soc: 100, pv: 700, temp: 48.0), load: load(current: 900), now: DAY.call)
+    assert_equal 0, d.target_w
+  end
+
   test "thermal protection holds until cooled to 41.8" do
     d = decide(reading: reading(soc: 55, pv: 0, temp: 41.9), load: load(current: 900),
                now: DAY.call, previous_state: :protected)
