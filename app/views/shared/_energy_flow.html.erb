@@ -38,7 +38,16 @@
   <text x="342" y="224" text-anchor="middle" font-size="11" fill="#6c757d">Verbraucher</text>
 
   <circle cx="200" cy="260" r="40" fill="white" stroke="#22c55e" stroke-width="2.5"/>
-  <image href="<%= asset_path battery_asset %>" x="184" y="235" width="32" height="32" preserveAspectRatio="xMidYMid meet"/>
+  <image <%= target.call("efBatteryImage") %>
+         href="<%= asset_path battery_asset %>"
+         x="184" y="235" width="32" height="32" preserveAspectRatio="xMidYMid meet"
+         data-battery-state-normal="<%= asset_path "solakon_battery_normal.webp" %>"
+         data-battery-state-discharging="<%= asset_path "solakon_battery_normal.webp" %>"
+         data-battery-state-charging="<%= asset_path "solakon_battery_charging.webp" %>"
+         data-battery-state-low="<%= asset_path "solakon_battery_low.webp" %>"
+         data-battery-state-hot="<%= asset_path "solakon_battery_hot.webp" %>"
+         data-battery-state-cold="<%= asset_path "solakon_battery_cold.webp" %>"
+         data-battery-state-fault="<%= asset_path "solakon_battery_fault.webp" %>"/>
   <text <%= target.call("efBatteryW") %> x="200" y="282" text-anchor="middle" font-size="11" font-weight="600" fill="#15803d">— W</text>
   <text <%= target.call("efBatterySoc") %> x="200" y="291" text-anchor="middle" font-size="9" font-weight="600" fill="#6c757d">— %</text>
   <text x="200" y="315" text-anchor="middle" font-size="11" fill="#6c757d">Batterie</text>

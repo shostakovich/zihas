@@ -12,7 +12,7 @@ export default class extends Controller {
     "tileAutarky", "tileSelfConsumption",
     "plugList",
     // Energy flow SVG elements
-    "efPvW", "efGridW", "efConsumerW", "efBatterySoc", "efBatteryW",
+    "efPvW", "efGridW", "efConsumerW", "efBatterySoc", "efBatteryW", "efBatteryImage",
     "efLineSolarHome", "efLineSolarGrid", "efLineSolarBattery",
     "efLineGridHome", "efLineGridBattery", "efLineBatteryHome",
     "efDotsSolarHome", "efDotsSolarGrid", "efDotsSolarBattery",
@@ -230,6 +230,8 @@ export default class extends Controller {
     }
     if (this.hasEfBatterySocTarget)
       this.efBatterySocTarget.textContent = batterySoc == null ? "— %" : batterySoc.toFixed(0) + "%"
+    this._efSetBatteryImage(flow?.battery_state)
+
     if (this.hasEfBatteryWTarget)
       // Charging (positive display power) is drawn from the household, so it
       // gets a "−"; discharging feeds the house and is shown without a sign.
@@ -268,6 +270,13 @@ export default class extends Controller {
       { w: gridToHome,    color: "#3b82f6" },
       { w: batteryToHome, color: "#14b8a6" },
     ])
+  }
+
+  _efSetBatteryImage(state) {
+    if (!this.hasEfBatteryImageTarget) return
+    const key = state || "normal"
+    const src = this.efBatteryImageTarget.dataset[`batteryState${key.charAt(0).toUpperCase()}${key.slice(1)}`]
+    if (src) this.efBatteryImageTarget.setAttribute("href", src)
   }
 
   // Renders the Verbraucher node ring as colored arcs proportional to each

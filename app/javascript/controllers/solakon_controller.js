@@ -7,7 +7,7 @@ export default class extends Controller {
     "historyCanvas", "historyPayload", "balanceRows",
     "epsToggle", "epsState", "epsPower", "epsVoltage", "epsError",
     "autoRegulationToggle", "autoRegulationState", "autoRegulationHelp", "autoRegulationError",
-    "efPvW", "efGridW", "efConsumerW", "efBatterySoc", "efBatteryW",
+    "efPvW", "efGridW", "efConsumerW", "efBatterySoc", "efBatteryW", "efBatteryImage",
     "efLineSolarHome", "efLineSolarGrid", "efLineSolarBattery",
     "efLineGridHome", "efLineGridBattery", "efLineBatteryHome",
     "efDotsSolarHome", "efDotsSolarGrid", "efDotsSolarBattery",
@@ -109,6 +109,7 @@ export default class extends Controller {
     if (this.hasEfGridWTarget) this.efGridWTarget.textContent = gridW == null ? "— W" : gridW > 0 ? `+${gridW.toFixed(0)} W` : gridW < 0 ? `−${Math.abs(gridW).toFixed(0)} W` : "0 W"
     if (this.hasEfBatterySocTarget) this.efBatterySocTarget.textContent = batterySoc == null ? "— %" : `${batterySoc.toFixed(0)}%`
     if (this.hasEfBatteryWTarget) this.efBatteryWTarget.textContent = batteryW == null ? "— W" : batteryW > 0 ? `−${batteryW.toFixed(0)} W` : batteryW < 0 ? `${Math.abs(batteryW).toFixed(0)} W` : "0 W"
+    this._efSetBatteryImage(flow?.battery_state)
 
     const flows = flow?.flows || {}
     const solarToHome = Number(flows.solar_to_home_w || 0)
@@ -134,6 +135,13 @@ export default class extends Controller {
     this._efSetDots("efDotsGridHomeTarget", paths.gridHome, "#3b82f6", gridToHome, lens.gridHome)
     this._efSetDots("efDotsGridBatteryTarget", paths.gridBattery, "#94a3b8", gridToBattery, lens.gridBattery)
     this._efSetDots("efDotsBatteryHomeTarget", paths.batteryHome, "#14b8a6", batteryToHome, lens.batteryHome)
+  }
+
+  _efSetBatteryImage(state) {
+    if (!this.hasEfBatteryImageTarget) return
+    const key = state || "normal"
+    const src = this.efBatteryImageTarget.dataset[`batteryState${key.charAt(0).toUpperCase()}${key.slice(1)}`]
+    if (src) this.efBatteryImageTarget.setAttribute("href", src)
   }
 
   _readPayload() {
