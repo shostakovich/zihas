@@ -43,7 +43,12 @@ class ZeroExportTickJobTest < ActiveSupport::TestCase
 
   setup do
     Sample.delete_all
+    SolakonControlState.delete_all
     @cache = ActiveSupport::Cache::MemoryStore.new
+  end
+
+  teardown do
+    SolakonControlState.delete_all
   end
 
   def run_job(client:, now: Time.at(1_000_000), cfg: config, state: nil)
@@ -198,5 +203,16 @@ class ZeroExportTickJobTest < ActiveSupport::TestCase
     failing2 = FakeClient.new(fail: true)
     2.times { run_job(client: failing2, now: now) }  # only 2 again -> no release
     refute_includes failing2.calls, :release
+  end
+
+  test "no-op when runtime auto regulation is paused even if config permits control" do
+    SolakonControlState.current.pause_auto_regulation!
+    now = Time.zone.local(2026, 6, 20, 12, 0, 0)
+    Sample.create!(plug_id: "fridge", ts: now.to_i - 5, apower_w: 250, aenergy_wh: 1)
+    client = FakeClient.new(state: healthy_state)
+
+    run_job(client: client, now: now)
+
+    assert_empty client.calls
   end
 end
