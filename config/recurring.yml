@@ -55,6 +55,11 @@ aggregator_schedule: &aggregator_schedule
     queue: default
     schedule: every 30 seconds
 
+  solakon_snapshot:
+    class: SolakonSnapshotJob
+    queue: default
+    schedule: every 10 minutes
+
 development:
   <<: *aggregator_schedule
 

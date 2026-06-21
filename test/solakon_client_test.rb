@@ -172,30 +172,47 @@ class SolakonClientTest < Minitest::Test
     assert messages.none? { |message| message.match?(/390|Alarm 2|Bit/) }
   end
 
-  def test_read_snapshot_returns_current_state
-    slave = FakeSlave.new(holdings: {
+  def test_read_snapshot_decodes_panel_storage_energy_and_status_values
+    slave = FakeSlave.new(holdings: default_detail_holdings.merge({
       [ 39424, 1 ] => [ 16 ],
       [ 39248, 2 ] => [ 0, 0 ],
-      [ 39279, 8 ] => [ 0, 0, 0, 0, 0, 0, 0, 0 ],
-      [ 39230, 2 ] => [ 0, 100 ],
-      [ 37617, 1 ] => [ 200 ],
-      [ 39227, 1 ] => [ 512 ],
-      [ 39228, 2 ] => [ 0, 0 ],
-      [ 39141, 1 ] => [ 300 ],
-      [ 39063, 1 ] => [ 0 ],
-      [ 39065, 2 ] => [ 0, 0 ],
-      [ 39067, 1 ] => [ 0 ],
-      [ 39068, 1 ] => [ 0 ],
-      [ 39069, 1 ] => [ 0 ],
-      [ 46613, 1 ] => [ 0 ],
-      [ 39201, 1 ] => [ 0 ],
-      [ 39216, 2 ] => [ 0, 0 ]
-    })
+      [ 39230, 2 ] => [ 0, 0 ],
+      [ 39070, 8 ] => [ 410, 512, 405, 488, 0, 0, 0, 0 ],
+      [ 39279, 8 ] => [ 0, 210, 0, 198, 0, 0, 0, 0 ],
+      [ 37609, 1 ] => [ 513 ],
+      [ 37610, 1 ] => [ 42 ],
+      [ 37611, 1 ] => [ 248 ],
+      [ 37617, 1 ] => [ 423 ],
+      [ 37618, 1 ] => [ 211 ],
+      [ 37624, 1 ] => [ 97 ],
+      [ 37626, 6 ] => [ 0, 0, 0, 0, 0, 0 ],
+      [ 37632, 1 ] => [ 1234 ],
+      [ 37633, 1 ] => [ 512 ],
+      [ 37635, 1 ] => [ 19200 ],
+      [ 39141, 1 ] => [ 341 ],
+      [ 39168, 2 ] => [ 0xFFFF, 0xFF9C ],
+      [ 39216, 2 ] => [ 0, 125 ],
+      [ 39601, 20 ] => [ 0, 12345, 0, 345, 0, 6789, 0, 120, 0, 4567, 0, 98, 0, 2222, 0, 55, 0, 3333, 0, 77 ]
+    }))
 
     snapshot = client_for(slave).read_snapshot
 
-    assert_equal 16, snapshot.battery_soc
-    assert_equal 0, snapshot.eps_power_w
+    assert_equal 4, snapshot.panels.length
+    assert_in_delta 41.0, snapshot.panels[0].voltage_v, 0.001
+    assert_in_delta 5.12, snapshot.panels[0].current_a, 0.001
+    assert_equal 210, snapshot.panels[0].power_w
+    assert_in_delta 51.3, snapshot.battery_voltage_v, 0.001
+    assert_in_delta 4.2, snapshot.battery_current_a, 0.001
+    assert_equal 97, snapshot.battery_health_pct
+    assert_in_delta 123.4, snapshot.remaining_energy_wh, 0.001
+    assert_in_delta 51.2, snapshot.full_charge_capacity_ah, 0.001
+    assert_in_delta 1920.0, snapshot.design_energy_wh, 0.001
+    assert_equal 100, snapshot.grid_power_w
+    assert_in_delta 123.45, snapshot.pv_total_kwh, 0.001
+    assert_in_delta 67.89, snapshot.battery_charge_total_kwh, 0.001
+    assert_in_delta 45.67, snapshot.battery_discharge_total_kwh, 0.001
+    assert_in_delta 22.22, snapshot.grid_export_total_kwh, 0.001
+    assert_in_delta 33.33, snapshot.grid_import_total_kwh, 0.001
   end
 
   def test_errors_are_wrapped

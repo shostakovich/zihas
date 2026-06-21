@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_21_065726) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_21_070530) do
   create_table "daily_energy_summary", primary_key: "date", id: :string, force: :cascade do |t|
     t.float "consumed_wh", null: false
     t.float "produced_wh", null: false
@@ -88,6 +88,51 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_21_065726) do
     t.datetime "taken_at", null: false
     t.datetime "updated_at", null: false
     t.index ["taken_at"], name: "index_solakon_readings_on_taken_at"
+  end
+
+  create_table "solakon_snapshots", force: :cascade do |t|
+    t.integer "alarm1"
+    t.integer "alarm2"
+    t.integer "alarm3"
+    t.float "battery_charge_total_kwh"
+    t.float "battery_current_a"
+    t.float "battery_discharge_total_kwh"
+    t.integer "battery_health_pct"
+    t.float "battery_min_temperature_c"
+    t.float "battery_power_w"
+    t.integer "battery_soc_pct"
+    t.float "battery_temperature_c"
+    t.float "battery_voltage_v"
+    t.json "bms_faults", default: [], null: false
+    t.datetime "created_at", null: false
+    t.float "design_energy_wh"
+    t.boolean "eps_enabled"
+    t.float "eps_power_w"
+    t.float "eps_voltage_v"
+    t.float "full_charge_capacity_ah"
+    t.float "grid_export_total_kwh"
+    t.float "grid_import_total_kwh"
+    t.float "grid_power_w"
+    t.float "inverter_temperature_c"
+    t.float "pv1_current_a"
+    t.float "pv1_power_w"
+    t.float "pv1_voltage_v"
+    t.float "pv2_current_a"
+    t.float "pv2_power_w"
+    t.float "pv2_voltage_v"
+    t.float "pv3_current_a"
+    t.float "pv3_power_w"
+    t.float "pv3_voltage_v"
+    t.float "pv4_current_a"
+    t.float "pv4_power_w"
+    t.float "pv4_voltage_v"
+    t.float "pv_total_kwh"
+    t.float "remaining_energy_wh"
+    t.integer "status1"
+    t.integer "status3"
+    t.datetime "taken_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["taken_at"], name: "index_solakon_snapshots_on_taken_at"
   end
 
   create_table "switch_commands", force: :cascade do |t|

@@ -56,11 +56,25 @@ class SolakonClient
   }.freeze
 
   FIELD_SPECS = {
-    fast: FAST_FIELD_SPECS
+    fast: FAST_FIELD_SPECS,
+    snapshot: FAST_FIELD_SPECS.merge(
+      battery_voltage_v: { addr: 37609, type: :u16, scale: 10.0 },
+      battery_current_a: { addr: 37610, type: :i16, scale: 10.0 },
+      battery_temperature_c: { addr: 37611, type: :i16, scale: 10.0 },
+      battery_min_temperature_c: { addr: 37618, type: :i16, scale: 10.0 },
+      battery_health_pct: { addr: 37624, type: :u16 },
+      remaining_energy_wh: { addr: 37632, type: :u16, scale: 10.0 },
+      full_charge_capacity_ah: { addr: 37633, type: :u16, scale: 10.0 },
+      design_energy_wh: { addr: 37635, type: :u16, scale: 10.0 },
+      grid_power_w: { addr: 39168, count: 2, type: :i32, map: ->(value) { -value } }
+    )
   }.freeze
 
   GROUPED_READ_SPECS = {
-    pv_power: { addr: 39279, count: -> { PV_STRINGS * 2 } }
+    pv_power: { addr: 39279, count: -> { PV_STRINGS * 2 } },
+    pv_voltage_current: { addr: 39070, count: -> { PV_STRINGS * 2 } },
+    bms_faults: { addr: 37626, count: 6 },
+    energy_counters: { addr: 39601, count: 20 }
   }.freeze
 
   # 46001 bitfield: bit0=enable, bit1=direction (0=generation), bits3:2=target
@@ -78,6 +92,18 @@ class SolakonClient
                      :inverter_temperature_c, :status1, :status3, :alarm1, :alarm2,
                      :alarm3, :eps_enabled, :eps_voltage_v, :eps_power_w,
                      keyword_init: true)
+
+  PanelData = Struct.new(:index, :voltage_v, :current_a, :power_w, keyword_init: true)
+  SnapshotData = Struct.new(
+    :panels, :battery_voltage_v, :battery_current_a, :battery_temperature_c,
+    :battery_min_temperature_c, :battery_health_pct, :remaining_energy_wh,
+    :full_charge_capacity_ah, :design_energy_wh, :inverter_temperature_c,
+    :grid_power_w, :eps_enabled, :eps_voltage_v, :eps_power_w,
+    :status1, :status3, :alarm1, :alarm2, :alarm3, :bms_faults,
+    :pv_total_kwh, :battery_charge_total_kwh, :battery_discharge_total_kwh,
+    :grid_export_total_kwh, :grid_import_total_kwh,
+    keyword_init: true
+  )
 
   def self.decode_status_messages(status1:, status3:, alarm1:, alarm2:, alarm3:, bms_faults: [])
     messages = []
@@ -136,7 +162,7 @@ class SolakonClient
   end
 
   def read_snapshot
-    read_state
+    with_slave { |slave| read_snapshot_from(slave) }
   end
 
   # A full control cycle over a SINGLE Modbus connection: read inverter state,
@@ -186,6 +212,62 @@ class SolakonClient
       pv_power_w: read_pv_power_w(slave),
       eps_enabled: fields.fetch(:eps_mode) == EPS_OUTPUT_VALUES.fetch(:eps)
     )
+  end
+
+  def read_snapshot_from(slave)
+    fields = read_fields(slave, :snapshot)
+    groups = read_snapshot_groups(slave)
+    energy = decode_energy_counters(groups.fetch(:energy_counters))
+
+    SnapshotData.new(
+      **fields.slice(:battery_voltage_v, :battery_current_a, :battery_temperature_c,
+                     :battery_min_temperature_c, :battery_health_pct, :remaining_energy_wh,
+                     :full_charge_capacity_ah, :design_energy_wh, :inverter_temperature_c,
+                     :grid_power_w, :eps_voltage_v, :eps_power_w,
+                     :status1, :status3, :alarm1, :alarm2, :alarm3),
+      panels: read_panels(groups),
+      eps_enabled: fields.fetch(:eps_mode) == EPS_OUTPUT_VALUES.fetch(:eps),
+      bms_faults: groups.fetch(:bms_faults),
+      **energy
+    )
+  end
+
+  def read_snapshot_groups(slave)
+    %i[pv_voltage_current pv_power bms_faults energy_counters].to_h do |key|
+      [ key, read_register_group(slave, key) ]
+    end
+  end
+
+  def read_panels(groups)
+    vi = groups.fetch(:pv_voltage_current)
+    powers = groups.fetch(:pv_power)
+
+    (0...PV_STRINGS).map do |idx|
+      PanelData.new(
+        index: idx + 1,
+        voltage_v: scaled(decode_register_value([ vi[idx * 2] ], :i16), 10),
+        current_a: scaled(decode_register_value([ vi[idx * 2 + 1] ], :i16), 100),
+        power_w: decode_register_value(powers[idx * 2, 2], :i32)
+      )
+    end
+  end
+
+  def decode_energy_counters(regs)
+    {
+      pv_total_kwh: energy_counter_kwh(regs[0, 2]),
+      battery_charge_total_kwh: energy_counter_kwh(regs[4, 2]),
+      battery_discharge_total_kwh: energy_counter_kwh(regs[8, 2]),
+      grid_export_total_kwh: energy_counter_kwh(regs[12, 2]),
+      grid_import_total_kwh: energy_counter_kwh(regs[16, 2])
+    }
+  end
+
+  def energy_counter_kwh(regs)
+    scaled(decode_register_value(regs, :u32), 100)
+  end
+
+  def scaled(value, divisor)
+    value.to_f / divisor
   end
 
   def read_fields(slave, group)
