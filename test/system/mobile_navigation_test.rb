@@ -2,7 +2,7 @@ require_relative "application_system_test_case"
 
 class MobileNavigationTest < ApplicationSystemTestCase
   test "mobile navigation is fixed at the bottom with all primary links" do
-    page.driver.browser.manage.window.resize_to(390, 844)
+    page.current_window.resize_to(390, 844)
 
     visit root_path
 
