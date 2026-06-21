@@ -1106,3 +1106,16 @@ body.page-solakon { max-width: 1040px; }
 .solakon-battery-character.is-active {
   opacity: 1;
 }
+
+.solakon-control-card.is-unavailable,
+.solakon-panel-card.is-unavailable {
+  opacity: 0.68;
+}
+.solakon-page button.preset-link {
+  background: var(--card);
+  font: inherit;
+  cursor: pointer;
+}
+.solakon-page button.preset-link.active {
+  background: #fff8db;
+}

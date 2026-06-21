@@ -35,12 +35,16 @@ export default class extends Controller {
 
   async selectRange(event) {
     const range = event.currentTarget.dataset.solakonRangeParam
-    const response = await fetch(`/solakon/history.json?range=${encodeURIComponent(range)}`)
-    if (!response.ok) return
-    const payload = await response.json()
-    this.element.querySelectorAll(".preset-link").forEach((button) => button.classList.toggle("active", button === event.currentTarget))
-    this._buildChart(payload)
-    this._renderBalanceRows(payload.balance_rows || [])
+    try {
+      const response = await fetch(`/solakon/history.json?range=${encodeURIComponent(range)}`)
+      if (!response.ok) return
+      const payload = await response.json()
+      this.element.querySelectorAll(".preset-link").forEach((button) => button.classList.toggle("active", button === event.currentTarget))
+      this._buildChart(payload)
+      this._renderBalanceRows(payload.balance_rows || [])
+    } catch (error) {
+      console.error("solakon history load failed:", error)
+    }
   }
 
   async toggleEps(event) {
@@ -144,7 +148,7 @@ export default class extends Controller {
 
   _buildChart(payload) {
     if (!this.hasHistoryCanvasTarget) return
-    const chart = payload.chart || { labels: [], datasets: [] }
+    const chart = payload?.chart || { labels: [], datasets: [] }
     const colors = { "PV": "#f59f00", "Akku": "#14b8a6", "Netz": "#3b82f6", "0 W": "#6c757d" }
     const datasets = (chart.datasets || []).map((dataset) => ({
       label: dataset.label,
