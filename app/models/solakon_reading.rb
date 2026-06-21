@@ -4,9 +4,9 @@ class SolakonReading < ApplicationRecord
   MIN_SOC_PCT       = 10
   RESUME_SOC_PCT    = 11
   LOW_SOC_PCT       = 20     # display threshold for the "low" battery character (not a safety floor)
-  HOT_TEMP_C        = 42.0   # start of thermal de-rating (full output ceiling); exit PROTECTED below this (no hysteresis)
+  HOT_TEMP_C        = 45.0   # start of our thermal de-rating (full output ceiling); exit PROTECTED below this (no hysteresis)
   COLD_TEMP_C       = 5.0    # display threshold for the "cold" battery character
-  CUTOFF_TEMP_C     = 48.0   # de-rating reaches zero: no battery discharge above this
+  CUTOFF_TEMP_C     = 49.0   # de-rating reaches zero: no battery discharge above this (1 °C below the inverter's own 50 °C curtailment)
   CHARGE_DEADBAND_W = 10     # |power| below this reads as idle rather than charging/discharging
   PV_PRESENT_W      = 50
   USABLE_CAPACITY_WH = 1920

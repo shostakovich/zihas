@@ -15,11 +15,11 @@ class SolakonReadingTest < ActiveSupport::TestCase
   end
 
   test "temperature hot/cooled predicates (no hysteresis)" do
-    assert reading(soc: 50, temp: 42.0).battery_hot?
-    assert_not reading(soc: 50, temp: 41.9).battery_hot?
+    assert reading(soc: 50, temp: 45.0).battery_hot?
+    assert_not reading(soc: 50, temp: 44.9).battery_hot?
     assert reading(soc: 50, temp: nil).battery_cooled?
-    assert reading(soc: 50, temp: 41.9).battery_cooled?
-    assert_not reading(soc: 50, temp: 42.0).battery_cooled?
+    assert reading(soc: 50, temp: 44.9).battery_cooled?
+    assert_not reading(soc: 50, temp: 45.0).battery_cooled?
   end
 
   test "pv presence and usable energy" do

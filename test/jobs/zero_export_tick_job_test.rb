@@ -140,7 +140,7 @@ class ZeroExportTickJobTest < ActiveSupport::TestCase
   test "hot battery clamps the whole target to 800W" do
     now = Time.zone.local(2026, 6, 20, 12, 0, 0)
     Sample.create!(plug_id: "fridge", ts: now.to_i - 5, apower_w: 900, aenergy_wh: 1)
-    client = FakeClient.new(state: state_with(soc: 55, pv: 700, temp: 42))
+    client = FakeClient.new(state: state_with(soc: 55, pv: 700, temp: 45))
 
     run_job(client: client, now: now)
 
@@ -151,13 +151,13 @@ class ZeroExportTickJobTest < ActiveSupport::TestCase
     now = Time.zone.local(2026, 6, 20, 12, 0, 0)
     Sample.create!(plug_id: "fridge", ts: now.to_i - 5, apower_w: 900, aenergy_wh: 1)
 
-    # Warm: the de-rating ceiling is ~40 W at 47.4 C, written as the target.
-    run_job(client: FakeClient.new(state: state_with(soc: 55, pv: 700, temp: 47.4)), now: now)
+    # Warm: the de-rating ceiling is ~40 W at 48.8 C, written as the target.
+    run_job(client: FakeClient.new(state: state_with(soc: 55, pv: 700, temp: 48.8)), now: now)
 
-    # Crossing the 48 C cutoff drops the target to 0 W -- a sub-deadband decrease
+    # Crossing the 49 C cutoff drops the target to 0 W -- a sub-deadband decrease
     # that must still write so the battery stops discharging without waiting for
     # the heartbeat.
-    cutoff = FakeClient.new(state: state_with(soc: 55, pv: 700, temp: 48.0))
+    cutoff = FakeClient.new(state: state_with(soc: 55, pv: 700, temp: 49.0))
     run_job(client: cutoff, now: now + 30.seconds)
 
     assert_includes cutoff.calls, [ :apply_power, 0, 10 ]
