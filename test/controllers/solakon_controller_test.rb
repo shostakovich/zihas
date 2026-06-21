@@ -18,6 +18,7 @@ class SolakonControllerTest < ActionDispatch::IntegrationTest
     assert_select ".section-label", text: "Speicher"
     assert_select ".section-label", text: "Solakon-Verlauf"
     assert_select ".section-label", text: "Status"
+    assert_operator response.body.index("Status"), :<, response.body.index("Steuerung")
     assert_select "[role='tablist']", count: 0
     assert_no_match(/SOH|EPS|46613|39067|Modbus/, response.body)
     assert_match(/Außensteckdose/, response.body)
@@ -97,19 +98,22 @@ class SolakonControllerTest < ActionDispatch::IntegrationTest
     assert_no_match(/SOH|EPS|Modbus|Register|39067|46613|Fault\d|Alarm \d/, response.body)
   end
 
-  test "battery character assets are wired for all states" do
+  test "status renders one relevant battery character with short description" do
+    SolakonReading.create!(
+      taken_at: Time.current,
+      active_power_w: 260,
+      pv_power_w: 310,
+      battery_power_w: 80,
+      battery_soc_pct: 84,
+      battery_temperature_c: 24.8
+    )
+
     get "/solakon"
 
     assert_response :success
-    %w[
-      solakon_battery_normal
-      solakon_battery_charging
-      solakon_battery_low
-      solakon_battery_hot
-      solakon_battery_cold
-      solakon_battery_fault
-    ].each do |basename|
-      assert_select "img[data-solakon-battery-state][src*='#{basename}']", minimum: 1
-    end
+    assert_select ".solakon-status-figure img[data-solakon-battery-state]", 1
+    assert_select ".solakon-status-figure img[data-solakon-battery-state=charging][src*=solakon_battery_charging]", 1
+    assert_select ".solakon-status-summary", text: /Akku lädt gerade/
+    assert_select ".solakon-battery-states", count: 0
   end
 end

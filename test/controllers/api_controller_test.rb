@@ -69,6 +69,70 @@ class ApiControllerTest < ActionDispatch::IntegrationTest
       assert_equal 84, energy_flow["battery_soc_pct"]
       assert_in_delta 50.0, energy_flow["battery_w"]
       assert_in_delta(-60.0, energy_flow["grid_w"])
+      assert_equal({
+        "solar_to_home_w" => 200.0,
+        "solar_to_grid_w" => 60.0,
+        "solar_to_battery_w" => 50.0,
+        "grid_to_home_w" => 0.0,
+        "grid_to_battery_w" => 0.0,
+        "battery_to_home_w" => 0.0
+      }, energy_flow["flows"])
+    end
+  end
+
+
+  test "GET /api/live uses grid reference to correct solar-to-battery flow" do
+    travel_to Time.zone.local(2026, 6, 18, 12, 0, 0) do
+      now = Time.current
+      cfg = live_config_with_solakon(stale_after_s: 120)
+
+      Sample.create!(plug_id: "desk", ts: now.to_i - 2, apower_w: 200.0, aenergy_wh: 1.0)
+      SolakonReading.create!(
+        taken_at: now - 2.seconds,
+        active_power_w: 260,
+        pv_power_w: 400,
+        battery_power_w: 50,
+        battery_soc_pct: 84
+      )
+
+      ConfigLoader.stub(:app_config, cfg) do
+        get "/api/live", as: :json
+      end
+      assert_response :ok
+
+      flows = response.parsed_body.dig("energy_flow", "flows")
+      assert_equal 200.0, flows.fetch("solar_to_home_w")
+      assert_equal 60.0, flows.fetch("solar_to_grid_w")
+      assert_equal 140.0, flows.fetch("solar_to_battery_w")
+      assert_equal 0.0, flows.fetch("battery_to_home_w")
+    end
+  end
+
+  test "GET /api/live splits house supply between solar battery and grid while discharging" do
+    travel_to Time.zone.local(2026, 6, 18, 12, 0, 0) do
+      now = Time.current
+      cfg = live_config_with_solakon(stale_after_s: 120)
+
+      Sample.create!(plug_id: "desk", ts: now.to_i - 2, apower_w: 200.0, aenergy_wh: 1.0)
+      SolakonReading.create!(
+        taken_at: now - 2.seconds,
+        active_power_w: 150,
+        pv_power_w: 100,
+        battery_power_w: -50,
+        battery_soc_pct: 84
+      )
+
+      ConfigLoader.stub(:app_config, cfg) do
+        get "/api/live", as: :json
+      end
+      assert_response :ok
+
+      flows = response.parsed_body.dig("energy_flow", "flows")
+      assert_equal 100.0, flows.fetch("solar_to_home_w")
+      assert_equal 0.0, flows.fetch("solar_to_grid_w")
+      assert_equal 0.0, flows.fetch("solar_to_battery_w")
+      assert_equal 50.0, flows.fetch("grid_to_home_w")
+      assert_equal 50.0, flows.fetch("battery_to_home_w")
     end
   end
 

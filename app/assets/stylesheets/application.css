@@ -91,7 +91,7 @@ h1 { font-size: 18px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
    above would otherwise override the UA default. */
 .hero-half[hidden] { display: none; }
 /* Battery icon trimmed to roughly the sun's visible height (~30% smaller). */
-.hero-icon-battery { height: 56px; }
+.hero-icon-battery { height: 80px; }
 
 .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
 .tile {
@@ -501,7 +501,7 @@ svg text[data-dashboard-target] {
   .hero { padding: 16px 0; }
   .hero-half { gap: 8px; }
   .hero-icon { height: 48px; }
-  .hero-icon-battery { height: 34px; }
+  .hero-icon-battery { height: 48px; }
   .hero-value { font-size: 30px; }
   .hero-unit { font-size: 15px; }
 }
@@ -509,7 +509,7 @@ svg text[data-dashboard-target] {
   .hero { padding: 12px 0; }
   .hero-half { gap: 6px; }
   .hero-icon { height: 42px; }
-  .hero-icon-battery { height: 30px; }
+  .hero-icon-battery { height: 42px; }
   .hero-value { font-size: 26px; }
   .hero-unit { font-size: 13px; }
 }
@@ -1090,21 +1090,22 @@ body.page-solakon { max-width: 1040px; }
   }
 }
 
-.solakon-battery-states {
+.solakon-status-figure {
   display: flex;
-  gap: 8px;
   align-items: center;
-  overflow-x: auto;
+  gap: 12px;
   margin-bottom: 10px;
 }
 .solakon-battery-character {
-  width: 52px;
-  height: 52px;
+  width: 64px;
+  height: 64px;
   object-fit: contain;
-  opacity: 0.45;
+  flex-shrink: 0;
 }
-.solakon-battery-character.is-active {
-  opacity: 1;
+.solakon-status-summary {
+  margin: 0;
+  color: var(--text);
+  font-weight: 600;
 }
 
 .solakon-control-card.is-unavailable,

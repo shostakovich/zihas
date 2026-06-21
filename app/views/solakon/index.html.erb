@@ -17,6 +17,47 @@
                battery_asset: "solakon_battery_normal.webp" %>
   </div>
 
+  <%
+    status_messages = latest&.status_messages || reading&.status_messages || [ "Alles ruhig" ]
+    battery_power_w = reading&.battery_display_power_w
+    battery_soc_pct = reading&.battery_soc_pct
+    battery_temp_c = reading&.battery_temperature_c || latest&.battery_temperature_c
+    alarm_values = [ reading&.alarm1, reading&.alarm2, reading&.alarm3, latest&.alarm1, latest&.alarm2, latest&.alarm3 ]
+    battery_fault = alarm_values.any? { |value| value.to_i.positive? } || Array(latest&.bms_faults).any? { |value| value.to_i.positive? }
+
+    battery_state, battery_asset, battery_summary =
+      if battery_fault
+        [ "fault", "solakon_battery_fault.webp", "Akku meldet Aufmerksamkeit" ]
+      elsif battery_temp_c.present? && battery_temp_c >= 42
+        [ "hot", "solakon_battery_hot.webp", "Akku ist warm" ]
+      elsif battery_temp_c.present? && battery_temp_c <= 5
+        [ "cold", "solakon_battery_cold.webp", "Akku ist kalt" ]
+      elsif battery_soc_pct.present? && battery_soc_pct <= 20
+        [ "low", "solakon_battery_low.webp", "Akku ist niedrig geladen" ]
+      elsif battery_power_w.present? && battery_power_w > 10
+        [ "charging", "solakon_battery_charging.webp", "Akku lädt gerade" ]
+      elsif battery_power_w.present? && battery_power_w < -10
+        [ "normal", "solakon_battery_normal.webp", "Akku versorgt gerade das Haus" ]
+      else
+        [ "normal", "solakon_battery_normal.webp", "Alles ruhig am Speicher" ]
+      end
+  %>
+  <h2 class="section-label">Status</h2>
+  <section class="chart-card solakon-status-card">
+    <div class="solakon-status-figure">
+      <%= image_tag battery_asset, class: "solakon-battery-character", data: { solakon_battery_state: battery_state }, alt: "" %>
+      <p class="solakon-status-summary"><%= battery_summary %></p>
+    </div>
+    <% status_messages.each do |message| %>
+      <p class="muted-text"><%= message %></p>
+    <% end %>
+    <details>
+      <summary>Details</summary>
+      <p class="muted-text">Wechselrichtertemperatur <%= fmt.call(reading&.inverter_temperature_c || latest&.inverter_temperature_c, 1) %> °C</p>
+      <p class="muted-text">Außensteckdose <%= reading&.eps_enabled ? "bereit" : "aus" %></p>
+    </details>
+  </section>
+
   <h2 class="section-label">Steuerung</h2>
   <section class="solakon-control-grid">
     <article class="tile solakon-control-card" data-solakon-target="epsCard">
@@ -95,26 +136,6 @@
         </div>
       <% end %>
     </div>
-  </section>
-
-  <h2 class="section-label">Status</h2>
-  <section class="chart-card solakon-status-card">
-    <div class="solakon-battery-states" aria-hidden="true">
-      <%= image_tag "solakon_battery_normal.webp", class: "solakon-battery-character is-active", data: { solakon_battery_state: "normal" }, alt: "" %>
-      <%= image_tag "solakon_battery_charging.webp", class: "solakon-battery-character", data: { solakon_battery_state: "charging" }, alt: "" %>
-      <%= image_tag "solakon_battery_low.webp", class: "solakon-battery-character", data: { solakon_battery_state: "low" }, alt: "" %>
-      <%= image_tag "solakon_battery_hot.webp", class: "solakon-battery-character", data: { solakon_battery_state: "hot" }, alt: "" %>
-      <%= image_tag "solakon_battery_cold.webp", class: "solakon-battery-character", data: { solakon_battery_state: "cold" }, alt: "" %>
-      <%= image_tag "solakon_battery_fault.webp", class: "solakon-battery-character", data: { solakon_battery_state: "fault" }, alt: "" %>
-    </div>
-    <% (latest&.status_messages || reading&.status_messages || [ "Alles ruhig" ]).each do |message| %>
-      <p class="muted-text"><%= message %></p>
-    <% end %>
-    <details>
-      <summary>Details</summary>
-      <p class="muted-text">Wechselrichtertemperatur <%= fmt.call(reading&.inverter_temperature_c || latest&.inverter_temperature_c, 1) %> °C</p>
-      <p class="muted-text">Außensteckdose <%= reading&.eps_enabled ? "bereit" : "aus" %></p>
-    </details>
   </section>
 
   <script type="application/json" data-solakon-target="historyPayload"><%= raw json_escape(@history_payload.to_json) %></script>

@@ -210,15 +210,13 @@ export default class extends Controller {
     const batteryW = flow?.battery_w
     const batterySoc = flow?.battery_soc_pct
 
-    const gridToHome = gridW > 0 ? gridW : 0
-    const solarToGrid = gridW < 0 ? Math.abs(gridW) : 0
-    const batteryChargeW = batteryW > 0 ? batteryW : 0
-    const batteryDischargeW = batteryW < 0 ? Math.abs(batteryW) : 0
-    const solarForBattery = pvW == null ? 0 : Math.max(0, pvW - solarToGrid)
-    const solarToBattery = Math.min(batteryChargeW, solarForBattery)
-    const gridToBattery = Math.max(0, batteryChargeW - solarToBattery)
-    const batteryToHome = Math.min(batteryDischargeW, homeW || 0)
-    const solarToHome = pvW == null ? 0 : Math.max(0, pvW - solarToGrid - solarToBattery)
+    const flows = flow?.flows || {}
+    const solarToHome = Number(flows.solar_to_home_w || 0)
+    const solarToGrid = Number(flows.solar_to_grid_w || 0)
+    const solarToBattery = Number(flows.solar_to_battery_w || 0)
+    const gridToHome = Number(flows.grid_to_home_w || 0)
+    const gridToBattery = Number(flows.grid_to_battery_w || 0)
+    const batteryToHome = Number(flows.battery_to_home_w || 0)
 
     if (this.hasEfPvWTarget)
       this.efPvWTarget.textContent = pvW == null ? "— W" : pvW.toFixed(0) + " W"

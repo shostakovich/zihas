@@ -38,6 +38,14 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-dashboard-target='efDotsBatteryHome']"
   end
 
+  test "dashboard battery hero icon uses full sun height" do
+    css = Rails.root.join("app/assets/stylesheets/application.css").read
+
+    assert_match(/\.hero-icon-battery \{ height: 80px; \}/, css)
+    assert_match(/@media \(max-width: 480px\).*\.hero-icon-battery \{ height: 48px; \}/m, css)
+    assert_match(/@media \(max-width: 380px\).*\.hero-icon-battery \{ height: 42px; \}/m, css)
+  end
+
   test "energy flow node contents are vertically centered in circles" do
     get "/"
     assert_response :ok

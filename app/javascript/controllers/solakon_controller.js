@@ -110,15 +110,13 @@ export default class extends Controller {
     if (this.hasEfBatterySocTarget) this.efBatterySocTarget.textContent = batterySoc == null ? "— %" : `${batterySoc.toFixed(0)}%`
     if (this.hasEfBatteryWTarget) this.efBatteryWTarget.textContent = batteryW == null ? "— W" : batteryW > 0 ? `−${batteryW.toFixed(0)} W` : batteryW < 0 ? `${Math.abs(batteryW).toFixed(0)} W` : "0 W"
 
-    const gridToHome = gridW > 0 ? gridW : 0
-    const solarToGrid = gridW < 0 ? Math.abs(gridW) : 0
-    const batteryChargeW = batteryW > 0 ? batteryW : 0
-    const batteryDischargeW = batteryW < 0 ? Math.abs(batteryW) : 0
-    const solarForBattery = pvW == null ? 0 : Math.max(0, pvW - solarToGrid)
-    const solarToBattery = Math.min(batteryChargeW, solarForBattery)
-    const gridToBattery = Math.max(0, batteryChargeW - solarToBattery)
-    const batteryToHome = Math.min(batteryDischargeW, homeW || 0)
-    const solarToHome = pvW == null ? 0 : Math.max(0, pvW - solarToGrid - solarToBattery)
+    const flows = flow?.flows || {}
+    const solarToHome = Number(flows.solar_to_home_w || 0)
+    const solarToGrid = Number(flows.solar_to_grid_w || 0)
+    const solarToBattery = Number(flows.solar_to_battery_w || 0)
+    const gridToHome = Number(flows.grid_to_home_w || 0)
+    const gridToBattery = Number(flows.grid_to_battery_w || 0)
+    const batteryToHome = Number(flows.battery_to_home_w || 0)
 
     const paths = {
       solarHome: "M 200,122 C 205,150 250,166 306,170",
