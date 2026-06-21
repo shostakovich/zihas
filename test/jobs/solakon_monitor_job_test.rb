@@ -61,7 +61,18 @@ class SolakonMonitorJobTest < ActiveSupport::TestCase
       active_power_w: 123,
       pv_power_w: 456,
       battery_power_w: -78,
-      battery_temperature_c: 42.3
+      battery_temperature_c: 42.3,
+      battery_voltage_v: 51.2,
+      battery_current_a: -1.5,
+      inverter_temperature_c: 34.1,
+      status1: 4,
+      status3: 0,
+      alarm1: 0,
+      alarm2: 8,
+      alarm3: 0,
+      eps_enabled: true,
+      eps_voltage_v: 230.1,
+      eps_power_w: 125
     )
   end
 
@@ -98,6 +109,17 @@ class SolakonMonitorJobTest < ActiveSupport::TestCase
     assert_equal(-78, reading.battery_power_w)
     assert_equal 55, reading.battery_soc_pct
     assert_in_delta 42.3, reading.battery_temperature_c, 0.001
+    assert_in_delta 51.2, reading.battery_voltage_v, 0.001
+    assert_in_delta(-1.5, reading.battery_current_a, 0.001)
+    assert_in_delta 34.1, reading.inverter_temperature_c, 0.001
+    assert_equal 4, reading.status1
+    assert_equal 0, reading.status3
+    assert_equal 0, reading.alarm1
+    assert_equal 8, reading.alarm2
+    assert_equal 0, reading.alarm3
+    assert_equal true, reading.eps_enabled
+    assert_in_delta 230.1, reading.eps_voltage_v, 0.001
+    assert_equal 125, reading.eps_power_w
   end
 
   test "does not read or persist when monitoring_enabled false" do

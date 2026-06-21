@@ -1,3 +1,5 @@
+require "solakon_client"
+
 class SolakonReading < ApplicationRecord
   MIN_SOC_PCT       = 10
   RESUME_SOC_PCT    = 11
@@ -11,6 +13,11 @@ class SolakonReading < ApplicationRecord
   validates :active_power_w, :pv_power_w, :battery_power_w, numericality: true
   validates :battery_soc_pct, numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 100 }
   validates :battery_temperature_c, numericality: true, allow_nil: true
+  validates :battery_voltage_v, :battery_current_a, :inverter_temperature_c,
+            :eps_voltage_v, :eps_power_w,
+            numericality: true, allow_nil: true
+  validates :status1, :status3, :alarm1, :alarm2, :alarm3,
+            numericality: { only_integer: true }, allow_nil: true
 
   scope :newest_first, -> { order(taken_at: :desc) }
 
@@ -33,5 +40,16 @@ class SolakonReading < ApplicationRecord
 
   def usable_wh
     [ battery_soc_pct - MIN_SOC_PCT, 0 ].max / 100.0 * USABLE_CAPACITY_WH
+  end
+
+  def status_messages
+    SolakonClient.decode_status_messages(
+      status1: status1,
+      status3: status3,
+      alarm1: alarm1,
+      alarm2: alarm2,
+      alarm3: alarm3,
+      bms_faults: []
+    )
   end
 end

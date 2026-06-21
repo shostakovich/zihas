@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_20_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_21_065726) do
   create_table "daily_energy_summary", primary_key: "date", id: :string, force: :cascade do |t|
     t.float "consumed_wh", null: false
     t.float "produced_wh", null: false
@@ -69,11 +69,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_20_120000) do
 
   create_table "solakon_readings", force: :cascade do |t|
     t.float "active_power_w", null: false
+    t.integer "alarm1"
+    t.integer "alarm2"
+    t.integer "alarm3"
+    t.float "battery_current_a"
     t.float "battery_power_w", null: false
     t.integer "battery_soc_pct", null: false
     t.float "battery_temperature_c"
+    t.float "battery_voltage_v"
     t.datetime "created_at", null: false
+    t.boolean "eps_enabled"
+    t.float "eps_power_w"
+    t.float "eps_voltage_v"
+    t.float "inverter_temperature_c"
     t.float "pv_power_w", null: false
+    t.integer "status1"
+    t.integer "status3"
     t.datetime "taken_at", null: false
     t.datetime "updated_at", null: false
     t.index ["taken_at"], name: "index_solakon_readings_on_taken_at"
