@@ -33,7 +33,9 @@ class SensorsBroadcasterTest < ActiveSupport::TestCase
         Turbo::StreamsChannel.stub(:broadcast_replace_to, stub) do
           SensorsBroadcaster.refresh
         end
-        SensorsController.render(partial: captured[:partial], locals: captured[:locals])
+        refute_nil captured, "expected a broadcast carrying the partial and locals"
+        rendered = SensorsController.render(partial: captured[:partial], locals: captured[:locals])
+        assert_includes rendered, "Probe", "expected the sensor to appear in the rendered partial"
       end
     end
   end

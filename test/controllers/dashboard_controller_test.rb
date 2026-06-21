@@ -27,12 +27,15 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-dashboard-target='efBatterySoc']"
     assert_select "[data-dashboard-target='efBatteryW']"
 
-    assert_select "[data-dashboard-target='efLineSolarHome']"
-    assert_select "[data-dashboard-target='efLineSolarGrid']"
-    assert_select "[data-dashboard-target='efLineSolarBattery']"
-    assert_select "[data-dashboard-target='efLineGridHome']"
-    assert_select "[data-dashboard-target='efLineGridBattery']"
-    assert_select "[data-dashboard-target='efLineBatteryHome']"
+    # The six static flow lines render as <path> elements (one per channel,
+    # identified by stroke colour). Only the animated efDots overlays below are
+    # driven from Stimulus, so the lines carry no data-target.
+    assert_select "path[stroke='#f59f00']" # solar -> home
+    assert_select "path[stroke='#8b5cf6']" # solar -> grid
+    assert_select "path[stroke='#ec4899']" # solar -> battery
+    assert_select "path[stroke='#3b82f6']" # grid -> home
+    assert_select "path[stroke='#94a3b8']" # grid -> battery
+    assert_select "path[stroke='#14b8a6']" # battery -> home
 
     assert_select "[data-dashboard-target='efDotsSolarHome']"
     assert_select "[data-dashboard-target='efDotsSolarGrid']"
