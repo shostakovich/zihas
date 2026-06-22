@@ -77,6 +77,20 @@ class ZeroExportTickJobTest < ActiveSupport::TestCase
     assert_equal [ :read_state, [ :apply_power, 250, 10 ] ], client.calls
   end
 
+  test "caps a fresh consumption spike at the recent median" do
+    now = Time.zone.local(2026, 6, 20, 12, 0, 0)
+    [ 240, 240, 240, 240, 800 ].each_with_index do |watts, i|
+      Sample.create!(plug_id: "fridge", ts: (now - (25 - i * 5).minutes).to_i,
+                     apower_w: watts, aenergy_wh: 1)
+    end
+
+    client = FakeClient.new(state: healthy_state)
+
+    run_job(client: client, now: now)
+
+    assert_equal [ :read_state, [ :apply_power, 240, 10 ] ], client.calls
+  end
+
   test "applies control from a pre-read state without calling read_state or control_tick" do
     now = Time.at(1_000_000)
     Sample.create!(plug_id: "fridge", ts: now.to_i - 5, apower_w: 250, aenergy_wh: 1)
@@ -90,7 +104,7 @@ class ZeroExportTickJobTest < ActiveSupport::TestCase
   test "fresh low consumption is not overridden by a stale cached floor" do
     now = Time.at(1_000_000)
     Sample.create!(plug_id: "fridge", ts: now.to_i - 5, apower_w: 20, aenergy_wh: 1)
-    @cache.write(ZeroExportTickJob::FLOOR_CACHE_KEY, 200.0) # stale, high cached floor
+    @cache.write(ZeroExportCache::FLOOR_CACHE_KEY, 200.0) # stale, high cached floor
     client = FakeClient.new(state: healthy_state)
     run_job(client: client, now: now)
     assert_equal [ :read_state, [ :apply_power, 20, 10 ] ], client.calls # follows fresh load, not the floor

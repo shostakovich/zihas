@@ -75,10 +75,42 @@ class ConsumptionReaderTest < ActiveSupport::TestCase
     assert_in_delta 250.0, reader.guaranteed_floor_w
   end
 
+  test "median_consumption_w rejects one high 5-minute spike" do
+    now = Time.at(1_000_000)
+    [ 120, 120, 800, 120, 120 ].each_with_index do |total, i|
+      ts = now.to_i - (25 - i * 5).minutes
+      Sample.create!(plug_id: "fridge", ts: ts, apower_w: total, aenergy_wh: 1)
+    end
+
+    reader = ConsumptionReader.new(plugs: plugs, now: now)
+    assert_in_delta 120.0, reader.median_consumption_w, 0.001
+  end
+
+  test "median_consumption_w sums consumer plugs per bucket" do
+    now = Time.at(1_000_000)
+    [ [ 60, 40 ], [ 80, 40 ], [ 200, 400 ], [ 70, 50 ], [ 90, 30 ] ].each_with_index do |(fridge, tv), i|
+      ts = now.to_i - (25 - i * 5).minutes
+      Sample.create!(plug_id: "fridge", ts: ts, apower_w: fridge, aenergy_wh: 1)
+      Sample.create!(plug_id: "tv",     ts: ts, apower_w: tv,     aenergy_wh: 1)
+    end
+
+    reader = ConsumptionReader.new(plugs: plugs, now: now)
+    assert_in_delta 120.0, reader.median_consumption_w, 0.001
+  end
+
+  test "median_consumption_w returns nil when the 30-minute window is empty" do
+    now = Time.at(1_000_000)
+    Sample.create!(plug_id: "fridge", ts: now.to_i - 31.minutes, apower_w: 120, aenergy_wh: 1)
+
+    reader = ConsumptionReader.new(plugs: plugs, now: now)
+    assert_nil reader.median_consumption_w
+  end
+
   test "no consumer plugs: consumption is nil, floor is zero" do
     reader = ConsumptionReader.new(plugs: [], now: Time.at(1_000_000))
     assert_nil reader.current_consumption_w
     assert_equal 0.0, reader.guaranteed_floor_w
+    assert_nil reader.median_consumption_w
   end
 
   test "night_base_w returns P20 of recent night buckets" do
