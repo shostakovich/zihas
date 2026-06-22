@@ -9,17 +9,19 @@ class ZeroExportControllerTest < ActiveSupport::TestCase
                        battery_power_w: 0, battery_soc_pct: soc, battery_temperature_c: temp)
   end
 
-  def load(current:, night_base: 85.0)
-    LoadEstimate.new(current_w: current, floor_w: 85.0, night_base_w: night_base)
+  def load(current:, night_base: 85.0, median: nil)
+    attrs = { current_w: current, floor_w: 85.0, night_base_w: night_base }
+    attrs[:median_w] = median unless median.nil?
+    LoadEstimate.new(**attrs)
   end
 
   def sun(now)
     SunWindow.for(now: now, weather: nil, timezone: "Europe/Berlin")
   end
 
-  def decide(reading:, load:, now:, previous_state: nil, smoothed_load_w: nil)
+  def decide(reading:, load:, now:, previous_state: nil)
     ZeroExportController.decide(reading: reading, load: load, sun: sun(now),
-                                previous_state: previous_state, smoothed_load_w: smoothed_load_w)
+                                previous_state: previous_state)
   end
 
   DAY     = -> { Time.zone.local(2026, 6, 20, 12, 0, 0) }
@@ -91,39 +93,52 @@ class ZeroExportControllerTest < ActiveSupport::TestCase
 
   test "evening clamps to current load and never exports" do
     d = decide(reading: reading(soc: 90, pv: 0), load: load(current: 200),
-               now: EVENING.call, smoothed_load_w: 400.0)
+               now: EVENING.call)
     assert_equal :evening_catch_up, d.state
     assert_equal 200, d.target_w # falls fast to measured load, no export
   end
 
   test "target never exceeds the legal cap" do
     d = decide(reading: reading(soc: 90, pv: 0), load: load(current: 2000),
-               now: EVENING.call, smoothed_load_w: 2000.0)
+               now: EVENING.call)
     assert_equal 800, d.target_w
   end
 
-  test "pv priority carries its real output forward for the next state's smoothing" do
-    d = decide(reading: reading(soc: 90, pv: 250), load: load(current: 250), now: DAY.call)
+  test "median cap applies in pv priority" do
+    d = decide(reading: reading(soc: 55, pv: 100), load: load(current: 800, median: 240), now: DAY.call)
     assert_equal :pv_priority, d.state
-    assert_equal 250, d.target_w
-    assert_in_delta 250.0, d.smoothed_load_w, 0.001
+    assert_equal 240, d.target_w
   end
 
-  test "first evening tick ramps from the carried-forward output, not the current load" do
-    # Simulates the sunset transition: the prior pv_priority tick output 250 W,
-    # carried into smoothed_load_w. The evening target must ramp by <= 50 W, not
-    # jump straight to the 800 W load (which would bypass the slow-up cap).
-    d = decide(reading: reading(soc: 90, pv: 0), load: load(current: 800),
-               now: EVENING.call, smoothed_load_w: 250.0)
+  test "median cap applies in evening catch up without slow rise" do
+    d = decide(reading: reading(soc: 90, pv: 0), load: load(current: 800, median: 240),
+               now: EVENING.call)
     assert_equal :evening_catch_up, d.state
-    assert_equal 300, d.target_w # 250 + min(550*0.25, 50) = 300
+    assert_equal 240, d.target_w
   end
 
-  test "cold-start evening seeds from base load rather than jumping to full load" do
-    d = decide(reading: reading(soc: 90, pv: 0), load: load(current: 800, night_base: 85),
-               now: EVENING.call, smoothed_load_w: nil)
+  test "median cap applies in protected output" do
+    d = decide(reading: reading(soc: 55, pv: 0, temp: 45.0), load: load(current: 800, median: 240),
+               now: DAY.call)
+    assert_equal :protected, d.state
+    assert_equal 240, d.target_w
+  end
+
+  test "load drop follows current load below median immediately" do
+    d = decide(reading: reading(soc: 90, pv: 0), load: load(current: 120, median: 240),
+               now: EVENING.call)
     assert_equal :evening_catch_up, d.state
-    assert_equal 135, d.target_w # rise_slow_fall_fast(800, 85) = 85 + min(178.75, 50) = 135
+    assert_equal 120, d.target_w
+  end
+
+  test "falling target uses the smaller downward deadband" do
+    d = ZeroExportController::Decision.new(state: :pv_priority, target_w: 180, deadband_w: 50)
+    assert d.differs_from?(200)
+  end
+
+  test "rising target still uses the state's normal deadband" do
+    d = ZeroExportController::Decision.new(state: :pv_priority, target_w: 230, deadband_w: 50)
+    refute d.differs_from?(200)
   end
 
   test "night base uses base target minus reserve" do

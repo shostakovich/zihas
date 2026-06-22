@@ -5,14 +5,15 @@ class ZeroExportTickJob < ApplicationJob
   queue_as :default
 
   FLOOR_CACHE_KEY         = "zero_export.floor_w".freeze
+  MEDIAN_CACHE_KEY        = "zero_export.median_w".freeze
   NIGHT_BASE_CACHE_KEY    = "zero_export.night_base_w".freeze
   STATE_CACHE_KEY         = "zero_export.state".freeze
   LAST_TARGET_CACHE_KEY   = "zero_export.last_target_w".freeze
   LAST_WRITE_AT_CACHE_KEY = "zero_export.last_write_at".freeze
-  SMOOTHED_LOAD_CACHE_KEY = "zero_export.smoothed_load_w".freeze
   FAILURE_COUNT_CACHE_KEY = "zero_export.consecutive_failures".freeze
 
   SLOW_QUERY_TTL           = 1.hour
+  MEDIAN_CACHE_TTL         = 60.seconds
   HEARTBEAT_S              = 120
   MAX_CONSECUTIVE_FAILURES = 3
 
@@ -35,8 +36,10 @@ class ZeroExportTickJob < ApplicationJob
 
     reader = ConsumptionReader.new(plugs: config.plugs, now: reader_now, stale_after_s: solakon.stale_after_s)
     floor  = Rails.cache.fetch(FLOOR_CACHE_KEY, expires_in: SLOW_QUERY_TTL) { reader.guaranteed_floor_w }
+    median = Rails.cache.fetch(MEDIAN_CACHE_KEY, expires_in: MEDIAN_CACHE_TTL) { reader.median_consumption_w }
     night_base = night_base_w(reader, config, floor)
-    load = LoadEstimate.new(current_w: reader.current_consumption_w, floor_w: floor, night_base_w: night_base)
+    load = LoadEstimate.new(current_w: reader.current_consumption_w, floor_w: floor,
+                            median_w: median, night_base_w: night_base)
 
     client ||= SolakonClient.from_config(solakon)
 
@@ -47,8 +50,7 @@ class ZeroExportTickJob < ApplicationJob
 
       decision = ZeroExportController.decide(
         reading: reading, load: load, sun: sun,
-        previous_state: Rails.cache.read(STATE_CACHE_KEY)&.to_sym,
-        smoothed_load_w: Rails.cache.read(SMOOTHED_LOAD_CACHE_KEY)
+        previous_state: Rails.cache.read(STATE_CACHE_KEY)&.to_sym
       )
 
       write_target!(client, decision, reader_now) if should_write?(decision, reader_now)
@@ -111,7 +113,6 @@ class ZeroExportTickJob < ApplicationJob
 
   def remember(decision)
     Rails.cache.write(STATE_CACHE_KEY, decision.state)
-    Rails.cache.write(SMOOTHED_LOAD_CACHE_KEY, decision.smoothed_load_w)
   end
 
   def log(decision, load, reading)

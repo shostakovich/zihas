@@ -2,6 +2,7 @@
 # and computes the export-safe lower bound (guaranteed_floor_w).
 class ConsumptionReader
   FLOOR_WINDOW_S         = 24 * 60 * 60
+  MEDIAN_WINDOW_S        = 30 * 60
   BUCKET_S               = 300
   NIGHT_BASE_DAYS        = 7
   NIGHT_EDGE_EXCLUSION_S = 60 * 60
@@ -35,6 +36,21 @@ class ConsumptionReader
     totals = Hash.new(0.0)
     bucket_avg_rows(@now.to_i - FLOOR_WINDOW_S).each { |r| totals[r.bucket_ts] += r.avg_w.to_f }
     totals.empty? ? 0.0 : totals.values.min
+  end
+
+  # Median total 5-min consumption over the last 30 minutes. This caps short
+  # live-load spikes while still letting current_consumption_w clamp downward
+  # immediately after a load drop.
+  def median_consumption_w
+    return nil if @consumer_ids.empty?
+
+    totals = Hash.new(0.0)
+    bucket_avg_rows(@now.to_i - MEDIAN_WINDOW_S).each { |r| totals[r.bucket_ts] += r.avg_w.to_f }
+    values = totals.values.sort
+    return nil if values.empty?
+
+    mid = values.length / 2
+    values.length.odd? ? values[mid].to_f : ((values[mid - 1] + values[mid]) / 2.0)
   end
 
   # P20 of recent-night 5-min consumption buckets — the controller's NIGHT_BASE
