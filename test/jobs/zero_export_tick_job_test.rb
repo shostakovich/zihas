@@ -104,7 +104,7 @@ class ZeroExportTickJobTest < ActiveSupport::TestCase
   test "fresh low consumption is not overridden by a stale cached floor" do
     now = Time.at(1_000_000)
     Sample.create!(plug_id: "fridge", ts: now.to_i - 5, apower_w: 20, aenergy_wh: 1)
-    @cache.write(ZeroExportTickJob::FLOOR_CACHE_KEY, 200.0) # stale, high cached floor
+    @cache.write(ZeroExportCache::FLOOR_CACHE_KEY, 200.0) # stale, high cached floor
     client = FakeClient.new(state: healthy_state)
     run_job(client: client, now: now)
     assert_equal [ :read_state, [ :apply_power, 20, 10 ] ], client.calls # follows fresh load, not the floor
