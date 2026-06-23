@@ -5,6 +5,12 @@ class SolakonHistory
     "30d" => 30.days
   }.freeze
 
+  # Longest gap between two snapshots we still integrate over. Snapshots arrive
+  # every 2 min; capping at 5 min keeps monitoring downtime from inflating the
+  # Außensteckdose energy totals (trapezoidal integration would otherwise treat
+  # a multi-hour gap as one giant interval).
+  OUTLET_MAX_GAP_S = 300
+
   def initialize(range_key:, now: Time.current)
     @range_key = RANGES.key?(range_key) ? range_key : "24h"
     @now = now
@@ -78,26 +84,62 @@ class SolakonHistory
     deltas = {
       pv: delta(first.pv_total_kwh, last.pv_total_kwh),
       charge: delta(first.battery_charge_total_kwh, last.battery_charge_total_kwh),
-      discharge: delta(first.battery_discharge_total_kwh, last.battery_discharge_total_kwh),
-      import: delta(first.grid_import_total_kwh, last.grid_import_total_kwh),
-      export: delta(first.grid_export_total_kwh, last.grid_export_total_kwh)
+      discharge: delta(first.battery_discharge_total_kwh, last.battery_discharge_total_kwh)
     }
-    avg_grid_w = rows.map { |row| row.grid_power_w.to_f }.sum / rows.length
-    max = [ deltas.values.max.to_f, avg_grid_w.abs / 1000.0, 0.001 ].max
+    # No grid meter on this unit, so 39613/39617/grid_power read 0. We reconstruct
+    # the inverter's AC-port exchange instead, by integrating the signed
+    # Außensteckdose power (active_power_w) over the snapshots — the same series
+    # that draws the blue chart line. This is the inverter's feed/draw at the
+    # outdoor socket, NOT whole-house grid flow (household consumption is unmeasured).
+    outlet = outlet_energy(rows)
+    max = [
+      deltas.values.max.to_f,
+      outlet.fetch(:delivered_kwh),
+      outlet.fetch(:drawn_kwh),
+      outlet.fetch(:avg_w).abs / 1000.0,
+      0.001
+    ].max
 
     [
       row("PV-Erzeugung", deltas.fetch(:pv), max, :solar),
       row("Akku geladen", deltas.fetch(:charge), max, :battery),
       row("Akku entladen", deltas.fetch(:discharge), max, :battery),
-      row("Netzbezug", deltas.fetch(:import), max, :grid),
-      row("Netzeinspeisung", deltas.fetch(:export), max, :grid),
+      row("Ins Hausnetz geliefert", outlet.fetch(:delivered_kwh), max, :grid),
+      row("Aus Hausnetz gezogen", outlet.fetch(:drawn_kwh), max, :grid),
       {
-        label: "Ø Netzleistung",
-        value: "#{format_decimal(avg_grid_w.round)} W",
-        share: ((avg_grid_w.abs / 1000.0) / max * 100).round(1),
+        label: "Ø Außensteckdose",
+        value: "#{format_decimal(outlet.fetch(:avg_w).round)} W",
+        share: ((outlet.fetch(:avg_w).abs / 1000.0) / max * 100).round(1),
         role: "grid"
       }
     ]
+  end
+
+  # Trapezoidal integration of the signed Außensteckdose power across snapshots.
+  # delivered_kwh = energy fed into the house net (P > 0), drawn_kwh = energy
+  # pulled from it (P < 0), avg_w = time-weighted mean power (signed).
+  def outlet_energy(rows)
+    delivered_wh = 0.0
+    drawn_wh = 0.0
+    total_s = 0.0
+    rows.each_cons(2) do |a, b|
+      dt = (b.taken_at - a.taken_at).to_f
+      next unless dt.positive?
+
+      dt = [ dt, OUTLET_MAX_GAP_S ].min
+      avg_p = (outlet_power_w(a) + outlet_power_w(b)) / 2.0
+      hours = dt / 3600.0
+      delivered_wh += [ avg_p, 0.0 ].max * hours
+      drawn_wh += [ -avg_p, 0.0 ].max * hours
+      total_s += dt
+    end
+
+    signed_wh = delivered_wh - drawn_wh
+    {
+      delivered_kwh: (delivered_wh / 1000.0).round(2),
+      drawn_kwh: (drawn_wh / 1000.0).round(2),
+      avg_w: total_s.positive? ? signed_wh * 3600.0 / total_s : 0.0
+    }
   end
 
   def delta(first_value, last_value)
