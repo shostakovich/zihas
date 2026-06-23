@@ -119,27 +119,44 @@ class SolakonHistory
   # delivered_kwh = energy fed into the house net (P > 0), drawn_kwh = energy
   # pulled from it (P < 0), avg_w = time-weighted mean power (signed).
   def outlet_energy(rows)
-    delivered_wh = 0.0
-    drawn_wh = 0.0
+    delivered_ws = 0.0
+    drawn_ws = 0.0
     total_s = 0.0
     rows.each_cons(2) do |a, b|
       dt = (b.taken_at - a.taken_at).to_f
       next unless dt.positive?
 
       dt = [ dt, OUTLET_MAX_GAP_S ].min
-      avg_p = (outlet_power_w(a) + outlet_power_w(b)) / 2.0
-      hours = dt / 3600.0
-      delivered_wh += [ avg_p, 0.0 ].max * hours
-      drawn_wh += [ -avg_p, 0.0 ].max * hours
+      pos_ws, neg_ws = segment_energy_ws(outlet_power_w(a), outlet_power_w(b), dt)
+      delivered_ws += pos_ws
+      drawn_ws += neg_ws
       total_s += dt
     end
 
-    signed_wh = delivered_wh - drawn_wh
+    signed_ws = delivered_ws - drawn_ws
     {
-      delivered_kwh: (delivered_wh / 1000.0).round(2),
-      drawn_kwh: (drawn_wh / 1000.0).round(2),
-      avg_w: total_s.positive? ? signed_wh * 3600.0 / total_s : 0.0
+      delivered_kwh: (delivered_ws / 3_600_000.0).round(2),
+      drawn_kwh: (drawn_ws / 3_600_000.0).round(2),
+      avg_w: total_s.positive? ? signed_ws / total_s : 0.0
     }
+  end
+
+  # Energy (W·s) of a linearly-ramping power segment from pa to pb over dt
+  # seconds, split into the part above zero (delivered) and below zero (drawn).
+  # When the segment straddles zero, averaging the endpoints first would cancel
+  # them out and drop both directions — so we split at the zero crossing and sum
+  # the two triangles instead.
+  def segment_energy_ws(pa, pb, dt)
+    if pa >= 0 && pb >= 0
+      [ (pa + pb) / 2.0 * dt, 0.0 ]
+    elsif pa <= 0 && pb <= 0
+      [ 0.0, -(pa + pb) / 2.0 * dt ]
+    else
+      f = pa / (pa - pb) # fraction of the interval until P crosses zero
+      pos_peak, pos_t, neg_peak, neg_t =
+        pa > 0 ? [ pa, f * dt, -pb, (1 - f) * dt ] : [ pb, (1 - f) * dt, -pa, f * dt ]
+      [ 0.5 * pos_peak * pos_t, 0.5 * neg_peak * neg_t ]
+    end
   end
 
   def delta(first_value, last_value)
