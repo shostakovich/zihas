@@ -130,7 +130,7 @@ weil sie per UI angelegt werden.
 
 | Feld | Typ | Notiz |
 |------|-----|-------|
-| `key` | string, unique | Slug `/[a-z0-9_]+/` (wie Plug-IDs), MQTT-Topic-Segment |
+| `key` | string, unique | Slug `/[a-z0-9_]+/`, MQTT-Topic-Segment; **auto-generiert aus `name`** |
 | `name` | string | Anzeigename |
 | `room` | string, optional | |
 | `ip_address` | string | feste IP der Lampe |
@@ -142,6 +142,12 @@ weil sie per UI angelegt werden.
 Validierungen analog `PlugValidator` (Key-Regex, Eindeutigkeit, IP-Format).
 `shelly_plug_id` wird gegen die Config-Plugs validiert (muss existieren, wenn
 gesetzt).
+
+**Key-Generierung:** `key` wird beim Anlegen aus `name` slugifiziert
+(klein, `[a-z0-9_]`, Rest → `_`). Kollision → numerisches Suffix
+(`wohnzimmer`, `wohnzimmer_2`, …). Der Key wird in der DB persistiert und ist
+danach **stabil** (MQTT-Topic-Segment darf sich nicht mehr ändern, auch wenn der
+Name umbenannt wird).
 
 ### `LightState` (Muster `PlugState`)
 
@@ -196,8 +202,12 @@ von den Energie-Plugs.
 
 - `LightsController` — Lampen anlegen/bearbeiten/löschen. Anlage: Name, Raum,
   feste IP, optional Shelly-Verknüpfung.
-- **„Verbindung testen"** beim Speichern: App schickt via Bridge ein `devStatus`
-  an die IP, befüllt `sku`/Fähigkeiten und bestätigt Erreichbarkeit.
+- **„Verbindung testen"** beim Speichern: App publiziert ein **Refresh-Signal**
+  über MQTT (z. B. `govee/<key>/command/refresh`); die Bridge liest `Light.all`
+  neu (die Lampe ist evtl. gerade erst angelegt) und schickt ein `devStatus` an die
+  IP. Die Antwort fließt über die normale Strecke zurück (`govee/<key>/status` →
+  `LightState`), befüllt `sku`/Fähigkeiten und bestätigt Erreichbarkeit; die UI
+  zeigt das Ergebnis async (gleiches Pending→final-Muster).
 - `LightPresetsController` / `ScenesController` — Presets & Szenen verwalten,
   Szene anwenden.
 
@@ -217,6 +227,13 @@ govee:
 Neuer `GoveeCfg`-Struct + `build_govee` im `ConfigLoader`, mit
 require-/Default-Logik im Stil der bestehenden Sektionen (`solakon`/`mqtt`).
 Bridge ist nur aktiv, wenn `govee:` gesetzt ist.
+
+## Abhängigkeiten
+
+Keine neuen Gems. MQTT läuft über das bestehende **`mqtt`-Gem (ruby-mqtt,
+v0.7.0)** — dasselbe wie `PlugCommander`/`MqttSubscriber`/`FritzMqttBridge`.
+UDP über Rubys Standard-`UDPSocket`. Slugify ohne Zusatz-Gem (eigene kleine
+Hilfsmethode, ASCII-Transliteration für Umlaute).
 
 ## Tests (spiegeln vorhandene Muster)
 
