@@ -58,15 +58,16 @@ aus → Fehler (Lampe stromlos/nicht erreichbar).
 
 ```
 Befehl:     Web → GoveeCommander → MQTT(govee/<key>/command/*) → BRIDGE → UDP:4003 → Lampe
-Bestätigung:Lampe → UDP:4002 → BRIDGE → MQTT(govee/<key>/status) → GoveeStatusSubscriber → DB(LightState) → ActionCable → UI
+Bestätigung:Lampe → UDP:4002 → BRIDGE → MQTT(govee/<key>/status) → MqttRouter → GoveeStatusHandler → DB(LightState) → ActionCable → UI
 Polling:    BRIDGE schickt periodisch devStatus an alle Lampen-IPs → selber Rückweg
 ```
 
 Die Bridge ist ein **reiner MQTT↔UDP-Übersetzer**: sie empfängt Befehle über
 MQTT und schreibt Status wieder nach MQTT. Sie schreibt **nicht** in die DB. Der
-Collector bleibt UDP-frei und damit schlank; er bekommt nur einen kleinen
-zusätzlichen MQTT-Konsumenten für Lampen-Status. (Perspektivisch ließe sich
-Solakon in dieselbe Bridge-Welt migrieren — *out of scope*.)
+Collector bleibt UDP-frei und damit schlank; das MQTT→DB-Konsumieren läuft über
+**einen** Router-Thread, der Shelly- **und** Govee-Status verarbeitet (siehe
+`MqttRouter` unten). (Perspektivisch ließe sich Solakon in dieselbe Bridge-Welt
+migrieren — *out of scope*.)
 
 ## Komponenten
 
@@ -100,12 +101,30 @@ DB (`Light.all`, periodisch aktualisiert). Drei Aufgaben in Threads:
 `bin/govee_bridge` startet die Threads + Signal-Handling analog
 `bin/ziwoas_collector`.
 
-### `lib/govee_status_subscriber.rb` (neu, läuft im Collector)
+### `lib/mqtt_router.rb` + Handler (Refactor von `MqttSubscriber`)
 
-Kleiner MQTT→DB-Konsument analog `MqttSubscriber`: subscribed
-`govee/+/status`, schreibt `LightState.record_state(...)` (nur bei Änderung) und
-broadcastet via ActionCable an die Switches-Seite. Wird als zusätzlicher Thread in
-`bin/ziwoas_collector` gestartet. Hält den Collector UDP-frei.
+Der heutige `MqttSubscriber` mischt zwei Belange: die generische MQTT-Schleife
+(Verbindung, Backoff/Reconnect, `client.get`-Loop) und die Shelly-Energie-Logik.
+Wir trennen das, damit ein **einziger** Thread mehrere Topic-Bäume bedienen kann:
+
+- **`MqttRouter`** (neu, generisch) — eine MQTT-Verbindung, subscribed die
+  **Vereinigung** aller Handler-Patterns (`client.subscribe("shellies/+/status/switch:0",
+  "govee/+/status")`) und dispatcht jede Nachricht an den Handler, dessen
+  `matches?(topic)` greift. Backoff/Reconnect-Schleife und `stop!` leben hier
+  (1:1 aus `MqttSubscriber.run`/`connect_and_run`).
+- **`ShellyStatusHandler`** — die bestehende Energie-Logik
+  (`handle_message` + `accumulate` + ActionCable-Broadcast) **unverändert**
+  extrahiert. Verhalten bleibt identisch.
+- **`GoveeStatusHandler`** (neu) — `govee/<key>/status` → `LightState.record_state`
+  (nur bei Änderung) + ActionCable-Broadcast an die Switches-Seite.
+
+Handler-Interface: `subscriptions` (Array von Subscribe-Patterns),
+`matches?(topic)` (Präfix-Match auf erstes Segment) und `handle(topic, payload)`.
+
+`bin/ziwoas_collector` startet **einen** `MqttRouter`-Thread mit
+`[ShellyStatusHandler, GoveeStatusHandler]` (ersetzt den bisherigen
+`MqttSubscriber`-Thread); die Fritz-Bridge-Threads bleiben unverändert. Damit wird
+der Collector eher einfacher als komplexer. `lib/mqtt_subscriber.rb` entfällt.
 
 ### `lib/plug_commander.rb` (verschoben) + `lib/govee_commander.rb` (neu)
 
@@ -190,7 +209,7 @@ von den Energie-Plugs.
    (sichtbares Feedback, dass etwas passiert) und postet den Befehl.
 2. `LightSwitchesController` → `GoveeCommander` publiziert MQTT-Command, antwortet
    optimistisch (kein Warten auf das Gerät, blockiert keinen Puma-Thread).
-3. Bridge → UDP → devStatus → `govee/<key>/status` → `GoveeStatusSubscriber`
+3. Bridge → UDP → devStatus → `govee/<key>/status` → `MqttRouter`/`GoveeStatusHandler`
    schreibt `LightState` + ActionCable-Broadcast.
 4. `lights_controller.js` empfängt den Broadcast → Karte springt **final** auf den
    bestätigten Zustand und löscht „pending".
@@ -241,8 +260,12 @@ Hilfsmethode, ASCII-Transliteration für Umlaute).
   mit Fake-UDP-Socket (Muster `FritzDectClient`-Test).
 - **`GoveeMqttBridge`** — MQTT-Command → UDP-Send; UDP-Antwort → MQTT-Publish; mit
   injizierten Fakes (Muster `FritzMqttBridge`-Test).
-- **`GoveeStatusSubscriber`** — `govee/<key>/status` → `LightState.record_state` +
-  Broadcast (Muster `MqttSubscriber`-Test).
+- **`MqttRouter`** — Dispatch nach Topic an den richtigen Handler, Backoff/Reconnect
+  (Muster bestehender `MqttSubscriber`-Test, auf den Loop fokussiert).
+- **`ShellyStatusHandler`** — bestehende `MqttSubscriber`-Tests wandern hierher;
+  Energie-Verhalten unverändert grün.
+- **`GoveeStatusHandler`** — `govee/<key>/status` → `LightState.record_state` +
+  Broadcast.
 - **`GoveeCommander`** — korrektes MQTT-Topic/Payload je Befehl, Validierung
   (Muster `PlugCommander`-Test).
 - **`PlugCommander`** — bestehender Test mit verschobenem Require weiter grün.
