@@ -153,20 +153,28 @@ weil sie per UI angelegt werden.
 
 ### `Light`
 
-| Feld | Typ | Notiz |
-|------|-----|-------|
-| `key` | string, unique | Slug `/[a-z0-9_]+/`, MQTT-Topic-Segment; **auto-generiert aus `name`** |
-| `name` | string | Anzeigename |
-| `room` | string, optional | |
-| `ip_address` | string | feste IP der Lampe |
-| `sku` | string, optional | Govee-Modell, autom. via devStatus befüllbar |
-| `shelly_plug_id` | string, optional | referenziert einen Config-Plug (Stromversorgung) |
-| `supports_color` | bool | Fähigkeit (autom. via devStatus) |
-| `supports_color_temp` | bool | Fähigkeit (autom. via devStatus) |
+| Feld                  | Typ              | Notiz                                                                  |
+| --------------------- | ---------------- | ---------------------------------------------------------------------- |
+| `key`                 | string, unique   | Slug `/[a-z0-9_]+/`, MQTT-Topic-Segment; **auto-generiert aus `name`** |
+| `name`                | string           | Anzeigename                                                            |
+| `room_id`             | FK → Room, optional | referenziert einen `Room`-Datensatz                                 |
+| `ip_address`          | string           | feste IP der Lampe                                                     |
+| `sku`                 | string, optional | Govee-Modell, autom. via devStatus befüllbar                           |
+| `shelly_plug_id`      | string, optional | referenziert einen Config-Plug (Stromversorgung)                       |
+| `supports_color`      | bool             | Fähigkeit (autom. via devStatus)                                       |
+| `supports_color_temp` | bool             | Fähigkeit (autom. via devStatus)                                       |
 
 Validierungen analog `PlugValidator` (Key-Regex, Eindeutigkeit, IP-Format).
 `shelly_plug_id` wird gegen die Config-Plugs validiert (muss existieren, wenn
-gesetzt).
+gesetzt). `belongs_to :room` ist optional.
+
+### `Room`
+
+Eigenes Modell statt freiem String: `id` + `name` (`name` unique, present).
+`Room has_many :lights`, `Light belongs_to :room` (optional). Bewusst minimal —
+Räume werden in der UI angelegt und beim Anlegen/Bearbeiten einer Lampe
+ausgewählt. (Die Energie-Plugs behalten vorerst ihren `room`-String aus
+`ziwoas.yml`; eine spätere Vereinheitlichung ist *out of scope*.)
 
 **Key-Generierung:** `key` wird beim Anlegen aus `name` slugifiziert
 (klein, `[a-z0-9_]`, Rest → `_`). Kollision → numerisches Suffix
@@ -225,8 +233,9 @@ von den Energie-Plugs.
 
 ### CRUD
 
-- `LightsController` — Lampen anlegen/bearbeiten/löschen. Anlage: Name, Raum,
-  feste IP, optional Shelly-Verknüpfung.
+- `LightsController` — Lampen anlegen/bearbeiten/löschen. Anlage: Name,
+  Raum (Auswahl aus `Room`), feste IP, optional Shelly-Verknüpfung.
+- `RoomsController` — Räume anlegen/verwalten (Name).
 - **„Verbindung testen"** beim Speichern: App publiziert ein **Refresh-Signal**
   über MQTT (z. B. `govee/<key>/command/refresh`); die Bridge liest `Light.all`
   neu (die Lampe ist evtl. gerade erst angelegt) und schickt ein `devStatus` an die
@@ -275,10 +284,11 @@ Hilfsmethode, ASCII-Transliteration für Umlaute).
 - **`GoveeCommander`** — korrektes MQTT-Topic/Payload je Befehl, Validierung
   (Muster `PlugCommander`-Test).
 - **`PlugCommander`** — bestehender Test mit verschobenem Require weiter grün.
-- **Modelle** — `Light`/`LightState`/`Preset`/`Scene`/`SceneEntry`-Validierungen,
+- **Modelle** — `Room`/`Light`/`LightState`/`Preset`/`Scene`/`SceneEntry`-
+  Validierungen + Assoziationen (`Light belongs_to :room` optional),
   `record_state` nur bei Änderung.
-- **Controller** — `LightsController` (CRUD), `LightSwitchesController` (Befehl
-  happy + Fehlerpfad), Szene anwenden.
+- **Controller** — `LightsController` (CRUD), `RoomsController` (CRUD),
+  `LightSwitchesController` (Befehl happy + Fehlerpfad), Szene anwenden.
 - **`ConfigLoader`** — `govee:`-Parsing inkl. Defaults und Fehlerfälle.
 
 ## Bewusst ausgeklammert (YAGNI)
