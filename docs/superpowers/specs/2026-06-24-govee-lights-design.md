@@ -121,6 +121,12 @@ Wir trennen das, damit ein **einziger** Thread mehrere Topic-Bäume bedienen kan
 Handler-Interface: `subscriptions` (Array von Subscribe-Patterns),
 `matches?(topic)` (Präfix-Match auf erstes Segment) und `handle(topic, payload)`.
 
+Der Router ist die **einzige Einsammel-Stelle für alle eingehenden MQTT-Daten**:
+echte Shellys (nativ), FRITZ!DECT (publiziert via `FritzMqttBridge` auf das
+shellies-Topic → ebenfalls `ShellyStatusHandler`) **und** Govee (govee-Topic →
+`GoveeStatusHandler`). Die separate Prozess-Entscheidung betrifft nur die
+*Publisher/Übersetzer*-Seite (Govee-Bridge wegen UDP:4002), nicht das Konsumieren.
+
 `bin/ziwoas_collector` startet **einen** `MqttRouter`-Thread mit
 `[ShellyStatusHandler, GoveeStatusHandler]` (ersetzt den bisherigen
 `MqttSubscriber`-Thread); die Fritz-Bridge-Threads bleiben unverändert. Damit wird
