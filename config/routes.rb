@@ -26,6 +26,11 @@ Rails.application.routes.draw do
     post "command", to: "light_switches#create", as: :light_command
   end
 
+  resources :presets, except: [ :show ]
+  resources :scenes, except: [ :show ] do
+    post :apply, on: :member
+  end
+
   get "/api/today", to: "api#today"
   get "/api/today/summary", to: "api#today_summary"
   get "/api/history", to: "api#history"

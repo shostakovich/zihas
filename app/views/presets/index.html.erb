@@ -1,0 +1,13 @@
+<% content_for :title, "Presets" %>
+<h1>Presets</h1>
+<%= link_to "Neues Preset", new_preset_path %>
+<ul>
+  <% @presets.each do |preset| %>
+    <li>
+      <%= preset.name %>
+      <%= link_to "Bearbeiten", edit_preset_path(preset) %>
+      <%= button_to "Löschen", preset_path(preset), method: :delete,
+                    form: { data: { turbo_confirm: "Preset löschen?" } } %>
+    </li>
+  <% end %>
+</ul>
