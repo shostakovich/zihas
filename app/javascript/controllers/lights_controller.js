@@ -22,6 +22,7 @@ export default class extends Controller {
   toggle(event) {
     const key = event.params.key
     const card = this.cardFor(key)
+    if (!card) return
     const on = !card.querySelector("button.sw-knob").classList.contains("off")
     this.send(key, { command: "turn", on: (!on).toString() })
   }
