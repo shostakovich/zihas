@@ -22,6 +22,10 @@ Rails.application.routes.draw do
     resources :switch_windows, only: %i[new create edit update destroy]
   end
 
+  scope "/lights/:light_key" do
+    post "command", to: "light_switches#create", as: :light_command
+  end
+
   get "/api/today", to: "api#today"
   get "/api/today/summary", to: "api#today_summary"
   get "/api/history", to: "api#history"
