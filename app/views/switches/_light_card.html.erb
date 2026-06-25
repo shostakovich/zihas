@@ -1,0 +1,12 @@
+<%# app/views/switches/_light_card.html.erb %>
+<div class="sw-card sw-light-card" id="light_card_<%= row.light.key %>"
+     data-light-key="<%= row.light.key %>">
+  <%= render "switches/light_head", row: row %>
+  <input type="range" min="0" max="100" value="<%= row.brightness %>"
+         data-action="lights#brightness" data-lights-key-param="<%= row.light.key %>"
+         data-lights-target="brightness" aria-label="Helligkeit <%= row.light.name %>">
+  <% if row.light.supports_color %>
+    <input type="color" data-action="lights#color"
+           data-lights-key-param="<%= row.light.key %>" aria-label="Farbe <%= row.light.name %>">
+  <% end %>
+</div>
