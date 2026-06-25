@@ -55,6 +55,14 @@ plugs:
   #   driver: fritz_dect
   #   ain: "11630 0206224"
 
+# Govee-Lampen (lokale LAN-Steuerung über die Bridge).
+# Ohne diesen Block ist die Govee-Bridge aus. Leerer Block = Defaults.
+# govee:
+#   topic_prefix: govee
+#   poll_interval_seconds: 30
+#   command_port: 4003
+#   listen_port: 4002
+
 # SwitchBot integration. Token & Secret aus der SwitchBot-App holen:
 # Profil → Einstellungen → 10× auf "App-Version" tippen → Entwickleroptionen.
 # switchbot:

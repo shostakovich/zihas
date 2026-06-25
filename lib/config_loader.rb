@@ -15,9 +15,11 @@ class ConfigLoader
   TrmnlCfg     = Struct.new(:energy_webhook_url, :sensors_webhook_url, keyword_init: true)
   SolakonCfg   = Struct.new(:host, :port, :unit_id, :monitoring_enabled, :control_enabled,
                               :stale_after_s, keyword_init: true)
+  GoveeCfg     = Struct.new(:topic_prefix, :poll_interval_seconds, :command_port,
+                            :listen_port, keyword_init: true)
   Config       = Struct.new(:electricity_price_eur_per_kwh, :timezone,
                             :mqtt, :fritz_poll, :plugs, :fritz_box, :weather,
-                            :switchbot, :sensors, :trmnl, :solakon,
+                            :switchbot, :sensors, :trmnl, :solakon, :govee,
                             keyword_init: true)
 
   module StringRequirement
@@ -130,6 +132,7 @@ class ConfigLoader
     sensors    = build_sensors(@raw["sensors"])
     trmnl = build_trmnl(@raw["trmnl"])
     solakon = build_solakon(@raw["solakon"])
+    govee = build_govee(@raw["govee"])
 
     if plugs.any? { |p| p.driver == :fritz_dect } && fritz_box.nil?
       raise Error, "fritz_box config required when using driver: fritz_dect"
@@ -151,6 +154,7 @@ class ConfigLoader
       sensors:    sensors,
       trmnl:      trmnl,
       solakon:    solakon,
+      govee:      govee,
     )
   end
 
@@ -252,6 +256,17 @@ class ConfigLoader
       monitoring_enabled: monitoring_enabled,
       control_enabled:    control_enabled,
       stale_after_s:      (h["stale_after_s"] || 120).to_i,
+    )
+  end
+
+  def build_govee(h)
+    return nil unless @raw.key?("govee")
+    h = h.nil? ? {} : require_hash(h, "govee")
+    GoveeCfg.new(
+      topic_prefix:          (h["topic_prefix"] || "govee").to_s,
+      poll_interval_seconds: (h["poll_interval_seconds"] || 30).to_i,
+      command_port:          (h["command_port"] || 4003).to_i,
+      listen_port:           (h["listen_port"] || 4002).to_i,
     )
   end
 
