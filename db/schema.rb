@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_24_090200) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_24_090500) do
   create_table "daily_energy_summary", primary_key: "date", id: :string, force: :cascade do |t|
     t.float "consumed_wh", null: false
     t.float "produced_wh", null: false
@@ -61,6 +61,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_090200) do
     t.index ["plug_id"], name: "index_plug_states_on_plug_id", unique: true
   end
 
+  create_table "presets", force: :cascade do |t|
+    t.integer "brightness"
+    t.integer "color_b"
+    t.integer "color_g"
+    t.integer "color_r"
+    t.integer "color_temp_k"
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.boolean "on", default: true, null: false
+    t.datetime "updated_at", null: false
+  end
+
   create_table "rooms", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "name", null: false
@@ -82,6 +94,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_090200) do
     t.float "energy_delta_wh", null: false
     t.string "plug_id", limit: 255, null: false
     t.integer "sample_count", null: false
+  end
+
+  create_table "scene_entries", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "light_id", null: false
+    t.integer "preset_id", null: false
+    t.integer "scene_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["light_id"], name: "index_scene_entries_on_light_id"
+    t.index ["preset_id"], name: "index_scene_entries_on_preset_id"
+    t.index ["scene_id"], name: "index_scene_entries_on_scene_id"
+  end
+
+  create_table "scenes", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "scheduler_states", force: :cascade do |t|
@@ -231,4 +260,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_090200) do
   end
 
   add_foreign_key "lights", "rooms"
+  add_foreign_key "scene_entries", "lights"
+  add_foreign_key "scene_entries", "presets"
+  add_foreign_key "scene_entries", "scenes"
 end
