@@ -1,7 +1,9 @@
-require "mqtt"
 require "json"
 
-class MqttSubscriber
+# Consumes Shelly (and Fritz-via-bridge) status messages on the shellies topic:
+# inserts Sample rows, records PlugState output, and batches a "dashboard"
+# ActionCable broadcast. Extracted verbatim from the former MqttSubscriber.
+class ShellyStatusHandler
   BROADCAST_INTERVAL = 5
 
   def initialize(mqtt_config:, plugs:, logger:, clock: -> { Time.now.to_f })
@@ -9,36 +11,20 @@ class MqttSubscriber
     @plug_map          = plugs.to_h { |p| [ p.id, p ] }
     @logger            = logger
     @clock             = clock
-    @stopping          = false
     @buckets           = {}
     @pending           = {}
     @last_broadcast_at = 0
   end
 
-  def run
-    backoff = 1
-    until @stopping
-      begin
-        connect_and_run
-        backoff = 1
-      rescue => e
-        @logger.error("MqttSubscriber: #{e.class}: #{e.message}")
-        sleep([ backoff, 60 ].min) unless @stopping
-        backoff = [ backoff * 2, 60 ].min
-      end
-    end
-  end
+  def subscriptions = [ "#{@mqtt_config.topic_prefix}/+/status/switch:0" ]
 
-  def stop!
-    @stopping = true
-    begin; @client&.disconnect; rescue StandardError; nil; end
-  end
+  def matches?(topic) = topic.start_with?("#{@mqtt_config.topic_prefix}/")
 
-  def handle_message(topic, payload)
+  def handle(topic, payload)
     plug_id = topic.split("/")[@mqtt_config.topic_prefix.split("/").length]
     plug    = @plug_map[plug_id]
     unless plug
-      @logger.warn("MqttSubscriber: unknown plug '#{plug_id}' on topic #{topic}")
+      @logger.warn("ShellyStatusHandler: unknown plug '#{plug_id}' on topic #{topic}")
       return
     end
 
@@ -50,28 +36,17 @@ class MqttSubscriber
 
     Sample.create!(plug_id: plug_id, ts: ts, apower_w: apower_w, aenergy_wh: aenergy_wh)
     PlugState.record_output(plug_id, output) unless output.nil?
-    @logger.debug("MqttSubscriber: #{plug_id} #{apower_w} W / #{aenergy_wh} Wh")
+    @logger.debug("ShellyStatusHandler: #{plug_id} #{apower_w} W / #{aenergy_wh} Wh")
     accumulate(plug, ts, apower_w, aenergy_wh, output)
   rescue ActiveRecord::RecordNotUnique
     # duplicate ts within same second — skip silently
   rescue ActiveRecord::RecordInvalid => e
-    @logger.warn("MqttSubscriber: invalid output on #{topic}: #{e.message}")
+    @logger.warn("ShellyStatusHandler: invalid output on #{topic}: #{e.message}")
   rescue JSON::ParserError => e
-    @logger.warn("MqttSubscriber: invalid JSON on #{topic}: #{e.message}")
+    @logger.warn("ShellyStatusHandler: invalid JSON on #{topic}: #{e.message}")
   end
 
   private
-
-  def connect_and_run
-    @client = MQTT::Client.new(host: @mqtt_config.host, port: @mqtt_config.port)
-    @client.connect
-    topic = "#{@mqtt_config.topic_prefix}/+/status/switch:0"
-    @client.subscribe(topic)
-    @logger.info("MqttSubscriber: connected to #{@mqtt_config.host}:#{@mqtt_config.port}, subscribed #{topic}")
-    @client.get { |t, payload| handle_message(t, payload) }
-  ensure
-    begin; @client&.disconnect; rescue StandardError; nil; end
-  end
 
   def accumulate(plug, ts, apower_w, aenergy_wh, output = nil)
     bucket_ts = (ts / 60) * 60
@@ -86,16 +61,9 @@ class MqttSubscriber
     avg_power_w = bucket[:sum].to_f / bucket[:count]
 
     @pending[plug.id] = {
-      plug_id:     plug.id,
-      name:        plug.name,
-      role:        plug.role.to_s,
-      online:      true,
-      ts:          ts,
-      bucket_ts:   bucket_ts,
-      apower_w:    apower_w,
-      avg_power_w: avg_power_w,
-      aenergy_wh:  aenergy_wh,
-      output:      output
+      plug_id: plug.id, name: plug.name, role: plug.role.to_s, online: true,
+      ts: ts, bucket_ts: bucket_ts, apower_w: apower_w, avg_power_w: avg_power_w,
+      aenergy_wh: aenergy_wh, output: output
     }
 
     now = @clock.call
@@ -105,6 +73,6 @@ class MqttSubscriber
     @pending.clear
     @last_broadcast_at = now
   rescue => e
-    @logger.warn("MqttSubscriber: ActionCable broadcast failed: #{e.message}")
+    @logger.warn("ShellyStatusHandler: ActionCable broadcast failed: #{e.message}")
   end
 end

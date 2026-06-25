@@ -1,29 +1,23 @@
 require "test_helper"
-require "mqtt_subscriber"
+require "shelly_status_handler"
 require "config_loader"
 require "logger"
 require "stringio"
 
-class MqttSubscriberTest < ActiveSupport::TestCase
+class ShellyStatusHandlerTest < ActiveSupport::TestCase
   setup do
     Sample.delete_all
     PlugState.delete_all
     @log_io = StringIO.new
     @logger = Logger.new(@log_io)
     @now    = 1_700_000_000.0
-
-    @mqtt_config = ConfigLoader::MqttCfg.new(
-      host: "localhost", port: 1883, topic_prefix: "shellies"
-    )
+    @mqtt_config = ConfigLoader::MqttCfg.new(host: "localhost", port: 1883, topic_prefix: "shellies")
     @plugs = [
       ConfigLoader::PlugCfg.new(id: "bkw",   name: "Solar",  role: :producer, driver: :shelly, ain: nil),
       ConfigLoader::PlugCfg.new(id: "fridge", name: "Fridge", role: :consumer, driver: :shelly, ain: nil)
     ]
-    @subscriber = MqttSubscriber.new(
-      mqtt_config: @mqtt_config,
-      plugs:       @plugs,
-      logger:      @logger,
-      clock:       -> { @now },
+    @handler = ShellyStatusHandler.new(
+      mqtt_config: @mqtt_config, plugs: @plugs, logger: @logger, clock: -> { @now }
     )
   end
 
@@ -43,9 +37,18 @@ class MqttSubscriberTest < ActiveSupport::TestCase
     server.define_singleton_method(:broadcast, original)
   end
 
+  test "subscriptions targets the shelly status topic" do
+    assert_equal [ "shellies/+/status/switch:0" ], @handler.subscriptions
+  end
+
+  test "matches only shellies topics" do
+    assert @handler.matches?("shellies/bkw/status/switch:0")
+    refute @handler.matches?("govee/lamp/status")
+  end
+
   test "handle_message inserts sample for known plug" do
-    @subscriber.handle_message("shellies/bkw/status/switch:0",
-                               status_payload(apower: 300.0, total: 1234.5))
+    @handler.handle("shellies/bkw/status/switch:0",
+                    status_payload(apower: 300.0, total: 1234.5))
     assert_equal 1, Sample.count
     s = Sample.first
     assert_equal "bkw", s.plug_id
@@ -55,15 +58,15 @@ class MqttSubscriberTest < ActiveSupport::TestCase
   end
 
   test "handle_message warns and skips unknown plug" do
-    @subscriber.handle_message("shellies/unknown/status/switch:0",
-                               status_payload(apower: 1.0, total: 1.0))
+    @handler.handle("shellies/unknown/status/switch:0",
+                    status_payload(apower: 1.0, total: 1.0))
     assert_equal 0, Sample.count
     assert_match(/unknown plug.*unknown/i, @log_io.string)
   end
 
   test "handle_message ignores invalid JSON" do
     assert_nothing_raised do
-      @subscriber.handle_message("shellies/bkw/status/switch:0", "not-json{")
+      @handler.handle("shellies/bkw/status/switch:0", "not-json{")
     end
     assert_equal 0, Sample.count
     assert_match(/invalid json/i, @log_io.string)
@@ -72,16 +75,16 @@ class MqttSubscriberTest < ActiveSupport::TestCase
   test "handle_message handles duplicate ts gracefully" do
     Sample.create!(plug_id: "bkw", ts: @now.to_i, apower_w: 1.0, aenergy_wh: 1.0)
     assert_nothing_raised do
-      @subscriber.handle_message("shellies/bkw/status/switch:0",
-                                 status_payload(apower: 300.0, total: 1234.5))
+      @handler.handle("shellies/bkw/status/switch:0",
+                      status_payload(apower: 300.0, total: 1234.5))
     end
     assert_equal 1, Sample.where(plug_id: "bkw").count
   end
 
   test "handle_message broadcasts immediately on first message after startup" do
     capture_broadcasts do |broadcasts|
-      @subscriber.handle_message("shellies/bkw/status/switch:0",
-                                 status_payload(apower: 300.0, total: 1234.5))
+      @handler.handle("shellies/bkw/status/switch:0",
+                      status_payload(apower: 300.0, total: 1234.5))
       assert_equal 1, broadcasts.length
       stream, payload = broadcasts.first
       assert_equal "dashboard", stream
@@ -96,22 +99,22 @@ class MqttSubscriberTest < ActiveSupport::TestCase
 
   test "handle_message batches messages within the 5-second window" do
     capture_broadcasts do |broadcasts|
-      @subscriber.handle_message("shellies/bkw/status/switch:0",
-                                 status_payload(apower: 300.0, total: 1234.5))
+      @handler.handle("shellies/bkw/status/switch:0",
+                      status_payload(apower: 300.0, total: 1234.5))
       @now += 1
-      @subscriber.handle_message("shellies/bkw/status/switch:0",
-                                 status_payload(apower: 350.0, total: 1234.6))
+      @handler.handle("shellies/bkw/status/switch:0",
+                      status_payload(apower: 350.0, total: 1234.6))
       assert_equal 1, broadcasts.length
     end
   end
 
   test "handle_message sends a new broadcast after the 5-second interval elapses" do
     capture_broadcasts do |broadcasts|
-      @subscriber.handle_message("shellies/bkw/status/switch:0",
-                                 status_payload(apower: 300.0, total: 1234.5))
+      @handler.handle("shellies/bkw/status/switch:0",
+                      status_payload(apower: 300.0, total: 1234.5))
       @now += 5
-      @subscriber.handle_message("shellies/bkw/status/switch:0",
-                                 status_payload(apower: 350.0, total: 1234.6))
+      @handler.handle("shellies/bkw/status/switch:0",
+                      status_payload(apower: 350.0, total: 1234.6))
       assert_equal 2, broadcasts.length
     end
   end
@@ -119,16 +122,16 @@ class MqttSubscriberTest < ActiveSupport::TestCase
   test "handle_message merges multiple plugs into one broadcast" do
     capture_broadcasts do |broadcasts|
       # First message triggers immediate broadcast (cold start)
-      @subscriber.handle_message("shellies/bkw/status/switch:0",
-                                 status_payload(apower: 300.0, total: 1234.5))
+      @handler.handle("shellies/bkw/status/switch:0",
+                      status_payload(apower: 300.0, total: 1234.5))
       # Fridge message arrives within the window — buffered
       @now += 1
-      @subscriber.handle_message("shellies/fridge/status/switch:0",
-                                 status_payload(apower: 50.0, total: 100.0))
+      @handler.handle("shellies/fridge/status/switch:0",
+                      status_payload(apower: 50.0, total: 100.0))
       # Next bkw message arrives after interval — triggers broadcast with both plugs
       @now += 5
-      @subscriber.handle_message("shellies/bkw/status/switch:0",
-                                 status_payload(apower: 310.0, total: 1234.6))
+      @handler.handle("shellies/bkw/status/switch:0",
+                      status_payload(apower: 310.0, total: 1234.6))
 
       assert_equal 2, broadcasts.length
       _, payload = broadcasts.last
@@ -139,31 +142,31 @@ class MqttSubscriberTest < ActiveSupport::TestCase
   end
 
   test "handle_message records output state" do
-    @subscriber.handle_message("shellies/fridge/status/switch:0",
-                               status_payload(apower: 50.0, total: 1.0, output: true))
+    @handler.handle("shellies/fridge/status/switch:0",
+                    status_payload(apower: 50.0, total: 1.0, output: true))
     assert_equal true, PlugState.find_by(plug_id: "fridge").output
   end
 
   test "handle_message updates output state on change" do
-    @subscriber.handle_message("shellies/fridge/status/switch:0",
-                               status_payload(apower: 50.0, total: 1.0, output: true))
+    @handler.handle("shellies/fridge/status/switch:0",
+                    status_payload(apower: 50.0, total: 1.0, output: true))
     @now += 1
-    @subscriber.handle_message("shellies/fridge/status/switch:0",
-                               status_payload(apower: 0.0, total: 1.0, output: false))
+    @handler.handle("shellies/fridge/status/switch:0",
+                    status_payload(apower: 0.0, total: 1.0, output: false))
     assert_equal false, PlugState.find_by(plug_id: "fridge").output
     assert_equal 1, PlugState.count
   end
 
   test "handle_message without output field leaves plug_states untouched" do
-    @subscriber.handle_message("shellies/fridge/status/switch:0",
-                               status_payload(apower: 50.0, total: 1.0))
+    @handler.handle("shellies/fridge/status/switch:0",
+                    status_payload(apower: 50.0, total: 1.0))
     assert_equal 0, PlugState.count
   end
 
   test "handle_message includes output in the broadcast payload" do
     capture_broadcasts do |broadcasts|
-      @subscriber.handle_message("shellies/fridge/status/switch:0",
-                                 status_payload(apower: 50.0, total: 1.0, output: true))
+      @handler.handle("shellies/fridge/status/switch:0",
+                      status_payload(apower: 50.0, total: 1.0, output: true))
       _, payload = broadcasts.first
       assert_equal true, payload[:plugs].first[:output]
     end
@@ -173,8 +176,8 @@ class MqttSubscriberTest < ActiveSupport::TestCase
     # An empty string casts to nil for the boolean `output` column, which
     # fails PlugState's inclusion validation and raises RecordInvalid.
     assert_nothing_raised do
-      @subscriber.handle_message("shellies/fridge/status/switch:0",
-                                 status_payload(apower: 50.0, total: 1.0, output: ""))
+      @handler.handle("shellies/fridge/status/switch:0",
+                      status_payload(apower: 50.0, total: 1.0, output: ""))
     end
     assert_equal 0, PlugState.count
     assert_match(/invalid output/i, @log_io.string)
