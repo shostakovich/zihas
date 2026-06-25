@@ -1,5 +1,6 @@
 require "test_helper"
 require "config_loader"
+require "plug_commander"
 
 class PlugCommanderTest < ActiveSupport::TestCase
   class FakeMqtt
