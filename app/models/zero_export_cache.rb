@@ -1,7 +1,6 @@
 class ZeroExportCache
   FLOOR_CACHE_KEY         = "zero_export.floor_w".freeze
   MEDIAN_CACHE_KEY        = "zero_export.median_w".freeze
-  NIGHT_BASE_CACHE_KEY    = "zero_export.night_base_w".freeze
   STATE_CACHE_KEY         = "zero_export.state".freeze
   LAST_TARGET_CACHE_KEY   = "zero_export.last_target_w".freeze
   LAST_WRITE_AT_CACHE_KEY = "zero_export.last_write_at".freeze
@@ -24,16 +23,6 @@ class ZeroExportCache
 
   def median_w(reader)
     @cache.fetch(MEDIAN_CACHE_KEY, expires_in: MEDIAN_CACHE_TTL) { reader.median_consumption_w }
-  end
-
-  def night_base_w(reader, config, floor)
-    return floor if config.weather.nil?
-
-    @cache.fetch(NIGHT_BASE_CACHE_KEY, expires_in: SLOW_QUERY_TTL) do
-      reader.night_base_w(lat: config.weather.lat, lon: config.weather.lon,
-                          timezone: config.timezone,
-                          days: ConsumptionReader::NIGHT_BASE_DAYS, fallback_w: floor)
-    end
   end
 
   def previous_state

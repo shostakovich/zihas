@@ -18,19 +18,17 @@ class ZeroExportTickJob < ApplicationJob
     reader = ConsumptionReader.new(plugs: config.plugs, now: reader_now, stale_after_s: solakon.stale_after_s)
     floor  = cache.floor_w(reader)
     median = cache.median_w(reader)
-    night_base = cache.night_base_w(reader, config, floor)
     load = LoadEstimate.new(current_w: reader.current_consumption_w, floor_w: floor,
-                            median_w: median, night_base_w: night_base)
+                            median_w: median)
 
     client ||= SolakonClient.from_config(solakon)
 
     begin
       state ||= client.read_state
       reading = reading_from(state, reader_now)
-      sun = SunWindow.for(now: reader_now, weather: config.weather, timezone: config.timezone)
 
       decision = ZeroExportController.decide(
-        reading: reading, load: load, sun: sun,
+        reading: reading, load: load,
         previous_state: cache.previous_state
       )
 
@@ -85,7 +83,7 @@ class ZeroExportTickJob < ApplicationJob
     current = load.current_w.nil? ? "stale" : "#{load.current_w.round}W"
     Rails.logger.info(
       "zero_export: state=#{decision.state} target=#{decision.target_w}W load=#{current} " \
-      "floor=#{load.floor_w.round}W night_base=#{load.night_base_w.round}W " \
+      "floor=#{load.floor_w.round}W " \
       "soc=#{reading.battery_soc_pct}% temp=#{reading.battery_temperature_c}C pv=#{reading.pv_power_w}W"
     )
   end

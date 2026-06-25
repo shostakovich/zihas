@@ -112,32 +112,4 @@ class ConsumptionReaderTest < ActiveSupport::TestCase
     assert_equal 0.0, reader.guaranteed_floor_w
     assert_nil reader.median_consumption_w
   end
-
-  test "night_base_w returns P20 of recent night buckets" do
-    # The most recent night (within NIGHT_BASE_DAYS=7, excluding edge hours) for
-    # Berlin/2026-06-20 runs ~22:32-03:42 local. 01:00-01:45 local is well inside.
-    # 10 five-minute buckets, consumer total (fridge + tv) per bucket:
-    # [60, 85, 85, 85, 85, 85, 85, 95, 110, 150] -> sorted P20 (index 1) = 85.0
-    base = Time.zone.local(2026, 6, 20, 1, 0, 0)
-    bucket_totals = [ 60, 85, 85, 85, 85, 85, 85, 95, 110, 150 ]
-    bucket_totals.each_with_index do |total, i|
-      ts = (base + i * 300).to_i
-      fridge_w = total / 2.0
-      tv_w     = total - fridge_w
-      Sample.create!(plug_id: "fridge", ts: ts, apower_w: fridge_w, aenergy_wh: 1)
-      Sample.create!(plug_id: "tv",     ts: ts, apower_w: tv_w,     aenergy_wh: 1)
-    end
-
-    reader = ConsumptionReader.new(plugs: plugs, now: Time.zone.local(2026, 6, 20, 10, 0, 0))
-    assert_in_delta 85.0,
-      reader.night_base_w(lat: 52.52, lon: 13.405, timezone: "Europe/Berlin", days: 7, fallback_w: 120),
-      0.001
-  end
-
-  test "night_base_w falls back when there is no night data" do
-    reader = ConsumptionReader.new(plugs: plugs, now: Time.zone.local(2026, 6, 20, 10, 0, 0))
-    assert_in_delta 120.0,
-      reader.night_base_w(lat: 52.52, lon: 13.405, timezone: "Europe/Berlin", days: 7, fallback_w: 120),
-      0.001
-  end
 end

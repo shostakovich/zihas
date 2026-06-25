@@ -1,7 +1,20 @@
 # Solakon One Control Algorithm Design
 
 Date: 2026-06-20  
-Status: Draft for review
+Status: Partly superseded — see note below.
+
+> **Update (2026-06):** The controller was later reduced to **two** states:
+> `PROTECTED` and the normal mode (symbol `:normal`, formerly `:pv_priority`).
+> The two nighttime special modes — `EVENING_CATCH_UP` and `NIGHT_BASE` — and the
+> daytime battery-help cap (`DAY_BATTERY_HELP_W`, 250 W) were removed. The normal
+> mode now simply targets the measured household load up to the legal 800 W cap;
+> the inverter serves it from PV first and tops up from the battery internally.
+> The sections below describing `EVENING_CATCH_UP`, `NIGHT_BASE`, the energy
+> budget, the asymmetric smoothing (`RISE_FACTOR`/`FALL_FACTOR`), and the related
+> constants (`EVENING_DISCHARGE_LIMIT_W`, `NIGHT_BASE_RESERVE_W`, `BASE_DEADBAND_W`,
+> `ConsumptionReader::NIGHT_BASE_DAYS`, `SunWindow`) no longer reflect the code and
+> are kept only as a historical record. `PROTECTED` and the thermal/SoC behavior
+> are unchanged.
 
 ## Background
 

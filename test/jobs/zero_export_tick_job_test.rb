@@ -148,7 +148,7 @@ class ZeroExportTickJobTest < ActiveSupport::TestCase
     heartbeat = FakeClient.new(state: state_with(soc: 55, pv: 100, temp: 30))
     run_job(client: heartbeat, now: now + 121.seconds)
 
-    assert_includes heartbeat.calls, [ :apply_power, 350, 10 ]
+    assert_includes heartbeat.calls, [ :apply_power, 386, 10 ]
   end
 
   test "hot battery clamps the whole target to 800W" do

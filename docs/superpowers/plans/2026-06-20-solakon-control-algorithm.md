@@ -1,5 +1,13 @@
 # Solakon Control Algorithm Implementation Plan
 
+> **Update (2026-06): partly superseded.** This plan built a four-state machine
+> (`protected`, `pv_priority`, `evening_catch_up`, `night_base`). The controller
+> was later reduced to two states — `PROTECTED` and the normal mode (`:normal`,
+> formerly `:pv_priority`) — dropping the two nighttime modes, the 250 W
+> battery-help cap, the `SunWindow` model, and `ConsumptionReader#night_base_w`.
+> Tasks and tests referencing those removed pieces are historical. See the design
+> doc's update note for details.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace the current Solakon zero-export recovery behavior with a PV-priority, low-SoC- and temperature-protected, sparse-write control algorithm built from small value objects.
