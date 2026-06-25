@@ -66,4 +66,34 @@ class GoveeStatusHandlerTest < ActiveSupport::TestCase
     assert_equal 0, LightState.count
     assert_match(/invalid json/i, @log_io.string)
   end
+
+  # FIX 2: last_seen_at not bumped when reachable:false
+  test "handle does not update last_seen_at when reachable is false" do
+    t0 = Time.current
+    travel_to t0 do
+      @handler.handle("govee/lamp/status", payload("reachable" => true))
+    end
+    state_after_t0 = LightState.find_by(light_key: "lamp")
+    assert_in_delta t0.to_f, state_after_t0.last_seen_at.to_f, 1.0
+
+    t1 = t0 + 60
+    travel_to t1 do
+      @handler.handle("govee/lamp/status", payload("reachable" => false))
+    end
+    state_after_t1 = LightState.find_by(light_key: "lamp")
+    assert_in_delta t0.to_f, state_after_t1.last_seen_at.to_f, 1.0, "last_seen_at must not change on unreachable"
+  end
+
+  test "handle updates last_seen_at when reachable is true" do
+    t0 = Time.current
+    travel_to t0 do
+      @handler.handle("govee/lamp/status", payload("reachable" => true))
+    end
+    t1 = t0 + 10
+    travel_to t1 do
+      @handler.handle("govee/lamp/status", payload("reachable" => true))
+    end
+    state = LightState.find_by(light_key: "lamp")
+    assert_in_delta t1.to_f, state.last_seen_at.to_f, 1.0
+  end
 end

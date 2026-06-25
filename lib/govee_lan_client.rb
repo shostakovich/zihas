@@ -9,8 +9,9 @@ class GoveeLanClient
   Status = Struct.new(:on, :brightness, :color_r, :color_g, :color_b,
                       :color_temp_k, :sku, keyword_init: true)
 
-  def initialize(socket_factory: -> { UDPSocket.new })
+  def initialize(socket_factory: -> { UDPSocket.new }, command_port: COMMAND_PORT)
     @socket_factory = socket_factory
+    @command_port   = command_port
   end
 
   def turn(ip, on)           = send_command(ip, "turn",       { "value" => on ? 1 : 0 })
@@ -50,7 +51,7 @@ class GoveeLanClient
 
   def send_command(ip, cmd, data)
     socket = @socket_factory.call
-    socket.send(JSON.generate("msg" => { "cmd" => cmd, "data" => data }), 0, ip, COMMAND_PORT)
+    socket.send(JSON.generate("msg" => { "cmd" => cmd, "data" => data }), 0, ip, @command_port)
   ensure
     begin; socket&.close; rescue StandardError; nil; end
   end

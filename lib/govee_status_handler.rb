@@ -20,7 +20,7 @@ class GoveeStatusHandler
     key  = topic.split("/")[1]
     data = JSON.parse(payload)
     attrs = FIELDS.to_h { |f| [ f, data[f.to_s] ] }
-    attrs[:last_seen_at] = Time.current
+    attrs[:last_seen_at] = Time.current unless data["reachable"] == false
     LightState.record_state(key, attrs)
     fill_sku(key, data["sku"])
     broadcast(key, attrs)

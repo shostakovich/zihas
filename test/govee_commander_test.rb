@@ -59,7 +59,7 @@ class GoveeCommanderTest < ActiveSupport::TestCase
 
   test "refresh publishes an empty payload" do
     c = FakeMqtt.new
-    GoveeCommander.refresh(@light, **opts(c).except(:mqtt_factory).merge(mqtt_factory: -> { c }))
+    GoveeCommander.refresh(@light, **opts(c))
     assert_equal "govee/stehlampe/command/refresh", c.published.first[0]
     assert_equal({}, JSON.parse(c.published.first[1]))
   end

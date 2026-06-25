@@ -8,20 +8,26 @@ require "govee_lan_client"
 # republishes them to govee/<key>/status. Also polls all lights periodically.
 class GoveeMqttBridge
   def initialize(mqtt_config:, govee_config:, logger:,
-                 lan_client: GoveeLanClient.new,
+                 lan_client: nil,
                  lights_provider: -> { Light.all.to_a },
-                 mqtt_factory: nil)
+                 mqtt_factory: nil,
+                 clock: -> { Process.clock_gettime(Process::CLOCK_MONOTONIC) })
     @mqtt_config     = mqtt_config
     @govee_config    = govee_config
     @logger          = logger
-    @lan             = lan_client
+    @lan             = lan_client || GoveeLanClient.new(command_port: govee_config.command_port)
     @lights_provider = lights_provider
     @lights          = @lights_provider.call
     @stopping        = false
+    @clock           = clock
+    @last_status     = {}
+    @last_seen       = {}
     @mqtt_factory    = mqtt_factory || -> {
       MQTT::Client.new(host: @mqtt_config.host, port: @mqtt_config.port)
     }
-    @publisher = nil
+    @publisher       = nil
+    @command_client  = nil
+    @listener_socket = nil
   end
 
   def handle_command(topic, payload)
@@ -61,12 +67,26 @@ class GoveeMqttBridge
       reachable:    true,
       sku:          status.sku
     }
+    @last_status[light.key] = body
+    @last_seen[light.key]   = @clock.call
     publisher.publish("#{@govee_config.topic_prefix}/#{light.key}/status", JSON.generate(body))
   end
 
   def poll_once
     @lights = @lights_provider.call
     @lights.each { |l| @lan.request_status(l.ip_address) }
+    threshold = 2 * @govee_config.poll_interval_seconds
+    now = @clock.call
+    @lights.each do |l|
+      next unless @last_seen.key?(l.key)
+      next unless now - @last_seen[l.key] > threshold
+
+      publisher.publish(
+        "#{@govee_config.topic_prefix}/#{l.key}/status",
+        JSON.generate(@last_status[l.key].merge(reachable: false))
+      )
+      @last_seen.delete(l.key)
+    end
   end
 
   def run
@@ -80,6 +100,8 @@ class GoveeMqttBridge
 
   def stop!
     @stopping = true
+    begin; @listener_socket&.close; rescue StandardError; nil; end
+    begin; @command_client&.disconnect; rescue StandardError; nil; end
   end
 
   private
@@ -98,10 +120,10 @@ class GoveeMqttBridge
   def command_thread
     Thread.new do
       Thread.current.name = "govee_command"
-      consumer = @mqtt_factory.call
-      consumer.connect
-      consumer.subscribe("#{@govee_config.topic_prefix}/+/command/#")
-      consumer.get { |t, p| handle_command(t, p) }
+      @command_client = @mqtt_factory.call
+      @command_client.connect
+      @command_client.subscribe("#{@govee_config.topic_prefix}/+/command/#")
+      @command_client.get { |t, p| handle_command(t, p) }
     rescue => e
       @logger.error("GoveeMqttBridge command: #{e.class}: #{e.message}")
     end
@@ -110,10 +132,10 @@ class GoveeMqttBridge
   def listener_thread
     Thread.new do
       Thread.current.name = "govee_listener"
-      socket = UDPSocket.new
-      socket.bind("0.0.0.0", @govee_config.listen_port)
+      @listener_socket = UDPSocket.new
+      @listener_socket.bind("0.0.0.0", @govee_config.listen_port)
       until @stopping
-        payload, addr = socket.recvfrom(2048)
+        payload, addr = @listener_socket.recvfrom(2048)
         handle_datagram(payload, addr[3])
       end
     rescue => e

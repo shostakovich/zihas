@@ -82,4 +82,11 @@ class GoveeLanClientTest < ActiveSupport::TestCase
     assert_nil GoveeLanClient.parse_status("not-json{")
     assert_nil GoveeLanClient.parse_status(JSON.generate("foo" => 1))
   end
+
+  test "custom command_port is used when sending" do
+    sent = []
+    GoveeLanClient.new(socket_factory: -> { FakeSocket.new(sent) }, command_port: 4010)
+                  .turn("192.168.10.20", true)
+    assert_equal 4010, sent.first[:port]
+  end
 end
