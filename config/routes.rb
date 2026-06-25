@@ -7,6 +7,7 @@ Rails.application.routes.draw do
   get "/sensors/series", to: "sensors#series", as: :sensors_series
 
   get "/switches", to: "switches#index", as: :switches
+  resources :rooms, except: [ :show ]
 
   get "/solakon", to: "solakon#index", as: :solakon
   get "/solakon/history", to: "solakon#history", as: :solakon_history

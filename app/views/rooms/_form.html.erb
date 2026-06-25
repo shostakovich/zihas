@@ -1,0 +1,11 @@
+<%# app/views/rooms/_form.html.erb %>
+<%= form_with model: room do |f| %>
+  <% if room.errors.any? %>
+    <ul class="form-errors">
+      <% room.errors.full_messages.each do |m| %><li><%= m %></li><% end %>
+    </ul>
+  <% end %>
+  <%= f.label :name, "Name" %>
+  <%= f.text_field :name %>
+  <%= f.submit "Speichern" %>
+<% end %>
