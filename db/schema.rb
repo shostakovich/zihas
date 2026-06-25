@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_24_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_24_090100) do
   create_table "daily_energy_summary", primary_key: "date", id: :string, force: :cascade do |t|
     t.float "consumed_wh", null: false
     t.float "produced_wh", null: false
@@ -21,6 +21,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_090000) do
     t.string "date", limit: 255, null: false
     t.float "energy_wh", null: false
     t.string "plug_id", limit: 255, null: false
+  end
+
+  create_table "lights", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "ip_address", null: false
+    t.string "key", null: false
+    t.string "name", null: false
+    t.integer "room_id"
+    t.string "shelly_plug_id"
+    t.string "sku"
+    t.boolean "supports_color", default: false, null: false
+    t.boolean "supports_color_temp", default: false, null: false
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_lights_on_key", unique: true
+    t.index ["room_id"], name: "index_lights_on_room_id"
   end
 
   create_table "plug_states", force: :cascade do |t|
@@ -199,4 +214,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_090000) do
     t.index ["kind", "timestamp"], name: "idx_weather_records_kind_ts"
     t.index ["lat", "lon", "timestamp"], name: "idx_weather_records_location_ts"
   end
+
+  add_foreign_key "lights", "rooms"
 end
