@@ -13,11 +13,12 @@ own loopback, so the two would talk to different brokers and commands, state, an
 discovery would silently never cross between them.
 
 ## Development (native binary)
-Build once, pinned to a known tag/commit:
+Build once, pinned to a known tag. Current pin: **`2026.03.25-ab9deb66`**.
+Requires a Rust toolchain — install via `brew bundle` (see the repo `Brewfile`).
 
     git clone https://github.com/wez/govee2mqtt vendor/govee2mqtt
     cd vendor/govee2mqtt
-    git checkout <tag-or-commit>     # pin; record the value in the PR
+    git checkout 2026.03.25-ab9deb66   # pin (bump deliberately, record here)
     cargo build --release
 
 Then `foreman start` (Procfile.dev) runs `bin/govee2mqtt`, which loads
