@@ -8,7 +8,14 @@ class LightSwitchesController < ApplicationController
 
     case params[:command]
     when "turn"
-      GoveeCommander.turn(light, on: cast_bool(params[:on]), **opts)
+      if light.zone_lamp?
+        GoveeCommander.set_zone(light, zone: "powerSwitch", on: cast_bool(params[:on]), **opts)
+      else
+        GoveeCommander.turn(light, on: cast_bool(params[:on]), **opts)
+      end
+    when "zone"
+      return head :unprocessable_entity unless light.zones.include?(params[:zone])
+      GoveeCommander.set_zone(light, zone: params[:zone], on: cast_bool(params[:on]), **opts)
     when "brightness"
       GoveeCommander.set_brightness(light, value: params[:value].to_i, **opts)
     when "color"

@@ -78,4 +78,42 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
     end
     assert_response :service_unavailable
   end
+
+  test "zone command toggles a valid zone" do
+    light = Light.create!(name: "Up", key: "UP1", zones: %w[bottomLightToggle rippleLightToggle])
+    GoveeCommander.stub(:set_zone, ->(l, zone:, on:, **) {
+      assert_equal "rippleLightToggle", zone
+      assert_equal true, on
+    }) do
+      post light_command_url(light_key: "UP1"), params: { command: "zone", zone: "rippleLightToggle", on: "true" }
+    end
+    assert_response :accepted
+  end
+
+  test "zone command rejects a zone not on this light" do
+    Light.create!(name: "Up", key: "UP1", zones: %w[bottomLightToggle])
+    post light_command_url(light_key: "UP1"), params: { command: "zone", zone: "powerSwitch", on: "true" }
+    assert_response :unprocessable_entity
+  end
+
+  test "turn routes a zone lamp through powerSwitch" do
+    light = Light.create!(name: "Up", key: "UP1", zones: %w[bottomLightToggle sideLightToggle])
+    called = {}
+    GoveeCommander.stub(:set_zone, ->(l, zone:, on:, **) { called[:zone] = zone; called[:on] = on }) do
+      post light_command_url(light_key: "UP1"), params: { command: "turn", on: "true" }
+    end
+    assert_equal "powerSwitch", called[:zone]
+    assert_equal true, called[:on]
+    assert_response :accepted
+  end
+
+  test "turn still uses the light command for a simple lamp" do
+    Light.create!(name: "Lamp", key: "S1", zones: [])
+    called = false
+    GoveeCommander.stub(:turn, ->(l, on:, **) { called = true }) do
+      post light_command_url(light_key: "S1"), params: { command: "turn", on: "false" }
+    end
+    assert called, "simple lamp uses GoveeCommander.turn"
+    assert_response :accepted
+  end
 end
