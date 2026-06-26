@@ -8,14 +8,13 @@ class LightSwitchesController < ApplicationController
 
     case params[:command]
     when "turn"
-      GoveeCommander.turn(light, on: cast_bool(params[:on]), source: :manual, **opts)
+      GoveeCommander.turn(light, on: cast_bool(params[:on]), **opts)
     when "brightness"
-      GoveeCommander.set_brightness(light, value: params[:value].to_i, source: :manual, **opts)
+      GoveeCommander.set_brightness(light, value: params[:value].to_i, **opts)
     when "color"
-      GoveeCommander.set_color(light, r: params[:r].to_i, g: params[:g].to_i, b: params[:b].to_i,
-                               source: :manual, **opts)
+      GoveeCommander.set_color(light, r: params[:r].to_i, g: params[:g].to_i, b: params[:b].to_i, **opts)
     when "color_temp"
-      GoveeCommander.set_color_temp(light, kelvin: params[:temp_k].to_i, source: :manual, **opts)
+      GoveeCommander.set_color_temp(light, kelvin: params[:temp_k].to_i, **opts)
     else
       return head :unprocessable_entity
     end
@@ -27,6 +26,6 @@ class LightSwitchesController < ApplicationController
 
   private
 
-  def opts = { mqtt_config: app_config.mqtt, topic_prefix: app_config.govee&.topic_prefix || "govee" }
+  def opts = { mqtt_config: app_config.mqtt }
   def cast_bool(v) = ActiveModel::Type::Boolean.new.cast(v)
 end

@@ -43,16 +43,15 @@ class ScenesController < ApplicationController
 
   def apply_entry(entry)
     light, preset = entry.light, entry.preset
-    GoveeCommander.turn(light, on: preset.on, source: :scene, **opts)
+    GoveeCommander.turn(light, on: preset.on, **opts)
     return unless preset.on
-    GoveeCommander.set_brightness(light, value: preset.brightness, source: :scene, **opts) if preset.brightness
+    GoveeCommander.set_brightness(light, value: preset.brightness, **opts) if preset.brightness
     if preset.color_temp_k && preset.color_temp_k > 0
-      GoveeCommander.set_color_temp(light, kelvin: preset.color_temp_k, source: :scene, **opts)
+      GoveeCommander.set_color_temp(light, kelvin: preset.color_temp_k, **opts)
     elsif preset.color_r
-      GoveeCommander.set_color(light, r: preset.color_r, g: preset.color_g, b: preset.color_b,
-                               source: :scene, **opts)
+      GoveeCommander.set_color(light, r: preset.color_r, g: preset.color_g, b: preset.color_b, **opts)
     end
   end
 
-  def opts = { mqtt_config: app_config.mqtt, topic_prefix: app_config.govee&.topic_prefix || "govee" }
+  def opts = { mqtt_config: app_config.mqtt }
 end

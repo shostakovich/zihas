@@ -18,56 +18,54 @@ class GoveeCommanderTest < ActiveSupport::TestCase
 
   setup do
     @mqtt_config = ConfigLoader::MqttCfg.new(host: "localhost", port: 1883, topic_prefix: "shellies")
-    @light = Light.create!(name: "Stehlampe", key: "A1B2C3D4E5F60050")
+    @light = Light.create!(name: "Stehlampe", key: "14ABDB4844064B60")
   end
 
-  def opts(client)
-    { mqtt_config: @mqtt_config, topic_prefix: "govee", mqtt_factory: -> { client } }
-  end
+  def opts(client) = { mqtt_config: @mqtt_config, mqtt_factory: -> { client } }
 
-  test "turn publishes to the command topic with a boolean payload" do
+  test "turn ON publishes HA-JSON state to the device command topic" do
     c = FakeMqtt.new
-    GoveeCommander.turn(@light, on: true, source: :manual, **opts(c))
+    GoveeCommander.turn(@light, on: true, **opts(c))
     topic, payload = c.published.first
-    assert_equal "govee/stehlampe/command/turn", topic
-    assert_equal({ "on" => true }, JSON.parse(payload))
+    assert_equal "gv2mqtt/light/14ABDB4844064B60/command", topic
+    assert_equal({ "state" => "ON" }, JSON.parse(payload))
     assert c.disconnected
   end
 
-  test "set_brightness publishes a value payload" do
+  test "turn OFF publishes state OFF" do
     c = FakeMqtt.new
-    GoveeCommander.set_brightness(@light, value: 42, source: :manual, **opts(c))
-    topic, payload = c.published.first
-    assert_equal "govee/stehlampe/command/brightness", topic
-    assert_equal({ "value" => 42 }, JSON.parse(payload))
+    GoveeCommander.turn(@light, on: false, **opts(c))
+    assert_equal({ "state" => "OFF" }, JSON.parse(c.published.first[1]))
   end
 
-  test "set_color publishes rgb" do
+  test "set_brightness includes state ON and the integer value" do
     c = FakeMqtt.new
-    GoveeCommander.set_color(@light, r: 255, g: 100, b: 0, source: :manual, **opts(c))
-    topic, payload = c.published.first
-    assert_equal "govee/stehlampe/command/color", topic
-    assert_equal({ "r" => 255, "g" => 100, "b" => 0 }, JSON.parse(payload))
+    GoveeCommander.set_brightness(@light, value: 42, **opts(c))
+    assert_equal({ "state" => "ON", "brightness" => 42 }, JSON.parse(c.published.first[1]))
   end
 
-  test "set_color_temp publishes temp_k" do
+  test "set_color includes state ON and rgb" do
     c = FakeMqtt.new
-    GoveeCommander.set_color_temp(@light, kelvin: 3000, source: :manual, **opts(c))
-    assert_equal "govee/stehlampe/command/color_temp", c.published.first[0]
-    assert_equal({ "temp_k" => 3000 }, JSON.parse(c.published.first[1]))
+    GoveeCommander.set_color(@light, r: 255, g: 100, b: 0, **opts(c))
+    assert_equal({ "state" => "ON", "color" => { "r" => 255, "g" => 100, "b" => 0 } },
+                 JSON.parse(c.published.first[1]))
   end
 
-  test "refresh publishes an empty payload" do
+  test "set_color_temp converts kelvin to mired and includes state ON" do
     c = FakeMqtt.new
-    GoveeCommander.refresh(@light, **opts(c))
-    assert_equal "govee/stehlampe/command/refresh", c.published.first[0]
-    assert_equal({}, JSON.parse(c.published.first[1]))
+    GoveeCommander.set_color_temp(@light, kelvin: 4000, **opts(c))
+    # 1_000_000 / 4000 = 250
+    assert_equal({ "state" => "ON", "color_temp" => 250 }, JSON.parse(c.published.first[1]))
+  end
+
+  test "kelvin_to_mired rounds" do
+    assert_equal 370, GoveeCommander.kelvin_to_mired(2700) # 370.37 -> 370
   end
 
   test "publish failure raises GoveeCommander::Error" do
     c = FakeMqtt.new(fail_connect: true)
     assert_raises(GoveeCommander::Error) do
-      GoveeCommander.turn(@light, on: true, source: :manual, **opts(c))
+      GoveeCommander.turn(@light, on: true, **opts(c))
     end
   end
 end
