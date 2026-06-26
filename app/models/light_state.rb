@@ -1,7 +1,11 @@
 class LightState < ApplicationRecord
   VISIBLE = %i[on brightness color_r color_g color_b color_temp_k reachable].freeze
 
+  serialize :zone_states, coder: JSON, type: Hash
+
   validates :light_key, presence: true, uniqueness: true
+
+  def zone_states = super || {}
 
   # Writes the row and returns true when any visible field changed.
   # last_seen_at is always written but is not itself a "visible" change.
@@ -10,6 +14,16 @@ class LightState < ApplicationRecord
     state = find_or_initialize_by(light_key: light_key)
     changed = VISIBLE.any? { |f| attrs.key?(f) && state[f] != attrs[f] }
     state.assign_attributes(attrs)
+    state.save!
+    changed
+  end
+
+  # Upserts one zone's on/off bit. Returns true when the stored value changed.
+  def self.record_zone_state(light_key, instance, on)
+    state = find_or_initialize_by(light_key: light_key)
+    current = state.zone_states
+    changed = current[instance] != on
+    state.zone_states = current.merge(instance => on)
     state.save!
     changed
   end

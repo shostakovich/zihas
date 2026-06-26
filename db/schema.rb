@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_26_160247) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_26_161512) do
   create_table "daily_energy_summary", primary_key: "date", id: :string, force: :cascade do |t|
     t.float "consumed_wh", null: false
     t.float "produced_wh", null: false
@@ -35,6 +35,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_26_160247) do
     t.boolean "on"
     t.boolean "reachable"
     t.datetime "updated_at", null: false
+    t.text "zone_states"
     t.index ["light_key"], name: "index_light_states_on_light_key", unique: true
   end
 

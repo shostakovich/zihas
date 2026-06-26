@@ -33,4 +33,25 @@ class LightStateTest < ActiveSupport::TestCase
     assert_equal Time.zone.local(2026, 6, 24, 12, 5),
                  LightState.find_by(light_key: "lamp").last_seen_at
   end
+
+  test "zone_states defaults to an empty hash" do
+    assert_equal({}, LightState.new.zone_states)
+  end
+
+  test "record_zone_state upserts a single zone bit and reports change" do
+    assert LightState.record_zone_state("UP1", "rippleLightToggle", true)
+    state = LightState.find_by(light_key: "UP1")
+    assert_equal({ "rippleLightToggle" => true }, state.zone_states)
+
+    refute LightState.record_zone_state("UP1", "rippleLightToggle", true), "no change on identical write"
+    assert LightState.record_zone_state("UP1", "rippleLightToggle", false), "change on flip"
+    assert_equal({ "rippleLightToggle" => false }, LightState.find_by(light_key: "UP1").zone_states)
+  end
+
+  test "record_zone_state preserves other zones" do
+    LightState.record_zone_state("UP1", "bottomLightToggle", true)
+    LightState.record_zone_state("UP1", "sideLightToggle", true)
+    assert_equal({ "bottomLightToggle" => true, "sideLightToggle" => true },
+                 LightState.find_by(light_key: "UP1").zone_states)
+  end
 end
