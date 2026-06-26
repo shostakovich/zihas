@@ -15,7 +15,11 @@ der Lampen (keine manuelle Pflege mehr). Cloud-Effekte/Szenen bleiben **out of s
 
 - **Command-Topic:** `gv2mqtt/light/{id}/command`
 - **State-Topic:** `gv2mqtt/light/{id}/state`
-- `{id}` = `topic_safe_id` = MAC **ohne** `:`, Groß-/Kleinschreibung erhalten (z. B. `14ABDB4844064B60`)
+- `{id}` = `topic_safe_id` = Govee-Device-ID (MAC-ähnlich, **8 Byte / 16 Hex**, z. B.
+  `14ABDB4844064B60`), `:` entfernt. **Achtung:** `topic_safe_id` normalisiert die
+  Schreibweise **nicht** — Case ist so, wie Govee sie liefert (geräteabhängig, manche
+  Geräte lowercase ohne `:`). → ZiWoAS muss beim Einlesen **upcasen** und Key-Matching
+  **case-insensitiv** machen.
 - **Schema:** Home-Assistant JSON-Light (`schema: "json"`)
   - State: `{"state":"ON"|"OFF","brightness":0-100,"color":{...},"color_temp":<mired>,"color_mode":...,"effect":<scene>}`
   - `brightness_scale: 100` → keine Umrechnung (unsere 0–100 passen 1:1)
@@ -80,10 +84,14 @@ aber jede publiziert **ein** Teil-JSON nach `gv2mqtt/light/#{light.key}/command`
 | Methode | Payload |
 |---|---|
 | `turn(on:)` | `{"state":"ON"}` / `{"state":"OFF"}` |
-| `set_brightness(value:)` | `{"brightness": 0-100}` |
-| `set_color(r:,g:,b:)` | `{"color":{"r":,"g":,"b":}}` |
-| `set_color_temp(kelvin:)` | `{"color_temp": <mired>}` (`mired = 1_000_000 / kelvin`) |
+| `set_brightness(value:)` | `{"state":"ON","brightness": 0-100}` |
+| `set_color(r:,g:,b:)` | `{"state":"ON","color":{"r":,"g":,"b":}}` |
+| `set_color_temp(kelvin:)` | `{"state":"ON","color_temp": <mired>}` (`mired = 1_000_000 / kelvin`) |
 
+- **`state` ist Pflicht in jedem Command.** Das `state`-Feld im `HassLightCommand` ist
+  nicht-optional → ein Payload **ohne** `state` wird von govee2mqtt **verworfen**
+  (Deserialisierung schlägt fehl). Außerdem schaltet ein reines `{"brightness":N}` eine
+  Lampe **nicht** an. Darum trägt jedes Teilkommando `"state":"ON"` (außer Ausschalten).
 - `topic_prefix`-Parameter entfällt; gv2mqtt-Base ist Konstante.
 - `refresh` entfällt (govee2mqtt published State proaktiv).
 
@@ -92,6 +100,9 @@ aber jede publiziert **ein** Teil-JSON nach `gv2mqtt/light/#{light.key}/command`
 - Subscription: `gv2mqtt/light/+/state`.
 - Parst HA-JSON: `state`→`on`, `brightness`, `color`→`color_r/g/b`,
   `color_temp` (Mired→Kelvin), `color_mode`.
+- **State ist mode-abhängig:** RGB-Mode → `color` + `color_mode:"rgb"`; Color-Temp-Mode
+  → `color_temp` + `color_mode:"color_temp"` (**nie beides**); OFF ist nur
+  `{"state":"OFF"}`. Handler muss fehlende Felder tolerieren (nicht überschreiben, wenn nicht vorhanden).
 - Schreibt `LightState` per MAC (`light_key`), broadcastet auf `dashboard`.
 - **Reachability:** `reachable=true` + `last_seen_at` bei State-Empfang. Das globale
   Availability-/LWT-Topic von govee2mqtt markiert bei Bridge-Ausfall alle Lampen
@@ -175,9 +186,20 @@ aber jede publiziert **ein** Teil-JSON nach `gv2mqtt/light/#{light.key}/command`
 - Cloud-**Effekte/Szenen** im UI. `effect_list` kommt frei in der Discovery, das
   Verdrahten in `Scene`/`Preset` ist eigene Arbeit.
 
-## Offene Detailpunkte für die Plan-Phase
+## Gegen den govee2mqtt-Source validiert (2026-06-26)
 
-1. Exakte govee2mqtt-CLI (Subcommand `serve`? Arg-Reihenfolge) gegen `--help` prüfen.
-2. Genaues Availability-/LWT-Topic + Payload („online“/„offline“) bestätigen.
-3. HA-JSON: Sendet `set_brightness` ohne `state` implizit ON? Ggf. `state` mitsenden.
-4. Pinning-Strategie für den lokalen govee2mqtt-Build (Tag vs. Commit).
+Alle Vertragsaussagen oben sind gegen `wez/govee2mqtt@main` per Subagent geprüft.
+Bestätigt; folgende Punkte wurden dabei korrigiert/präzisiert und sind oben eingearbeitet:
+
+- **Command braucht `state`** (Pflichtfeld, sonst Deserialisierungs-Fehler; brightness allein schaltet nicht an).
+- **Device-ID-Case** geräteabhängig → upcasen + case-insensitiv matchen.
+- **State mode-abhängig** (color XOR color_temp).
+- **CLI:** Subcommand `serve`, `--hass-discovery-prefix` ist `global` →
+  `govee --hass-discovery-prefix gv2mqtt serve` (Flag vor oder nach `serve` ok).
+- **Availability/LWT:** `gv2mqtt/availability`, `online`/`offline`, als MQTT-Last-Will — bestätigt.
+
+### Verbleibende offene Punkte für die Plan-Phase
+
+1. Pinning-Strategie für den lokalen govee2mqtt-Build (Tag vs. Commit).
+2. govee2mqtt bindet zusätzlich einen HTTP-Port (`--http-port`, Default **8056**) — bei
+   `network_mode: host` auf Port-Konflikt achten / ggf. umstellen.
