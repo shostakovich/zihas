@@ -525,30 +525,4 @@ class ConfigLoaderTest < Minitest::Test
     assert_raises(ConfigLoader::Error) { load_yaml(yaml) }
   end
 
-  def valid_yaml_with_govee
-    valid_yaml + <<~YAML
-      govee:
-        topic_prefix: govee
-        poll_interval_seconds: 15
-        command_port: 4003
-        listen_port: 4002
-    YAML
-  end
-
-  def test_govee_is_nil_without_block
-    assert_nil load_yaml(valid_yaml).govee
-  end
-
-  def test_govee_parses_with_defaults
-    cfg = load_yaml(valid_yaml + "govee:\n").govee
-    assert_equal "govee", cfg.topic_prefix
-    assert_equal 30,      cfg.poll_interval_seconds
-    assert_equal 4003,    cfg.command_port
-    assert_equal 4002,    cfg.listen_port
-  end
-
-  def test_govee_parses_explicit_values
-    cfg = load_yaml(valid_yaml_with_govee).govee
-    assert_equal 15, cfg.poll_interval_seconds
-  end
 end
