@@ -56,6 +56,12 @@ class GoveeDiscoveryHandlerTest < ActiveSupport::TestCase
     assert_equal true, light.supports_color, "capabilities are refreshed"
   end
 
+  test "prefers the device.name friendly name over the entity name" do
+    @handler.handle("gv2mqtt/light/x/config",
+      config("name" => nil, "device" => { "model" => "H607C", "name" => "Floor Lamp 2" }))
+    assert_equal "Floor Lamp 2", Light.find_by(key: "14ABDB4844064B60").name
+  end
+
   test "refreshes a still-default name (== key) from discovery" do
     Light.create!(name: "14ABDB4844064B60", key: "14ABDB4844064B60",
                   supports_color: false, supports_color_temp: false)

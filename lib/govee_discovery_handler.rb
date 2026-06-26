@@ -24,7 +24,9 @@ class GoveeDiscoveryHandler
     return @logger.warn("GoveeDiscoveryHandler: no state_topic in config on #{topic}") unless key
 
     light = Light.find_or_initialize_by(key: key)
-    discovered_name = data["name"].presence
+    # govee2mqtt puts the friendly name on the device block; the entity-level
+    # "name" is null for the main light. Fall back to top-level name, then key.
+    discovered_name = data.dig("device", "name").presence || data["name"].presence
     if light.new_record?
       light.name = discovered_name || key
     elsif discovered_name && discovered_name != key && light.name == light.key
