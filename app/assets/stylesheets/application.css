@@ -1172,3 +1172,55 @@ body.page-solakon { max-width: 1040px; }
 .solakon-page button.preset-link.active {
   background: #fff8db;
 }
+
+/* ---- Lamp detail page ---- */
+body.page-light-detail { max-width: 560px; }
+.ld-topbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.ld-back { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--border);
+           background: var(--card); display: inline-flex; align-items: center; justify-content: center;
+           font-size: 17px; text-decoration: none; color: var(--text); }
+.ld-title { font-weight: 600; font-size: 18px; }
+.ld-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+           padding: 14px; margin-bottom: 12px; }
+.ld-hero { display: flex; align-items: center; gap: 14px; background: var(--card);
+           border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom: 12px; }
+.ld-lamp { width: 58px; height: 58px; border-radius: 50%; flex-shrink: 0;
+           background: radial-gradient(circle at 50% 38%, var(--accent-tint) 0%, var(--accent-tint-2) 45%, var(--accent) 100%);
+           box-shadow: var(--glow-accent); }
+.ld-hero.is-off .ld-lamp { background: var(--surface-sunk); box-shadow: none; filter: grayscale(.4); }
+.ld-power { display: flex; gap: 8px; flex: 1; }
+.ld-pill { flex: 1; padding: 10px 0; border-radius: 11px; font-weight: 600; font-size: 13px;
+           border: 1px solid var(--border); background: var(--card); color: var(--muted); cursor: pointer; }
+.ld-pill.on { background: var(--accent-bg); border-color: var(--accent); color: var(--accent-ink); }
+.ld-label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted);
+            margin: 0 0 9px; }
+/* nicer slider (replaces bare range) */
+.ld-range { -webkit-appearance: none; appearance: none; width: 100%; height: 34px; border-radius: var(--radius-pill);
+            background: linear-gradient(90deg, var(--accent-tint), var(--accent)); outline: none; }
+.ld-range.ld-white { background: linear-gradient(90deg, #ffb24d, #ffe7c2, #fff, #dcebff, #bcd6ff); }
+.ld-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 28px; height: 28px;
+            border-radius: 50%; background: #fff; border: 2px solid var(--accent);
+            box-shadow: 0 1px 4px rgba(0,0,0,.3); cursor: pointer; }
+.ld-range::-moz-range-thumb { width: 28px; height: 28px; border-radius: 50%; background: #fff;
+            border: 2px solid var(--accent); box-shadow: 0 1px 4px rgba(0,0,0,.3); cursor: pointer; }
+.ld-range:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.ld-scale { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted);
+            margin-top: 6px; }
+.ld-presets { display: flex; gap: 8px; margin-top: 12px; }
+.ld-preset { flex: 1; padding: 8px 0; border-radius: 10px; border: 1px solid var(--border);
+             background: var(--card); color: var(--text); font-size: 12px; cursor: pointer; }
+.ld-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+.ld-tab { flex: 1; padding: 9px 0; border-radius: 11px; font-size: 12px; font-weight: 600;
+          border: 1px solid var(--border); background: var(--card); color: var(--muted); cursor: pointer; }
+.ld-tab.active { background: var(--accent-bg); border-color: var(--accent); color: var(--accent-ink); }
+.ld-swatches { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.ld-sw { aspect-ratio: 1; border-radius: 10px; border: 1px solid rgba(0,0,0,.12); cursor: pointer;
+         display: inline-flex; align-items: center; justify-content: center; }
+.ld-sw:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.ld-more { background: conic-gradient(red,#ff0,#0f0,#0ff,#00f,#f0f,red); color: #fff; font-size: 17px;
+           text-shadow: 0 0 3px rgba(0,0,0,.6); position: relative; overflow: hidden; }
+.ld-more input[type=color] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.ld-soon { color: var(--muted); font-size: 14px; }
+.ld-error { font-size: 12px; color: var(--danger); margin-top: 2px; min-height: 16px; }
+.ld.pending { opacity: .85; }
+.ld.unconfirmed .ld-hero { border-color: var(--danger); }
