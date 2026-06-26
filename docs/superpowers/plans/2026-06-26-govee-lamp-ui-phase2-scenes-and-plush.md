@@ -23,7 +23,8 @@
 - **Stimulus action params MUST be namespaced by the controller identifier:** for `data-controller="light-detail"`, write `data-light-detail-<name>-param="…"` and read it as `event.params.<name>`. (A non-namespaced `data-<name>-param` yields `undefined` — this exact bug shipped and was caught in Phase 1's final review. Do not repeat it.)
 - **Scene activation uses the light command topic** (`{"state":"ON","effect":"<name>"}`), NOT the `set-mode-scene` topic — keeps everything in `GoveeCommander.publish`.
 - **SKU → plush type map (exact):** `H60B0`→`uplighter`, `H607C`→`floorlamp`, `H6038`→`sconce`, `H60A6`→`ceiling`; any other / blank SKU → `generic`. Match case-insensitively. (Resolved with the user: H6038 is the Wall Sconce; the ordered Ceiling is H60A6.)
-- **Plush asset filenames (Propshaft, in `app/assets/images/`):** `lamp_<type>_on.webp` / `lamp_<type>_off.webp` for `<type>` ∈ `uplighter, floorlamp, sconce, ceiling, generic` (10 files). The user supplies the final artwork; until it lands, stage placeholders so the pipeline resolves (Task 10, Step 1). Propshaft raises `Propshaft::MissingAssetError` on a missing asset, so all 10 must exist before the tile/hero render.
+- **Plush rendering follows the existing plug-knob technique:** the plug knob is an empty `<button class="sw-knob">` whose plush image is a CSS `background-image: url(switch_plush_on.webp)` (`.sw-knob.off` → `switch_plush_off.webp`). Lamps mirror this — a per-type CSS class on the knob/hero element, NOT an inline `<img>`. Asset filenames (Propshaft, in `app/assets/images/`): `lamp_<type>_on.webp` / `lamp_<type>_off.webp` for `<type>` ∈ `uplighter, floorlamp, sconce, ceiling, generic` (10 files).
+- **Asset presence:** `bin/ci` does not precompile assets (`config/ci.rb`) and controller tests render a `<link>`, not inline CSS, so the suite passes without the webp files — tests assert the plush CSS *class*, not an image src. The files are only needed for the running app to serve `application.css` (Propshaft raises `MissingAssetError` for a missing `url()` target when it compiles the stylesheet). The user supplies the final artwork; Task 10 Step 1 stages placeholders so `bin/dev` renders before the art lands.
 - Design tokens (defined in `:root`, added Phase-1 Task 0): radii `--radius-sm/md/lg/pill`, `--accent-tint`/`--accent-tint-2`/`--accent-ink`, `--accent-bg`, `--surface-sunk`, `--surface-hover`, `--danger`, `--online`, `--offline`, `--focus-ring`, `--glow-accent`. All new CSS consumes tokens, not new literals (one-off radii like 10px/11px and multi-stop gradients may stay literal, matching Phase 1).
 - Run the full check with `bin/ci` before declaring done; it must run with the dev stack **stopped** (SQLite lock). Individual tests: `bin/rails test TEST=path -n test_name`.
 - JS and CSS have no unit-test harness here. For those steps "verify" = render-assert markup/data-attributes in a controller test where possible, plus a stated manual check. Do not claim JS/CSS behaviour is tested when it is only manually checked.
@@ -51,13 +52,12 @@
 - Modify `bin/ziwoas_collector` — register the new handler.
 - Create `app/helpers/lights_helper.rb` — `scene_gradient`.
 - Create `test/helpers/lights_helper_test.rb`.
-- Modify `app/views/lights/show.html.erb` — replace the Szenen stub panel; move `is-off` to root; render plush in hero.
-- Modify `app/javascript/controllers/light_detail_controller.js` — `mood`/`scene` actions.
-- Create `app/views/shared/_plush.html.erb` — on/off webp pair.
-- Modify `app/views/switches/_light_card.html.erb` — render plush in the knob.
-- Modify `app/assets/stylesheets/application.css` — scene grid + plush image styles.
-- Modify `test/controllers/lights_controller_test.rb` and `test/controllers/switches_controller_test.rb` — scene/plush render assertions.
-- Add `app/assets/images/lamp_*_{on,off}.webp` (10 files; final art from user, placeholders staged).
+- Modify `app/views/lights/show.html.erb` — replace the Szenen stub panel (Task 6); add the per-type plush class to the hero lamp (Task 10).
+- Modify `app/javascript/controllers/light_detail_controller.js` — `mood`/`scene` actions (Task 7); toggle the hero lamp's `off` state on broadcast (Task 10).
+- Modify `app/views/switches/_light_card.html.erb` — add the per-type plush class to the knob.
+- Modify `app/assets/stylesheets/application.css` — scene grid + per-SKU plush `background-image` styles (same CSS technique as `.sw-knob`).
+- Modify `test/controllers/lights_controller_test.rb` and `test/controllers/switches_controller_test.rb` — scene render + plush-class assertions.
+- Add `app/assets/images/lamp_*_{on,off}.webp` (10 files; final art from user, placeholders staged for local dev).
 
 ---
 
@@ -853,25 +853,25 @@ git commit -m "Map Light SKU to a plush asset family (generic fallback)"
 
 ---
 
-### Task 10: Wire plush assets into the list tile and detail hero
+### Task 10: Wire plush assets into the list tile and detail hero (CSS background-image, like the plug)
 
 **Files:**
 - Add: `app/assets/images/lamp_<type>_{on,off}.webp` (10 files)
-- Create: `app/views/shared/_plush.html.erb`
 - Modify: `app/views/switches/_light_card.html.erb`
-- Modify: `app/views/lights/show.html.erb` (hero block + move `is-off` to the root)
+- Modify: `app/views/lights/show.html.erb` (hero lamp class)
+- Modify: `app/javascript/controllers/light_detail_controller.js` (hero lamp off-toggle)
 - Modify: `app/assets/stylesheets/application.css`
 - Test: `test/controllers/switches_controller_test.rb`, `test/controllers/lights_controller_test.rb`
 
 **Interfaces:**
-- Consumes: `Light#plush_type` (Task 9); the on/off classes the Phase-1 controllers already toggle — `.sw-lamp-knob.off` (list, `lights_controller.js`) and `.ld.is-off` (detail root, `light_detail_controller.js#onBroadcast`).
-- Produces: a reusable `shared/_plush` partial (locals: `type:`) rendering both states; CSS that shows the correct state and tints the lit one.
+- Consumes: `Light#plush_type` (Task 9). Reuses the exact plug technique: an empty element whose plush image is a CSS `background-image`, swapped on/off by an `.off` class.
+- Produces: a `plush-<type>` CSS class carried by the knob (list) and the hero lamp (detail); the lit/greyed swap is driven by `.off` on that same element. The list knob already gets `.off` from `lights_controller.js`; this task makes the detail controller toggle `.off` on the hero **lamp** element (it currently toggles `is-off` on the root — see note).
 
-> **Note on `is-off`:** the Phase-1 detail view renders `is-off` on `.ld-hero`, but `light_detail_controller.js` toggles it on the **root** `.ld` element on every broadcast. This task harmonises them onto the root so the plush swap reacts to live toggles (it also fixes the latent Phase-1 inconsistency where the hero never greyed out on a remote change).
+> **Note — unify the off-trigger:** the Phase-1 detail view renders `is-off` on `.ld-hero` while `light_detail_controller.js` toggles it on the **root** `.ld` element, so the hero never actually reacts to a live toggle (latent Phase-1 inconsistency). `is-off` styles nothing but the lamp. This task drops `is-off` and instead drives the lamp from an `.off` class on the `.ld-lamp` element itself — the same trigger the list knob uses — so one set of `.plush-<type>.off` rules serves both contexts.
 
-- [ ] **Step 1: Ensure the 10 webp files exist (stage placeholders if needed)**
+- [ ] **Step 1: Ensure the 10 webp files exist (stage placeholders for local dev)**
 
-The user supplies the final artwork. If a target file is missing at implementation time, stage a placeholder by copying an existing plush webp so Propshaft resolves and the page/tests render (the user overwrites the binary later — no code change needed):
+The user supplies the final artwork. Tests/CI do not need these files (the suite asserts the CSS class, not an image), but `bin/dev` serving `application.css` does. If a target file is missing, stage a placeholder by copying an existing plush webp (the user overwrites the binary later — no code change needed):
 
 ```bash
 cd "$(git rev-parse --show-toplevel)"
@@ -884,66 +884,55 @@ done
 ls app/assets/images/lamp_*_*.webp | wc -l   # expect 10
 ```
 
-- [ ] **Step 2: Create the shared plush partial**
+- [ ] **Step 2: Add the per-type class to the list-tile knob**
 
-Create `app/views/shared/_plush.html.erb`:
-
-```erb
-<%# Renders the on/off plush pair for a lamp type; CSS shows the right one.
-    locals: type (String) %>
-<%= image_tag "lamp_#{type}_on.webp",  class: "plush-img plush-on",  alt: "", aria: { hidden: "true" } %>
-<%= image_tag "lamp_#{type}_off.webp", class: "plush-img plush-off", alt: "", aria: { hidden: "true" } %>
-```
-
-- [ ] **Step 3: Render the plush in the list-tile knob**
-
-In `app/views/switches/_light_card.html.erb`, replace the empty knob button:
+In `app/views/switches/_light_card.html.erb`, change the knob button's class:
 
 ```erb
   <button class="sw-knob sw-lamp-knob<%= ' off' unless row.on? %>"
-          data-action="lights#toggle" data-lights-key-param="<%= row.light.key %>"
-          aria-label="<%= row.light.name %> umschalten"></button>
-```
-
-with:
-
-```erb
-  <button class="sw-knob sw-lamp-knob<%= ' off' unless row.on? %>"
-          data-action="lights#toggle" data-lights-key-param="<%= row.light.key %>"
-          aria-label="<%= row.light.name %> umschalten">
-    <%= render "shared/plush", type: row.light.plush_type %>
-  </button>
-```
-
-- [ ] **Step 4: Render the plush in the detail hero + move `is-off` to the root**
-
-In `app/views/lights/show.html.erb`, change the root element to carry `is-off`:
-
-```erb
-<div class="ld" data-controller="light-detail"
 ```
 
 to:
 
 ```erb
-<div class="ld<%= ' is-off' unless @row.on? %>" data-controller="light-detail"
+  <button class="sw-knob sw-lamp-knob plush-<%= row.light.plush_type %><%= ' off' unless row.on? %>"
 ```
 
-and change the hero block:
+(leave the rest of the button — `data-action`, `data-lights-key-param`, `aria-label`, the empty body — unchanged; like `.sw-knob`, the image comes from CSS.)
+
+- [ ] **Step 3: Add the per-type class to the detail hero lamp**
+
+In `app/views/lights/show.html.erb`, change the hero lamp div:
 
 ```erb
-  <div class="ld-hero<%= ' is-off' unless @row.on? %>">
     <div class="ld-lamp" data-light-detail-target="lamp"></div>
 ```
 
 to:
 
 ```erb
-  <div class="ld-hero">
-    <div class="ld-lamp" data-light-detail-target="lamp"><%= render "shared/plush", type: @light.plush_type %></div>
+    <div class="ld-lamp plush-<%= @light.plush_type %><%= ' off' unless @row.on? %>" data-light-detail-target="lamp"></div>
 ```
 
-- [ ] **Step 5: Update the CSS (knob, hero lamp, plush images)**
+(The hero `<div class="ld-hero<%= ' is-off' unless @row.on? %>">` wrapper keeps its class for now; Step 5 stops styling the lamp off it. You may leave the `is-off` on `.ld-hero` — nothing references it after Step 5 — or drop it; do not add work either way.)
+
+- [ ] **Step 4: Drive the hero lamp's off-state from the broadcast**
+
+In `app/javascript/controllers/light_detail_controller.js`, inside `onBroadcast`, replace:
+
+```javascript
+    this.element.classList.toggle("is-off", light.on === false)
+```
+
+with:
+
+```javascript
+    if (this.hasLampTarget) this.lampTarget.classList.toggle("off", light.on === false)
+```
+
+(The `lamp` target already exists in `static targets` and is otherwise unused.)
+
+- [ ] **Step 5: Update the CSS (knob, hero lamp, per-type images)**
 
 In `app/assets/stylesheets/application.css`:
 
@@ -960,8 +949,9 @@ with:
 
 ```css
 .ld-lamp { width: 64px; height: 64px; flex-shrink: 0; border-radius: var(--radius-lg);
-           display: flex; align-items: center; justify-content: center; box-shadow: var(--glow-accent); }
-.ld.is-off .ld-lamp { box-shadow: none; filter: grayscale(.4); }
+           background-size: contain; background-position: center; background-repeat: no-repeat;
+           box-shadow: var(--glow-accent); }
+.ld-lamp.off { box-shadow: none; filter: grayscale(.4); }
 ```
 
 (b) Replace the plush-knob placeholder rules:
@@ -975,25 +965,28 @@ with:
                     background: var(--surface-sunk); box-shadow: none; filter: grayscale(.35); }
 ```
 
-with:
+with (the `plush-<type>` rules set only the image, so the same class works on the 88px knob — which inherits size/position/repeat from `.sw-knob` — and the hero lamp):
 
 ```css
-/* plush lamp knob: per-SKU artwork, lit state glows */
-.sw-lamp-knob { border-color: var(--accent); background: transparent; box-shadow: var(--glow-accent);
-                overflow: hidden; padding: 0; }
-.sw-lamp-knob.off { border-color: var(--offline); box-shadow: none; filter: grayscale(.35); }
-/* shared plush image swap (list knob + detail hero) */
-.plush-img { width: 100%; height: 100%; object-fit: contain; }
-.sw-lamp-knob .plush-off, .ld.is-off .ld-lamp .plush-on { display: none; }
-.sw-lamp-knob.off .plush-on { display: none; }
-.sw-lamp-knob.off .plush-off { display: block; }
-.ld.is-off .ld-lamp .plush-off { display: block; }
-.ld-lamp .plush-off { display: none; }
+/* plush lamp: per-SKU artwork via background-image (same technique as .sw-knob) */
+.sw-lamp-knob { border-color: var(--accent); background-color: transparent; box-shadow: var(--glow-accent); }
+.sw-lamp-knob.off { border-color: var(--offline); background-color: var(--surface-sunk);
+                    box-shadow: none; filter: grayscale(.35); }
+.plush-uplighter { background-image: url(lamp_uplighter_on.webp); }
+.plush-uplighter.off { background-image: url(lamp_uplighter_off.webp); }
+.plush-floorlamp { background-image: url(lamp_floorlamp_on.webp); }
+.plush-floorlamp.off { background-image: url(lamp_floorlamp_off.webp); }
+.plush-sconce { background-image: url(lamp_sconce_on.webp); }
+.plush-sconce.off { background-image: url(lamp_sconce_off.webp); }
+.plush-ceiling { background-image: url(lamp_ceiling_on.webp); }
+.plush-ceiling.off { background-image: url(lamp_ceiling_off.webp); }
+.plush-generic { background-image: url(lamp_generic_on.webp); }
+.plush-generic.off { background-image: url(lamp_generic_off.webp); }
 ```
 
-- [ ] **Step 6: Update the render tests**
+- [ ] **Step 6: Update the render tests (assert the plush class, not an image src)**
 
-In `test/controllers/switches_controller_test.rb`, change the setup light to a known SKU and assert the plush image. Replace the `setup` block's light creation line:
+In `test/controllers/switches_controller_test.rb`, change the setup light to a known SKU. Replace the `setup` block's light creation line:
 
 ```ruby
     @light = Light.create!(key: "ABCDEF01", name: "Wohnzimmer Stehlampe")
@@ -1008,38 +1001,36 @@ with:
 and append inside the class (before the final `end`):
 
 ```ruby
-  test "lamp tile renders the per-SKU plush image in the knob" do
+  test "lamp tile knob carries the per-SKU plush class" do
     get switches_url
-    assert_select "button.sw-lamp-knob img.plush-on[src*=?]", "lamp_floorlamp_on"
-    assert_select "button.sw-lamp-knob img.plush-off[src*=?]", "lamp_floorlamp_off"
+    assert_select "button.sw-lamp-knob.plush-floorlamp"
   end
 ```
 
 In `test/controllers/lights_controller_test.rb`, append inside `class LightsControllerTest` (before the final `end`):
 
 ```ruby
-  test "detail hero renders the per-SKU plush image" do
+  test "detail hero lamp carries the per-SKU plush class" do
     @light.update!(sku: "H60A6")
     get light_url(@light.key)
-    assert_select ".ld-lamp img.plush-on[src*=?]", "lamp_ceiling_on"
-    assert_select ".ld-lamp img.plush-off[src*=?]", "lamp_ceiling_off"
+    assert_select ".ld-lamp.plush-ceiling"
   end
 ```
 
 - [ ] **Step 7: Run the affected tests**
 
 Run: `bin/rails test TEST=test/controllers/switches_controller_test.rb TEST=test/controllers/lights_controller_test.rb`
-Expected: PASS (the staged/real webp files resolve via Propshaft; the SKU maps to the expected filename).
+Expected: PASS (no webp dependency — the assertions check the CSS class the SKU maps to).
 
 - [ ] **Step 8: Manual check (stated, not automated)**
 
-Reload Schalten: each lamp shows its plush figure in the right-hand knob (lit when on, greyed when off). Open a lamp → the hero shows the larger plush; toggling power swaps lit/greyed. Confirm the `lamp_<type>` matches the device (H60B0→uplighter, H607C→floorlamp, H6038→sconce, H60A6→ceiling, else generic). Note manual verification in the commit body.
+Reload Schalten: each lamp shows its plush figure in the right-hand knob (lit when on, greyed when off). Open a lamp → the hero shows the larger plush; toggling power swaps lit/greyed live. Confirm the `lamp_<type>` matches the device (H60B0→uplighter, H607C→floorlamp, H6038→sconce, H60A6→ceiling, else generic). Note manual verification in the commit body.
 
 - [ ] **Step 9: Commit**
 
 ```bash
-git add app/assets/images/lamp_*_*.webp app/views/shared/_plush.html.erb app/views/switches/_light_card.html.erb app/views/lights/show.html.erb app/assets/stylesheets/application.css test/controllers/switches_controller_test.rb test/controllers/lights_controller_test.rb
-git commit -m "Wire per-SKU plush assets into the lamp tile and detail hero"
+git add app/assets/images/lamp_*_*.webp app/views/switches/_light_card.html.erb app/views/lights/show.html.erb app/javascript/controllers/light_detail_controller.js app/assets/stylesheets/application.css test/controllers/switches_controller_test.rb test/controllers/lights_controller_test.rb
+git commit -m "Wire per-SKU plush assets into the lamp tile and detail hero (CSS background-image)"
 ```
 
 ---
@@ -1082,15 +1073,15 @@ git commit -m "Fix rubocop offences in lamp UI Phase 2"
 - Per-type plush, modelled per SKU, on/off, CSS-tinted glow; generic fallback → Tasks 9, 10. ✓
 - Backend item "status broadcast of active scene" → explicitly deferred (see "What is NOT in Phase 2"). Zones/segments → Phase 3.
 
-**Placeholder scan:** every code step shows complete code; no TBD/TODO. The staged webp copies (Task 10 Step 1) are a real, runnable fallback so the wiring is testable before final art lands — flagged, not silent.
+**Placeholder scan:** every code step shows complete code; no TBD/TODO. The staged webp copies (Task 10 Step 1) are a real, runnable fallback for local dev before final art lands — flagged, not silent. Tests/CI do not depend on them.
 
 **Type/selector consistency:**
 - Command values `effect`/`mood` are produced by the JS (Task 7) and consumed by the controller `case` (Task 3) verbatim.
 - Stimulus params are namespaced: `data-light-detail-mood-param` / `data-light-detail-scene-param` (Task 6) ↔ `event.params.mood` / `event.params.scene` (Task 7). (Phase-1 critical-bug guard honoured.)
 - `LightMood::Mood` fields used in the view (`id, name, emoji, gradient`) and controller (`brightness, color, color_temp_k`) all exist in the `Data.define` (Task 2).
 - `firmware_scenes` is written by the discovery handler (Task 5) and read by the view (Task 6); the device-id parse in Task 5 keys off the same `<id>` `GoveeDiscoveryHandler` already stores as `Light#key`.
-- Plush on/off CSS keys off `.sw-lamp-knob.off` (toggled by `lights_controller.js`) and `.ld.is-off` (toggled by `light_detail_controller.js`); Task 10 Step 4 moves the server-rendered `is-off` onto the root `.ld` so server and JS agree.
-- `plush_type` values (`uplighter/floorlamp/sconce/ceiling/generic`, Task 9) match the asset filenames (Task 10) and the partial's `lamp_#{type}_{on,off}.webp` interpolation.
+- Plush uses the plug's CSS-`background-image` technique: a `plush-<type>` class on the element with `.off` swapping to the off image. Both contexts use `.off` on the same element — the list knob already gets it from `lights_controller.js`; Task 10 Step 4 makes `light_detail_controller.js` toggle `.off` on the hero `.ld-lamp` (replacing the dead `is-off`-on-root path).
+- `plush_type` values (`uplighter/floorlamp/sconce/ceiling/generic`, Task 9) match the CSS class names and the `lamp_<type>_{on,off}.webp` filenames (Task 10).
 
 **Token consistency:** new CSS (Tasks 8, 10) uses `--border`, `--card`, `--text`, `--accent`, `--offline`, `--surface-sunk`, `--radius-lg`, `--radius-md` (13px scene radius is a one-off, kept literal like Phase-1 one-offs), `--focus-ring`, `--glow-accent` — all defined in `:root`.
 
