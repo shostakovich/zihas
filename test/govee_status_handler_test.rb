@@ -9,17 +9,14 @@ class GoveeStatusHandlerTest < ActiveSupport::TestCase
     LightState.delete_all
     Light.delete_all
     @log_io  = StringIO.new
-    @handler = GoveeStatusHandler.new(topic_prefix: "govee", logger: Logger.new(@log_io))
+    @handler = GoveeStatusHandler.new(logger: Logger.new(@log_io))
   end
 
-  def payload(overrides = {})
-    JSON.generate({ "on" => true, "brightness" => 60, "color_r" => 10, "color_g" => 20,
-                    "color_b" => 30, "color_temp_k" => 0, "reachable" => true }.merge(overrides))
-  end
+  def state_topic(key) = "gv2mqtt/light/#{key}/state"
 
   def capture_broadcasts
     broadcasts = []
-    server = ActionCable.server
+    server   = ActionCable.server
     original = server.method(:broadcast)
     server.define_singleton_method(:broadcast) { |stream, data| broadcasts << [ stream, data ] }
     yield broadcasts
@@ -27,73 +24,77 @@ class GoveeStatusHandlerTest < ActiveSupport::TestCase
     server.define_singleton_method(:broadcast, original)
   end
 
-  test "subscriptions targets govee status topics" do
-    assert_equal [ "govee/+/status" ], @handler.subscriptions
+  test "subscriptions cover state and availability" do
+    assert_equal [ "gv2mqtt/light/+/state", "gv2mqtt/availability" ], @handler.subscriptions
   end
 
-  test "matches only govee status topics" do
-    assert @handler.matches?("govee/lamp/status")
+  test "matches state topics and the availability topic only" do
+    assert @handler.matches?("gv2mqtt/light/14ABDB4844064B60/state")
+    assert @handler.matches?("gv2mqtt/availability")
+    refute @handler.matches?("gv2mqtt/light/gv2mqtt-14ABDB4844064B60/config")
     refute @handler.matches?("shellies/bkw/status/switch:0")
   end
 
-  test "handle writes LightState from the payload" do
-    @handler.handle("govee/lamp/status", payload)
-    state = LightState.find_by(light_key: "lamp")
-    assert_equal true, state.on
-    assert_equal 60,   state.brightness
-    assert_equal 30,   state.color_b
-    assert_equal true, state.reachable
+  test "handle records on/brightness/color from rgb-mode state" do
+    @handler.handle(state_topic("14ABDB4844064B60"),
+      JSON.generate({ "state" => "ON", "brightness" => 60, "color_mode" => "rgb",
+                      "color" => { "r" => 10, "g" => 20, "b" => 30 } }))
+    s = LightState.find_by(light_key: "14ABDB4844064B60")
+    assert_equal true, s.on
+    assert_equal 60,   s.brightness
+    assert_equal 30,   s.color_b
+    assert_equal true, s.reachable
+  end
+
+  test "handle converts color_temp mireds to kelvin" do
+    @handler.handle(state_topic("ABC123"),
+      JSON.generate({ "state" => "ON", "brightness" => 80, "color_mode" => "color_temp",
+                      "color_temp" => 250 }))
+    s = LightState.find_by(light_key: "ABC123")
+    # 1_000_000 / 250 = 4000
+    assert_equal 4000, s.color_temp_k
+  end
+
+  test "handle does not clobber color when a color_temp-only update arrives" do
+    @handler.handle(state_topic("ABC123"),
+      JSON.generate({ "state" => "ON", "color" => { "r" => 1, "g" => 2, "b" => 3 } }))
+    @handler.handle(state_topic("ABC123"),
+      JSON.generate({ "state" => "ON", "color_temp" => 500 }))
+    s = LightState.find_by(light_key: "ABC123")
+    assert_equal 1,    s.color_r, "previous rgb must be preserved"
+    assert_equal 2000, s.color_temp_k
+  end
+
+  test "handle marks the light off on state OFF" do
+    @handler.handle(state_topic("ABC123"), JSON.generate({ "state" => "OFF" }))
+    assert_equal false, LightState.find_by(light_key: "ABC123").on
   end
 
   test "handle broadcasts the light state on the dashboard stream" do
     capture_broadcasts do |broadcasts|
-      @handler.handle("govee/lamp/status", payload)
+      @handler.handle(state_topic("ABC123"), JSON.generate({ "state" => "ON", "brightness" => 55 }))
       stream, data = broadcasts.first
       assert_equal "dashboard", stream
-      assert_equal "lamp", data[:lights].first[:light_key]
-      assert_equal 60,     data[:lights].first[:brightness]
+      assert_equal "ABC123", data[:lights].first[:light_key]
+      assert_equal 55,       data[:lights].first[:brightness]
     end
   end
 
-  test "handle fills the light sku when present" do
-    Light.create!(name: "Lampe", key: "lamp")
-    @handler.handle("govee/lamp/status", payload("sku" => "H6076"))
-    assert_equal "H6076", Light.find_by(key: "lamp").sku
+  test "availability offline marks all known lights unreachable" do
+    LightState.record_state("ABC123", on: true, reachable: true)
+    @handler.handle("gv2mqtt/availability", "offline")
+    assert_equal false, LightState.find_by(light_key: "ABC123").reachable
+  end
+
+  test "availability online is a no-op" do
+    LightState.record_state("ABC123", on: true, reachable: true)
+    @handler.handle("gv2mqtt/availability", "online")
+    assert_equal true, LightState.find_by(light_key: "ABC123").reachable
   end
 
   test "handle ignores invalid JSON" do
-    assert_nothing_raised { @handler.handle("govee/lamp/status", "not-json{") }
+    assert_nothing_raised { @handler.handle(state_topic("ABC123"), "not-json{") }
     assert_equal 0, LightState.count
     assert_match(/invalid json/i, @log_io.string)
-  end
-
-  # FIX 2: last_seen_at not bumped when reachable:false
-  test "handle does not update last_seen_at when reachable is false" do
-    t0 = Time.current
-    travel_to t0 do
-      @handler.handle("govee/lamp/status", payload("reachable" => true))
-    end
-    state_after_t0 = LightState.find_by(light_key: "lamp")
-    assert_in_delta t0.to_f, state_after_t0.last_seen_at.to_f, 1.0
-
-    t1 = t0 + 60
-    travel_to t1 do
-      @handler.handle("govee/lamp/status", payload("reachable" => false))
-    end
-    state_after_t1 = LightState.find_by(light_key: "lamp")
-    assert_in_delta t0.to_f, state_after_t1.last_seen_at.to_f, 1.0, "last_seen_at must not change on unreachable"
-  end
-
-  test "handle updates last_seen_at when reachable is true" do
-    t0 = Time.current
-    travel_to t0 do
-      @handler.handle("govee/lamp/status", payload("reachable" => true))
-    end
-    t1 = t0 + 10
-    travel_to t1 do
-      @handler.handle("govee/lamp/status", payload("reachable" => true))
-    end
-    state = LightState.find_by(light_key: "lamp")
-    assert_in_delta t1.to_f, state.last_seen_at.to_f, 1.0
   end
 end
