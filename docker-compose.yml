@@ -40,3 +40,18 @@ services:
       - ./config/ziwoas.yml:/rails/config/ziwoas.yml:ro
     depends_on:
       - ziwoas
+
+  govee2mqtt:
+    image: ghcr.io/wez/govee2mqtt:latest
+    container_name: govee2mqtt
+    restart: unless-stopped
+    # Host networking is required for Govee LAN multicast discovery.
+    network_mode: host
+    command: ["--hass-discovery-prefix", "gv2mqtt", "serve"]
+    env_file:
+      - config/govee2mqtt.env
+    volumes:
+      - govee2mqtt_data:/data
+
+volumes:
+  govee2mqtt_data:

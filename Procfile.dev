@@ -1,4 +1,4 @@
 web:    ./bin/rails server
 worker: ./bin/ziwoas_collector
 jobs:   ./bin/jobs
-govee:  ./bin/govee_bridge
+govee:  ./bin/govee2mqtt

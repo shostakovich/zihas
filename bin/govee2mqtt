@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Launches a locally-built govee2mqtt for development. Build once per the docs:
+#   git clone https://github.com/wez/govee2mqtt vendor/govee2mqtt
+#   (cd vendor/govee2mqtt && cargo build --release)
+# Override the binary path with GOVEE2MQTT_BIN if you built it elsewhere.
+set -euo pipefail
+
+ENV_FILE="config/govee2mqtt.env"
+if [[ -f "$ENV_FILE" ]]; then
+  set -a; source "$ENV_FILE"; set +a
+else
+  echo "bin/govee2mqtt: $ENV_FILE missing — copy config/govee2mqtt.env.example" >&2
+  exit 1
+fi
+
+BIN="${GOVEE2MQTT_BIN:-vendor/govee2mqtt/target/release/govee}"
+if [[ ! -x "$BIN" ]]; then
+  echo "bin/govee2mqtt: $BIN not built — see docs/govee2mqtt-setup.md" >&2
+  exit 1
+fi
+
+exec "$BIN" --hass-discovery-prefix gv2mqtt serve

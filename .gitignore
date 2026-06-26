@@ -45,3 +45,6 @@
 /coverage/
 /.superpowers/*
 /.worktrees/
+
+/config/govee2mqtt.env
+/vendor/govee2mqtt/
