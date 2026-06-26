@@ -39,4 +39,15 @@ class LightTest < ActiveSupport::TestCase
     assert_equal room, light.room
     assert_includes room.lights, light
   end
+
+  test "firmware_scenes defaults to an empty array" do
+    light = Light.create!(name: "Decke", key: "A1B2C3D4E5F60100")
+    assert_equal [], light.reload.firmware_scenes
+  end
+
+  test "firmware_scenes round-trips an array of names" do
+    light = Light.create!(name: "Decke", key: "A1B2C3D4E5F60101",
+                          firmware_scenes: %w[Forest Aurora])
+    assert_equal %w[Forest Aurora], light.reload.firmware_scenes
+  end
 end
