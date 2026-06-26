@@ -50,4 +50,16 @@ class LightTest < ActiveSupport::TestCase
                           firmware_scenes: %w[Forest Aurora])
     assert_equal %w[Forest Aurora], light.reload.firmware_scenes
   end
+
+  test "plush_type maps known SKUs case-insensitively" do
+    assert_equal "uplighter", Light.new(sku: "H60B0").plush_type
+    assert_equal "floorlamp", Light.new(sku: "h607c").plush_type
+    assert_equal "sconce",    Light.new(sku: "H6038").plush_type
+    assert_equal "ceiling",   Light.new(sku: "H60A6").plush_type
+  end
+
+  test "plush_type falls back to generic for unknown or blank SKU" do
+    assert_equal "generic", Light.new(sku: "H9999").plush_type
+    assert_equal "generic", Light.new(sku: nil).plush_type
+  end
 end
