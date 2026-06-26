@@ -69,7 +69,31 @@
   <% end %>
 
   <div class="ld-panel" data-light-detail-target="panel" data-tab="scenes" hidden>
-    <div class="ld-card ld-soon">Szenen kommen in Phase 2.</div>
+    <div class="ld-card">
+      <p class="ld-label">Stimmungen</p>
+      <div class="ld-scenes">
+        <% LightMood::ALL.each do |mood| %>
+          <button class="ld-scene" data-action="light-detail#mood"
+                  data-light-detail-mood-param="<%= mood.id %>">
+            <span class="ld-scene-prev" style="background: <%= mood.gradient %>"></span>
+            <span class="ld-scene-nm"><%= mood.emoji %> <%= mood.name %></span>
+          </button>
+        <% end %>
+      </div>
+
+      <% if @light.firmware_scenes.any? %>
+        <p class="ld-label" style="margin-top: 16px;">Govee-Szenen</p>
+        <div class="ld-scenes ld-scenes-scroll">
+          <% @light.firmware_scenes.each do |scene| %>
+            <button class="ld-scene" data-action="light-detail#scene"
+                    data-light-detail-scene-param="<%= scene %>">
+              <span class="ld-scene-prev" style="background: <%= scene_gradient(scene) %>"></span>
+              <span class="ld-scene-nm"><%= scene %></span>
+            </button>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
   </div>
 
   <div class="ld-error" data-light-detail-target="error"></div>

@@ -82,4 +82,24 @@ class LightsControllerTest < ActionDispatch::IntegrationTest
     assert_select "button[data-light-detail-temp-param='2700']"
     assert_select "button[data-light-detail-color-param]"
   end
+
+  test "scenes tab renders the curated Stimmungen" do
+    light = Light.create!(key: "ABCDEF04", name: "Decke")
+    get light_url(light.key)
+    assert_select "button[data-action='light-detail#mood'][data-light-detail-mood-param='reading']"
+    assert_select "button[data-light-detail-mood-param='party']"
+  end
+
+  test "scenes tab renders the device firmware scenes when present" do
+    light = Light.create!(key: "ABCDEF05", name: "Decke", firmware_scenes: %w[Forest Aurora])
+    get light_url(light.key)
+    assert_select "button[data-action='light-detail#scene'][data-light-detail-scene-param='Forest']"
+    assert_select "button[data-light-detail-scene-param='Aurora']"
+  end
+
+  test "scenes tab omits the Govee section when the light has no scenes" do
+    light = Light.create!(key: "ABCDEF06", name: "Decke", firmware_scenes: [])
+    get light_url(light.key)
+    assert_select "button[data-action='light-detail#scene']", count: 0
+  end
 end
