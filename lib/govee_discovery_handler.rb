@@ -24,7 +24,14 @@ class GoveeDiscoveryHandler
     return @logger.warn("GoveeDiscoveryHandler: no state_topic in config on #{topic}") unless key
 
     light = Light.find_or_initialize_by(key: key)
-    light.name = data["name"].presence || key if light.new_record?
+    discovered_name = data["name"].presence
+    if light.new_record?
+      light.name = discovered_name || key
+    elsif discovered_name && discovered_name != key && light.name == light.key
+      # Adopt a real name only while it is still the device-id placeholder;
+      # user renames (name != key) are preserved.
+      light.name = discovered_name
+    end
     model = data.dig("device", "model")
     light.sku = model if model.present?
     modes = Array(data["supported_color_modes"])

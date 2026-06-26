@@ -56,6 +56,19 @@ class GoveeDiscoveryHandlerTest < ActiveSupport::TestCase
     assert_equal true, light.supports_color, "capabilities are refreshed"
   end
 
+  test "refreshes a still-default name (== key) from discovery" do
+    Light.create!(name: "14ABDB4844064B60", key: "14ABDB4844064B60",
+                  supports_color: false, supports_color_temp: false)
+    @handler.handle("gv2mqtt/light/x/config", config("name" => "Floor Lamp 2"))
+    assert_equal "Floor Lamp 2", Light.find_by(key: "14ABDB4844064B60").name
+  end
+
+  test "does not overwrite the default name when discovery has no real name" do
+    Light.create!(name: "14ABDB4844064B60", key: "14ABDB4844064B60")
+    @handler.handle("gv2mqtt/light/x/config", config("name" => "14ABDB4844064B60"))
+    assert_equal "14ABDB4844064B60", Light.find_by(key: "14ABDB4844064B60").name
+  end
+
   test "never deletes; an unrelated light is untouched" do
     Light.create!(name: "Andere", key: "FFFFFFFFFFFFFFFF")
     @handler.handle("gv2mqtt/light/x/config", config)
