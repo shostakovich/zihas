@@ -6,6 +6,12 @@ ZiWoAS delegates all Govee lamp I/O to [`wez/govee2mqtt`](https://github.com/wez
 Copy `config/govee2mqtt.env.example` to `config/govee2mqtt.env` (gitignored) and fill in
 your Govee email/password, API key, and the MQTT broker host/port.
 
+**`GOVEE_MQTT_HOST` must equal `mqtt.host` in `config/ziwoas.yml`** — ZiWoAS and
+govee2mqtt are two independent MQTT clients that only meet on the broker. Do not
+use `127.0.0.1`: in the prod container (`network_mode: host`) that is the host's
+own loopback, so the two would talk to different brokers and commands, state, and
+discovery would silently never cross between them.
+
 ## Development (native binary)
 Build once, pinned to a known tag/commit:
 
