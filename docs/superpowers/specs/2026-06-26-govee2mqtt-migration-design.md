@@ -18,8 +18,11 @@ der Lampen (keine manuelle Pflege mehr). Cloud-Effekte/Szenen bleiben **out of s
 - `{id}` = `topic_safe_id` = Govee-Device-ID (MAC-ähnlich, **8 Byte / 16 Hex**, z. B.
   `14ABDB4844064B60`), `:` entfernt. **Achtung:** `topic_safe_id` normalisiert die
   Schreibweise **nicht** — Case ist so, wie Govee sie liefert (geräteabhängig, manche
-  Geräte lowercase ohne `:`). → ZiWoAS muss beim Einlesen **upcasen** und Key-Matching
-  **case-insensitiv** machen.
+  Geräte lowercase ohne `:`). → ZiWoAS speichert die ID **verbatim** (genau wie
+  govee2mqtt sie liefert) als `Light.key` und verwendet sie **unverändert** in
+  Command/State-Topics. **Keine** Case-Transformation: die ID ist pro Gerät
+  deterministisch (reine Funktion der `device.id`), also über Discovery/State/Command
+  hinweg konsistent — ein Upcasen würde das Command-Topic gegen govee2mqtt brechen.
 - **Schema:** Home-Assistant JSON-Light (`schema: "json"`)
   - State: `{"state":"ON"|"OFF","brightness":0-100,"color":{...},"color_temp":<mired>,"color_mode":...,"effect":<scene>}`
   - `brightness_scale: 100` → keine Umrechnung (unsere 0–100 passen 1:1)
@@ -192,7 +195,8 @@ Alle Vertragsaussagen oben sind gegen `wez/govee2mqtt@main` per Subagent geprüf
 Bestätigt; folgende Punkte wurden dabei korrigiert/präzisiert und sind oben eingearbeitet:
 
 - **Command braucht `state`** (Pflichtfeld, sonst Deserialisierungs-Fehler; brightness allein schaltet nicht an).
-- **Device-ID-Case** geräteabhängig → upcasen + case-insensitiv matchen.
+- **Device-ID-Case** geräteabhängig → **verbatim** speichern/verwenden (nie transformieren);
+  pro Gerät deterministisch und end-to-end konsistent, daher kein Normalisieren nötig.
 - **State mode-abhängig** (color XOR color_temp).
 - **CLI:** Subcommand `serve`, `--hass-discovery-prefix` ist `global` →
   `govee --hass-discovery-prefix gv2mqtt serve` (Flag vor oder nach `serve` ok).
