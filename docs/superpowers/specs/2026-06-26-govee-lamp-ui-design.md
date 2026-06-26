@@ -15,8 +15,10 @@ HTML im Ordner [`2026-06-26-govee-lamp-ui-mockups/`](2026-06-26-govee-lamp-ui-mo
   „max. 2"-Automatik mit Toast (finale Variante; der frühere Nachfrage-Dialog wurde verworfen).
 - [`colorpicker.html`](2026-06-26-govee-lamp-ui-mockups/colorpicker.html) — Picker-Stile (gewählt: C =
   Swatches + „⊕"-Rad) und der Weiß-Tab (Wärme-Regler + Presets). Reihenfolge final: **Weiß vor Farbe**.
-- [`scenes-and-tile.html`](2026-06-26-govee-lamp-ui-mockups/scenes-and-tile.html) — Szenen-Tab und die
-  Lampen-Kachel im Schalten-Tab.
+- [`scenes-and-tile.html`](2026-06-26-govee-lamp-ui-mockups/scenes-and-tile.html) — Szenen-Tab (die
+  Listen-Kachel darin ist überholt, siehe `tile-v2.html`).
+- [`tile-v2.html`](2026-06-26-govee-lamp-ui-mockups/tile-v2.html) — **finale** Listen-Kachel: spiegelt
+  das Steckdosen-2×2-Grid, Plüsch-Knopf rechts, Knöpfe in gemeinsamer Spalte.
 
 ## Ziel
 
@@ -67,15 +69,24 @@ verifizieren**. Das Design verbaut keinen der beiden Fälle.
 
 ### Schalten-Tab: Lampen-Liste
 
-Eine Kachel pro Lampe (ersetzt `_light_card`):
+Eine Kachel pro Lampe (ersetzt `_light_card`). **Sie spiegelt exakt das `sw-plug-card`-2×2-Grid**
+(`grid-template-areas: "info knob" "sub aux"`), damit Lampen- und Steckdosen-Knöpfe in einer
+gemeinsamen rechten Spalte stehen (vorher war die Lampen-Bedienung links → inkonsistent):
 
-- **Plüsch-Lampe** links (Zustand: an = leuchtend, in aktueller Lichtfarbe getönt; aus = grau).
-- **Name** + Zustandszeile (z.B. „An · Warmweiß · 60 %", „2 Zonen an · Welle + Leselicht", „Aus").
-- **Chevron ›**.
+- **info** (links-oben): Name + Zustandszeile (z.B. „An · Warmweiß · 60 %",
+  „2 Zonen an · Welle + Leselicht", „Aus").
+- **knob** (rechts-oben): runder **Plüsch-Lampen-Knopf** an derselben Position wie der
+  Steckdosen-Knopf. Zustand: an = leuchtend, in aktueller Lichtfarbe getönt; aus = grau.
+- **sub** (links-unten): „Anpassen ›" / „Zonen & Szenen ›" — sichtbares Affordance für die
+  Detailseite (entspricht dem „Zeitfenster ▾" der Steckdose).
+- **aux** (rechts-unten): Chip mit Helligkeit/Farb-Swatch (entspricht dem Watt-Chip).
 
 Interaktion:
-- **Plüsch-Lampe antippen** → direkt An/Aus (optimistisch, wie der heutige `sw-knob`).
-- **Karte antippen** → Detailseite.
+- **Plüsch-Knopf antippen** → direkt An/Aus (optimistisch, wie der heutige `sw-knob`);
+  stoppt die Event-Weiterleitung.
+- **Kartenfläche antippen** (überall sonst) → Detailseite. „Anpassen ›" ist nur der explizite
+  Hinweis darauf. (Unterschied zur Steckdose, deren Karte die Zeitfenster *inline* aufklappt
+  statt zu navigieren — Lampen haben eine eigene Detailseite, Steckdosen nicht.)
 
 ### Detailseite (eine Architektur, adaptiv)
 

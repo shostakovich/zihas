@@ -1,0 +1,82 @@
+<style>
+  .zw { --bg:#f8f9fa; --card:#fff; --border:#dee2e6; --text:#212529; --muted:#6c757d;
+        --accent:#f59f00; --accent-bg:linear-gradient(135deg,#fff3bf 0%,#ffe066 100%);
+        --online:#40c057; --offline:#adb5bd; }
+  .phone { width:340px; margin:0 auto; background:var(--bg); border:1px solid var(--border);
+           border-radius:26px; padding:16px; box-shadow:0 8px 30px rgba(0,0,0,.10);
+           color:var(--text); font-size:13px; }
+  .h1 { font-size:18px; color:var(--muted); font-weight:500; margin:0 0 14px; }
+  .seclbl { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin:16px 0 8px; }
+  /* shared card grid (identical to sw-plug-card) */
+  .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px;
+          margin-bottom:12px; display:grid; grid-template-columns:1fr auto; column-gap:14px; row-gap:10px;
+          grid-template-areas:"info knob" "sub aux"; align-items:center; }
+  .card.off { opacity:.62; }
+  .info { grid-area:info; min-width:0; }
+  .name { font-weight:600; font-size:17px; }
+  .state { font-size:12.5px; color:var(--muted); margin-top:3px; }
+  .state b { color:var(--text); font-weight:600; }
+  .knob { grid-area:knob; justify-self:end; width:74px; height:74px; border-radius:50%;
+          display:flex; align-items:center; justify-content:center; font-size:36px; }
+  .knob.plug-on { border:4px solid var(--online); background:#e6f4ea; }
+  .knob.plug-off { border:4px solid var(--offline); background:#eef1f4; filter:grayscale(.3); }
+  .knob.lamp-on { border:4px solid var(--accent);
+                  background:radial-gradient(circle at 50% 38%,#fff3bf,#ffe066 55%,#f59f00);
+                  box-shadow:0 0 16px 2px rgba(245,159,0,.4); }
+  .knob.lamp-rgb { border:4px solid #7c5cff;
+                   background:radial-gradient(circle at 50% 38%,#ffd9f5,#7c5cff 70%);
+                   box-shadow:0 0 16px 2px rgba(124,92,255,.4); }
+  .knob.lamp-off { border:4px solid var(--offline); background:#eef1f4; filter:grayscale(.35); }
+  .sub { grid-area:sub; align-self:start; }
+  .sublink { font-size:12.5px; color:var(--muted); text-decoration:none; }
+  .summary { font-size:13px; color:var(--muted); }
+  .aux { grid-area:aux; justify-self:end; align-self:start; display:inline-flex; align-items:center; gap:5px;
+         background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:3px 9px;
+         font-size:13px; font-variant-numeric:tabular-nums; }
+  .aux .ic { color:var(--accent); }
+  .swatch { width:13px; height:13px; border-radius:4px; border:1px solid rgba(0,0,0,.15); }
+  .note { font-size:11.5px; color:var(--muted); text-align:center; margin-top:6px; }
+</style>
+
+<h2>Lampen-Kachel spiegelt die Steckdosen-Kachel</h2>
+<p class="subtitle">Gleiches 2×2-Grid: Knopf <b>rechts-oben</b> (an/aus), Sekundär-Aktion links-unten, Chip rechts-unten. Die Knöpfe stehen jetzt sauber in einer Spalte.</p>
+
+<div class="phone zw">
+  <div class="h1">Schalten</div>
+
+  <div class="seclbl">Steckdosen</div>
+  <div class="card">
+    <div class="info"><div class="name">Waschmaschine</div><div class="state"><b>An</b></div></div>
+    <div class="knob plug-on">🧸</div>
+    <div class="sub"><span class="summary">Zeitfenster (2) ▾</span></div>
+    <div class="aux"><span class="ic">⚡</span> 412 W</div>
+  </div>
+
+  <div class="seclbl">Lampen</div>
+
+  <div class="card">
+    <div class="info"><div class="name">Wohnzimmer Stehlampe</div>
+      <div class="state"><b>An</b> · Warmweiß · 60 %</div></div>
+    <div class="knob lamp-on">💡</div>
+    <div class="sub"><a class="sublink" href="#">Anpassen ›</a></div>
+    <div class="aux"><span class="swatch" style="background:#ffd9a0"></span> 60 %</div>
+  </div>
+
+  <div class="card">
+    <div class="info"><div class="name">Uplighter</div>
+      <div class="state"><b>2 Zonen an</b> · Welle + Leselicht</div></div>
+    <div class="knob lamp-rgb">🪔</div>
+    <div class="sub"><a class="sublink" href="#">Zonen &amp; Szenen ›</a></div>
+    <div class="aux"><span class="swatch" style="background:#7c5cff"></span> RGB</div>
+  </div>
+
+  <div class="card off">
+    <div class="info"><div class="name">Deckenlampe Küche</div>
+      <div class="state">Aus</div></div>
+    <div class="knob lamp-off">💡</div>
+    <div class="sub"><a class="sublink" href="#">Anpassen ›</a></div>
+  </div>
+</div>
+
+<p class="note">Knopf antippen = an/aus · „Anpassen ›" (oder Karte) = Detailseite. Plüsch-Motive sind Platzhalter-Emojis.</p>
+<p class="subtitle" style="text-align:center;margin-top:12px">Passt die gespiegelte Ausrichtung so?</p>
