@@ -1224,3 +1224,21 @@ body.page-light-detail { max-width: 560px; }
 .ld-error { font-size: 12px; color: var(--danger); margin-top: 2px; min-height: 16px; }
 .ld.pending { opacity: .85; }
 .ld.unconfirmed .ld-hero { border-color: var(--danger); }
+
+/* lamp tile mirrors the plug card 2x2 grid */
+.sw-light-card { display: grid; grid-template-columns: 1fr auto;
+                 column-gap: 14px; row-gap: 8px; align-items: center;
+                 grid-template-areas: "info knob" "sub aux"; }
+.sw-light-link { grid-area: info; min-width: 0; text-decoration: none; color: inherit; display: block; }
+.sw-light-card .sw-knob { grid-area: knob; justify-self: end; }
+.sw-state { font-size: 13px; color: var(--muted); margin-top: 3px; }
+.sw-light-sub { grid-area: sub; align-self: start; font-size: 13px; color: var(--muted);
+                text-decoration: none; }
+.sw-light-card .sw-watt-chip { grid-area: aux; }
+.sw-swatch { width: 13px; height: 13px; border-radius: 4px; border: 1px solid rgba(0,0,0,.15); }
+/* plush placeholder: a glowing knob, tinted via CSS (real assets in Phase 4) */
+.sw-lamp-knob { border-color: var(--accent);
+                background: radial-gradient(circle at 50% 38%, var(--accent-tint), var(--accent-tint-2) 55%, var(--accent));
+                background-image: none; box-shadow: var(--glow-accent); }
+.sw-lamp-knob.off { border-color: var(--offline);
+                    background: var(--surface-sunk); box-shadow: none; filter: grayscale(.35); }

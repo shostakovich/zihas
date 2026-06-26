@@ -1,12 +1,23 @@
 <%# app/views/switches/_light_card.html.erb %>
-<div class="sw-card sw-light-card" id="light_card_<%= row.light.key %>"
-     data-light-key="<%= row.light.key %>">
-  <%= render "switches/light_head", row: row %>
-  <input type="range" min="0" max="100" value="<%= row.brightness %>"
-         data-action="lights#brightness" data-lights-key-param="<%= row.light.key %>"
-         data-lights-target="brightness" aria-label="Helligkeit <%= row.light.name %>">
-  <% if row.light.supports_color %>
-    <input type="color" data-action="lights#color"
-           data-lights-key-param="<%= row.light.key %>" aria-label="Farbe <%= row.light.name %>">
+<div class="sw-card sw-light-card<%= ' sw-offline' unless row.on? %>"
+     id="light_card_<%= row.light.key %>" data-light-key="<%= row.light.key %>">
+  <%= link_to light_path(row.light.key), class: "sw-light-link", "aria-label": "#{row.light.name} Details" do %>
+    <div class="sw-info">
+      <span class="sw-name"><%= row.light.name %></span>
+      <div class="sw-state"><%= row.summary %></div>
+      <div class="sw-error" id="light_error_<%= row.light.key %>"></div>
+    </div>
+  <% end %>
+
+  <button class="sw-knob sw-lamp-knob<%= ' off' unless row.on? %>"
+          data-action="lights#toggle" data-lights-key-param="<%= row.light.key %>"
+          aria-label="<%= row.light.name %> umschalten"></button>
+
+  <%= link_to "Anpassen ›", light_path(row.light.key), class: "sw-light-sub" %>
+
+  <% if (chip = row.chip) %>
+    <span class="sw-watt-chip">
+      <span class="sw-swatch" style="background: <%= chip[:swatch] %>"></span><%= chip[:label] %>
+    </span>
   <% end %>
 </div>
