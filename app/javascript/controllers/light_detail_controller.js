@@ -78,7 +78,7 @@ export default class extends Controller {
     if (this.hasErrorTarget) this.errorTarget.textContent = ""
     this.element.classList.toggle("is-off", light.on === false)
     this.element.querySelectorAll(".ld-pill").forEach((b) => {
-      const wantsOn = b.dataset.action.includes("#on")
+      const wantsOn = b.dataset.action?.includes("#on") ?? false
       b.classList.toggle("on", wantsOn === (light.on === true))
     })
     if (typeof light.brightness === "number" && this.hasBrightnessTarget) {
