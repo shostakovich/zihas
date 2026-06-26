@@ -524,5 +524,4 @@ class ConfigLoaderTest < Minitest::Test
     yaml = valid_yaml + "solakon:\n  port: 502\n"
     assert_raises(ConfigLoader::Error) { load_yaml(yaml) }
   end
-
 end
