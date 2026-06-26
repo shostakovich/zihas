@@ -76,4 +76,20 @@ class GoveeCommanderTest < ActiveSupport::TestCase
       GoveeCommander.turn(@light, on: true, **opts(c))
     end
   end
+
+  test "set_zone publishes a raw ON to the per-zone switch command topic" do
+    c = FakeMqtt.new
+    GoveeCommander.set_zone(@light, zone: "rippleLightToggle", on: true, **opts(c))
+    topic, payload = c.published.first
+    assert_equal "gv2mqtt/switch/14ABDB4844064B60/command/rippleLightToggle", topic
+    assert_equal "ON", payload
+  end
+
+  test "set_zone publishes a raw OFF (not JSON) when off" do
+    c = FakeMqtt.new
+    GoveeCommander.set_zone(@light, zone: "bottomLightToggle", on: false, **opts(c))
+    topic, payload = c.published.first
+    assert_equal "gv2mqtt/switch/14ABDB4844064B60/command/bottomLightToggle", topic
+    assert_equal "OFF", payload
+  end
 end

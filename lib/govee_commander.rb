@@ -8,7 +8,8 @@ require "json"
 class GoveeCommander
   class Error < StandardError; end
 
-  COMMAND_TOPIC = "gv2mqtt/light/%s/command"
+  COMMAND_TOPIC        = "gv2mqtt/light/%s/command"
+  SWITCH_COMMAND_TOPIC = "gv2mqtt/switch/%s/command/%s"
 
   def self.turn(light, on:, mqtt_config:, mqtt_factory: nil)
     publish(light, { "state" => (on ? "ON" : "OFF") }, mqtt_config:, mqtt_factory:)
@@ -32,14 +33,27 @@ class GoveeCommander
     publish(light, { "state" => "ON", "effect" => effect.to_s }, mqtt_config:, mqtt_factory:)
   end
 
+  # Zone/power toggles are HA switch entities: raw "ON"/"OFF" payloads on a
+  # per-instance command topic, NOT the JSON light command. `zone` is a toggle
+  # instance key (e.g. "rippleLightToggle", "powerSwitch").
+  def self.set_zone(light, zone:, on:, mqtt_config:, mqtt_factory: nil)
+    publish_raw(format(SWITCH_COMMAND_TOPIC, light.key, zone), (on ? "ON" : "OFF"),
+                light:, mqtt_config:, mqtt_factory:)
+  end
+
   def self.kelvin_to_mired(kelvin) = (1_000_000.0 / kelvin.to_i).round
 
   def self.publish(light, payload, mqtt_config:, mqtt_factory: nil)
+    publish_raw(format(COMMAND_TOPIC, light.key), JSON.generate(payload),
+                light:, mqtt_config:, mqtt_factory:)
+  end
+
+  def self.publish_raw(topic, payload, light:, mqtt_config:, mqtt_factory: nil)
     factory = mqtt_factory || -> { MQTT::Client.new(host: mqtt_config.host, port: mqtt_config.port) }
     client  = factory.call
     begin
       client.connect
-      client.publish(format(COMMAND_TOPIC, light.key), JSON.generate(payload))
+      client.publish(topic, payload)
     rescue StandardError => e
       raise Error, "MQTT publish for '#{light.key}' failed: #{e.class}: #{e.message}"
     ensure
