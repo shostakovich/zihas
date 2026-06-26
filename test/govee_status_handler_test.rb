@@ -56,7 +56,7 @@ class GoveeStatusHandlerTest < ActiveSupport::TestCase
   end
 
   test "handle fills the light sku when present" do
-    Light.create!(name: "Lampe", key: "lamp", ip_address: "192.168.10.20")
+    Light.create!(name: "Lampe", key: "lamp")
     @handler.handle("govee/lamp/status", payload("sku" => "H6076"))
     assert_equal "H6076", Light.find_by(key: "lamp").sku
   end

@@ -2,44 +2,40 @@
 require "test_helper"
 
 class LightTest < ActiveSupport::TestCase
-  test "valid with name and ip" do
-    assert Light.new(name: "Stehlampe", ip_address: "192.168.10.20").valid?
+  test "valid with a name and a device-id key" do
+    assert Light.new(name: "Stehlampe", key: "14ABDB4844064B60").valid?
   end
 
-  test "requires name and ip_address" do
-    refute Light.new(name: "", ip_address: "").valid?
+  test "requires a name" do
+    refute Light.new(name: "", key: "14ABDB4844064B60").valid?
   end
 
-  test "generates key from name on create" do
-    light = Light.create!(name: "Wohnzimmer Stehlampe", ip_address: "192.168.10.20")
-    assert_equal "wohnzimmer_stehlampe", light.key
+  test "requires a key" do
+    refute Light.new(name: "Stehlampe", key: "").valid?
   end
 
-  test "transliterates umlauts in the key" do
-    light = Light.create!(name: "Küche Über", ip_address: "192.168.10.21")
-    assert_equal "kueche_ueber", light.key
+  test "key must be unique" do
+    Light.create!(name: "Eins", key: "14ABDB4844064B60")
+    refute Light.new(name: "Zwei", key: "14ABDB4844064B60").valid?
   end
 
-  test "appends a numeric suffix on key collision" do
-    Light.create!(name: "Flur", ip_address: "192.168.10.22")
-    second = Light.create!(name: "Flur", ip_address: "192.168.10.23")
-    assert_equal "flur_2", second.key
+  test "key rejects non-alphanumeric characters" do
+    refute Light.new(name: "X", key: "14:AB:DB").valid?
   end
 
-  test "key is stable across a rename" do
-    light = Light.create!(name: "Diele", ip_address: "192.168.10.24")
-    light.update!(name: "Eingang")
-    assert_equal "diele", light.key
+  test "key is stored verbatim (case preserved)" do
+    light = Light.create!(name: "Mixed", key: "14abDB4844064b60")
+    assert_equal "14abDB4844064b60", light.reload.key
   end
 
   test "to_param is the key" do
-    light = Light.create!(name: "Bad", ip_address: "192.168.10.25")
-    assert_equal "bad", light.to_param
+    light = Light.create!(name: "Bad", key: "A1B2C3D4E5F60001")
+    assert_equal "A1B2C3D4E5F60001", light.to_param
   end
 
   test "optionally belongs to a room" do
     room  = Room.create!(name: "Salon")
-    light = Light.create!(name: "Salon Lampe", ip_address: "192.168.10.26", room: room)
+    light = Light.create!(name: "Salon Lampe", key: "A1B2C3D4E5F60002", room: room)
     assert_equal room, light.room
     assert_includes room.lights, light
   end

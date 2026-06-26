@@ -18,7 +18,7 @@ class GoveeCommanderTest < ActiveSupport::TestCase
 
   setup do
     @mqtt_config = ConfigLoader::MqttCfg.new(host: "localhost", port: 1883, topic_prefix: "shellies")
-    @light = Light.create!(name: "Stehlampe", ip_address: "192.168.10.20")
+    @light = Light.create!(name: "Stehlampe", key: "A1B2C3D4E5F60050")
   end
 
   def opts(client)

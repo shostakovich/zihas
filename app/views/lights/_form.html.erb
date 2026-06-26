@@ -11,9 +11,6 @@
   <%= f.label :room_id, "Raum" %>
   <%= f.collection_select :room_id, Room.order(:name), :id, :name, include_blank: "— kein Raum —" %>
 
-  <%= f.label :ip_address, "IP-Adresse" %>
-  <%= f.text_field :ip_address %>
-
   <%= f.label :shelly_plug_id, "Shelly-Plug (optional)" %>
   <%= f.text_field :shelly_plug_id %>
 

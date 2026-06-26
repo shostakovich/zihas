@@ -2,7 +2,7 @@ require "test_helper"
 
 class SceneTest < ActiveSupport::TestCase
   setup do
-    @light  = Light.create!(name: "Kino Lampe", ip_address: "192.168.10.40")
+    @light  = Light.create!(name: "Kino Lampe", key: "A1B2C3D4E5F60020")
     @preset = Preset.create!(name: "Warm 20%", brightness: 20, color_temp_k: 2700)
   end
 

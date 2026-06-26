@@ -1,14 +1,13 @@
 <%# app/views/lights/index.html.erb %>
 <% content_for :title, "Lampen" %>
 <h1>Lampen</h1>
-<%= link_to "Neue Lampe", new_light_path %>
 <%= link_to "Räume", rooms_path %>
 <ul>
   <% @lights.each do |light| %>
     <li>
-      <%= light.name %><%= " · #{light.room.name}" if light.room %> — <%= light.ip_address %>
+      <%= light.name %><%= " · #{light.room.name}" if light.room %>
+      <span class="light-key"><%= light.key %></span>
       <%= link_to "Bearbeiten", edit_light_path(light) %>
-      <%= button_to "Verbindung testen", test_connection_light_path(light) %>
       <%= button_to "Löschen", light_path(light), method: :delete,
                     form: { data: { turbo_confirm: "Lampe wirklich löschen?" } } %>
     </li>

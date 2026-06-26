@@ -8,7 +8,7 @@ class LightRowTest < ActiveSupport::TestCase
   end
 
   test "build_all returns a row per light with its state" do
-    light = Light.create!(name: "Stehlampe", ip_address: "192.168.10.20")
+    light = Light.create!(name: "Stehlampe", key: "A1B2C3D4E5F60010")
     LightState.record_state(light.key, on: true, brightness: 70, reachable: true)
 
     rows = LightRow.build_all(Light.order(:name))
@@ -21,7 +21,7 @@ class LightRowTest < ActiveSupport::TestCase
   end
 
   test "defaults are safe when no state exists" do
-    Light.create!(name: "Neu", ip_address: "192.168.10.21")
+    Light.create!(name: "Neu", key: "A1B2C3D4E5F60011")
     row = LightRow.build_all(Light.all).first
     assert_equal false, row.on?
     assert_equal 0,     row.brightness

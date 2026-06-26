@@ -8,48 +8,30 @@ class LightsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "index lists lights" do
-    Light.create!(name: "Stehlampe", ip_address: "192.168.10.20")
+    Light.create!(name: "Stehlampe", key: "A1B2C3D4E5F60001")
     get lights_url
     assert_response :success
     assert_match "Stehlampe", @response.body
   end
 
-  test "create adds a light, generates a key, redirects" do
-    room = Room.create!(name: "Wohnzimmer")
-    assert_difference -> { Light.count }, 1 do
-      post lights_url, params: { light: { name: "Neue Lampe", room_id: room.id, ip_address: "192.168.10.30" } }
-    end
+  test "update edits a light's name and room by key" do
+    room  = Room.create!(name: "Wohnzimmer")
+    light = Light.create!(name: "Lampe", key: "A1B2C3D4E5F60002")
+    patch light_url(light), params: { light: { name: "Stehlampe", room_id: room.id } }
     assert_redirected_to lights_url
-    assert_equal "neue_lampe", Light.last.key
-  end
-
-  test "create rejects a blank ip" do
-    assert_no_difference -> { Light.count } do
-      post lights_url, params: { light: { name: "X", ip_address: "" } }
-    end
-    assert_response :unprocessable_entity
-  end
-
-  test "update edits a light by key" do
-    light = Light.create!(name: "Lampe", ip_address: "192.168.10.31")
-    patch light_url(light), params: { light: { ip_address: "192.168.10.99" } }
-    assert_equal "192.168.10.99", light.reload.ip_address
+    light.reload
+    assert_equal "Stehlampe", light.name
+    assert_equal room, light.room
   end
 
   test "destroy removes a light" do
-    light = Light.create!(name: "Weg", ip_address: "192.168.10.32")
+    light = Light.create!(name: "Weg", key: "A1B2C3D4E5F60003")
     assert_difference -> { Light.count }, -1 do
       delete light_url(light)
     end
   end
 
-  test "test_connection publishes a refresh command and redirects" do
-    light = Light.create!(name: "Lampe", ip_address: "192.168.10.33")
-    calls = []
-    GoveeCommander.stub :refresh, ->(l, **) { calls << l.key } do
-      post test_connection_light_url(light)
-    end
-    assert_equal [ "lampe" ], calls
-    assert_redirected_to lights_url
+  test "there is no manual create route" do
+    assert_raises(NameError) { new_light_path }
   end
 end

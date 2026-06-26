@@ -4,7 +4,7 @@ require "test_helper"
 class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
   setup do
     Light.delete_all
-    @light = Light.create!(name: "Stehlampe", ip_address: "192.168.10.20")
+    @light = Light.create!(name: "Stehlampe", key: "A1B2C3D4E5F60030")
     @calls = []
   end
 
@@ -23,7 +23,7 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
       post light_command_url(light_key: @light.key), params: { command: "turn", on: "true" }
     end
     assert_response :accepted
-    assert_equal [ [ "stehlampe", true ] ], @calls
+    assert_equal [ [ "A1B2C3D4E5F60030", true ] ], @calls
   end
 
   test "brightness forwards the integer value" do

@@ -16,7 +16,7 @@ class ScenesControllerTest < ActionDispatch::IntegrationTest
 
   test "apply issues a turn command per entry and responds" do
     scene  = Scene.create!(name: "Kino")
-    light  = Light.create!(name: "Stehlampe", ip_address: "192.168.10.20")
+    light  = Light.create!(name: "Stehlampe", key: "A1B2C3D4E5F60040")
     preset = Preset.create!(name: "Warm 20%", on: true, brightness: 20, color_temp_k: 2700)
     scene.scene_entries.create!(light: light, preset: preset)
 
@@ -29,6 +29,6 @@ class ScenesControllerTest < ActionDispatch::IntegrationTest
       end
     end
     assert_redirected_to scenes_url
-    assert_equal [ [ "stehlampe", true ] ], turns
+    assert_equal [ [ "A1B2C3D4E5F60040", true ] ], turns
   end
 end
