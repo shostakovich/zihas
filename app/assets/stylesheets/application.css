@@ -1220,7 +1220,6 @@ body.page-light-detail { max-width: 560px; }
 .ld-more { background: conic-gradient(red,#ff0,#0f0,#0ff,#00f,#f0f,red); color: #fff; font-size: 17px;
            text-shadow: 0 0 3px rgba(0,0,0,.6); position: relative; overflow: hidden; }
 .ld-more input[type=color] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-.ld-soon { color: var(--muted); font-size: 14px; }
 .ld-error { font-size: 12px; color: var(--danger); margin-top: 2px; min-height: 16px; }
 .ld.pending { opacity: .85; }
 .ld.unconfirmed .ld-hero { border-color: var(--danger); }
@@ -1242,3 +1241,14 @@ body.page-light-detail { max-width: 560px; }
                 background-image: none; box-shadow: var(--glow-accent); }
 .sw-lamp-knob.off { border-color: var(--offline);
                     background: var(--surface-sunk); box-shadow: none; filter: grayscale(.35); }
+
+/* ---- Szenen tab (Stimmungen + Govee scenes) ---- */
+.ld-scenes { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.ld-scenes-scroll { max-height: 230px; overflow-y: auto; padding-right: 2px; }
+.ld-scene { padding: 0; border: 1px solid var(--border); border-radius: 13px; overflow: hidden;
+            background: var(--card); cursor: pointer; text-align: left; }
+.ld-scene-prev { display: block; height: 46px; }
+.ld-scene-nm { display: block; padding: 7px 9px; font-size: 12px; font-weight: 600; color: var(--text);
+               white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ld-scene.sel { outline: var(--focus-ring); outline-offset: 1px; }
+.ld-scene:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
