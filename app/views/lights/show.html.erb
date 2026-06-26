@@ -4,8 +4,73 @@
 <div class="ld" data-controller="light-detail"
      data-light-detail-key-value="<%= @light.key %>"
      data-light-detail-tab-value="<%= @row.default_tab %>">
+
   <div class="ld-topbar">
     <%= link_to "←", switches_path, class: "ld-back", "aria-label": "Zurück" %>
     <span class="ld-title"><%= @light.name %></span>
   </div>
+
+  <div class="ld-hero<%= ' is-off' unless @row.on? %>">
+    <div class="ld-lamp" data-light-detail-target="lamp"></div>
+    <div class="ld-power">
+      <button class="ld-pill<%= ' on' if @row.on? %>" data-action="light-detail#on">An</button>
+      <button class="ld-pill<%= ' on' unless @row.on? %>" data-action="light-detail#off">Aus</button>
+    </div>
+  </div>
+
+  <div class="ld-card">
+    <p class="ld-label">Helligkeit</p>
+    <input class="ld-range" type="range" min="1" max="100" value="<%= [@row.brightness, 1].max %>"
+           data-light-detail-target="brightness" data-action="light-detail#brightness"
+           aria-label="Helligkeit">
+  </div>
+
+  <div class="ld-tabs">
+    <button class="ld-tab" data-action="light-detail#tab" data-tab-param="white">Weiß</button>
+    <% if @light.supports_color %>
+      <button class="ld-tab" data-action="light-detail#tab" data-tab-param="color">Farbe</button>
+    <% end %>
+    <button class="ld-tab" data-action="light-detail#tab" data-tab-param="scenes">Szenen</button>
+  </div>
+
+  <div class="ld-panel" data-light-detail-target="panel" data-tab="white">
+    <div class="ld-card">
+      <p class="ld-label">Lichtfarbe</p>
+      <input class="ld-range ld-white" type="range" min="2700" max="6500" step="100"
+             value="<%= @row.color_temp_k || 2700 %>"
+             data-light-detail-target="temp" data-action="light-detail#temp"
+             aria-label="Lichtfarbe (Kelvin)">
+      <div class="ld-scale"><span>2700 K · warm</span><span>6500 K · kalt</span></div>
+      <div class="ld-presets">
+        <button class="ld-preset" data-action="light-detail#temp" data-tab-param="2700" data-temp-param="2700">Gemütlich</button>
+        <button class="ld-preset" data-action="light-detail#temp" data-tab-param="4000" data-temp-param="4000">Neutral</button>
+        <button class="ld-preset" data-action="light-detail#temp" data-tab-param="6000" data-temp-param="6000">Arbeiten</button>
+      </div>
+    </div>
+  </div>
+
+  <% if @light.supports_color %>
+    <div class="ld-panel" data-light-detail-target="panel" data-tab="color" hidden>
+      <div class="ld-card">
+        <p class="ld-label">Farbe</p>
+        <div class="ld-swatches">
+          <% %w[#ff4d4d #ff7a3d #ffd43b #43d97f #22b8cf #4d7cff #7c5cff #ff6bd6].each do |hex| %>
+            <button class="ld-sw" style="background: <%= hex %>"
+                    data-action="light-detail#swatch" data-color-param="<%= hex %>"
+                    aria-label="Farbe <%= hex %>"></button>
+          <% end %>
+          <label class="ld-sw ld-more" aria-label="Weitere Farbe">⊕
+            <input type="color" data-light-detail-target="wheel"
+                   data-action="light-detail#wheel" value="<%= @row.color_hex || '#ff7a3d' %>">
+          </label>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="ld-panel" data-light-detail-target="panel" data-tab="scenes" hidden>
+    <div class="ld-card ld-soon">Szenen kommen in Phase 2.</div>
+  </div>
+
+  <div class="ld-error" data-light-detail-target="error"></div>
 </div>

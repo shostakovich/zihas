@@ -50,4 +50,25 @@ class LightsControllerTest < ActionDispatch::IntegrationTest
     get light_url("NOPE")
     assert_response :not_found
   end
+
+  test "show has hero, brightness, white slider and tabs" do
+    @light = Light.create!(key: "ABCDEF01", name: "Wohnzimmer Stehlampe",
+                           supports_color: true, supports_color_temp: true)
+    LightState.record_state(@light.key, on: true, brightness: 60, color_temp_k: 2700)
+    get light_url(@light.key)
+    assert_response :success
+    assert_select "button[data-action='light-detail#on']"
+    assert_select "input[type=range][data-light-detail-target='brightness']"
+    assert_select "input[type=range][data-light-detail-target='temp'][min='2700'][max='6500']"
+    assert_select "button[data-tab-param='white']"
+    assert_select "button[data-tab-param='color']"
+  end
+
+  test "show hides colour tab when the light has no colour support" do
+    @light = Light.create!(key: "ABCDEF02", name: "Weißlampe",
+                           supports_color: false, supports_color_temp: true)
+    LightState.record_state(@light.key, on: true, brightness: 60, color_temp_k: 2700)
+    get light_url(@light.key)
+    assert_select "button[data-tab-param='color']", count: 0
+  end
 end
