@@ -52,6 +52,22 @@ export default class extends Controller {
     this.debounce(() => this.send({ command: "color", r, g, b }))
   }
 
+  // --- scenes & moods ---
+  mood(event) {
+    this.selectScene(event.currentTarget)
+    this.send({ command: "mood", mood: event.params.mood })
+  }
+
+  scene(event) {
+    this.selectScene(event.currentTarget)
+    this.send({ command: "effect", effect: event.params.scene })
+  }
+
+  selectScene(btn) {
+    this.element.querySelectorAll(".ld-scene.sel").forEach((b) => b.classList.remove("sel"))
+    btn.classList.add("sel")
+  }
+
   // --- plumbing ---
   debounce(fn) { clearTimeout(this._d); this._d = setTimeout(fn, 250) }
 
