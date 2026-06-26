@@ -96,12 +96,13 @@ Gemeinsam: Top-Bar mit **Back-Pfeil** + Lampenname; **Hero**-Karte oben.
 - Hero: An/Aus + **Master-Helligkeit**-Slider.
 - Tabs: **`Weiß · Farbe · Szenen`** — Default **Weiß**.
 
-**Variante B — Zonen-Lampe** (Uplighter):
-- Hero: nur An/Aus (kein Master-Slider — Helligkeit ist pro Zone).
-- Tabs: **`Zonen · Szenen`** — Default **Zonen**.
-- Tab „Zonen": eine Karte pro Zone mit eigenem Schalter, eigener Helligkeit, eigener Farbe.
-  - **Hauptzone** (Uplighter: „Unten/Leselicht") visuell hervorgehoben + „Haupt"-Badge.
-  - Pro-Zone-Farbe nutzt denselben Picker wie unten; RGB-fähige Zonen zeigen volle Palette.
+**Variante B — Zonen-Lampe** (Uplighter): ⚠️ **ÜBERHOLT — siehe „Phase-3 Realitäts-Update" am Ende.**
+Die ursprüngliche Annahme (eigene Helligkeit/Farbe pro Zone) ist am echten Gerät widerlegt.
+- ~~Hero: nur An/Aus (kein Master-Slider — Helligkeit ist pro Zone).~~
+- ~~Tabs: `Zonen · Szenen` — Default Zonen.~~
+- ~~Tab „Zonen": eine Karte pro Zone mit eigenem Schalter, eigener Helligkeit, eigener Farbe.~~
+  - **Hauptzone** (Uplighter: „Unten/Leselicht") visuell hervorgehoben + „Haupt"-Badge. (gilt weiter)
+  - ~~Pro-Zone-Farbe nutzt denselben Picker wie unten.~~ (nicht machbar)
 
 Welche Variante greift, ergibt sich aus der **Zonen-Anzahl** der Lampe (1 → A, ≥2 → B),
 plus einer Sonderregel für „viele Segmente" (Decke): wie A behandeln, Default-Tab `Szenen`.
@@ -177,3 +178,32 @@ Asset-Dateinamen (Vorschlag): `lamp_<typ>_on.webp` / `lamp_<typ>_off.webp` mit
   (Segmente vs. Modi) — am laufenden Bridge prüfen, bevor das Zonen-Modell finalisiert wird.
 - SKUs von Wall Sconce + Decke ergänzen (für Plüsch-Map).
 - Wie reichhaltig die Govee-Szenen-Liste je Gerät ist (Scroll/Filter nötig?).
+
+## Phase-3 Realitäts-Update (2026-06-26, am echten Gerät verifiziert)
+
+Die offenen Punkte zu den Zonen wurden am laufenden Bridge **durch Hands-on-Probing der
+echten Uplighter (H60B0, `14ABDB4844064B60`)** geklärt — Robert hat dabei auf die Lampe
+geschaut, während die App sie über MQTT angesteuert hat. Ergebnis (siehe Memory
+`uplighter-h60b0-control-facts`):
+
+| Fähigkeit | Realität am Gerät |
+|---|---|
+| Zonen (Leselicht/Seite/Welle) | nur **An/Aus** über HA-`switch`-Toggles (`bottomLightToggle`, `sideLightToggle`, `rippleLightToggle`); Command `gv2mqtt/switch/<id>/command/<toggle>` Payload `ON`/`OFF` |
+| RGB-Farbe (Main-Light) | färbt **Welle + Seite gemeinsam** (ein Kanal, nicht trennbar) |
+| Weiß/Temperatur (Main-Light) | trifft nur **Leselicht** (RGB-„Weiß" oben = Regenbogen-Mix) |
+| Helligkeit | **global**, nicht pro Zone |
+| Per-Segment (0–14) | **wirkungslos** (API `200 success`, rendert nur im DIY-Modus) |
+| Szenen | leben in `effect_list` der Main-Light-Entity (~120), **kein** `select` → Phase-2-`GoveeSceneDiscoveryHandler` bekommt nie Daten |
+| Power | über **`powerSwitch`**-Toggle (Main-Light `state:ON` powerte nicht) |
+| App-Änderungen | werden **nicht** in Echtzeit gespiegelt (nur verzögert beim Poll) |
+
+**Geerdetes Variante-B-Design (ersetzt das obige):**
+- **Hero:** An/Aus (→ `powerSwitch`) **+ globale Helligkeit** (Master-Slider ist hier doch richtig).
+- **Tabs:** `Zonen · Weiß · Farbe · Szenen` — Default **Zonen**. Weiß/Farbe/Szenen wirken
+  **auf die ganze Lampe** (wie bei einfachen Lampen), nicht pro Zone.
+- **Tab „Zonen":** je eine **An/Aus-Karte** pro Zone; Hauptzone (Leselicht) hervorgehoben +
+  „Haupt"-Badge; „max. 2 Zonen"-Regel + Hauptzonen-Schutz + Toast/Undo (clientseitig,
+  optimistisch). Die Farbe gilt geräteweit für die RGB-Zonen → im Farb-Tab als
+  „Farbe · Welle + Seite" beschriftet.
+- **Szenen-Quelle wird gefixt:** Szenen aus `effect_list` der Main-Light-Discovery lesen
+  (statt der nie befüllten `select`-Variante).
