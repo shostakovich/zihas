@@ -273,6 +273,7 @@ git commit -m "Add LightRow detail/tile view-model helpers"
 **Files:**
 - Modify: `config/routes.rb:11`
 - Modify: `app/controllers/lights_controller.rb`
+- Create: `app/views/lights/show.html.erb` (minimal renderable stub so the action is testable green; Task 3 replaces it with the full page)
 - Test: `test/controllers/lights_controller_test.rb` (create)
 
 **Interfaces:**
@@ -346,16 +347,34 @@ class LightsController < ApplicationController
 
 (Leave the rest of the controller unchanged.)
 
-- [ ] **Step 5: Run the test to verify it passes**
+- [ ] **Step 5: Add a minimal renderable view stub**
+
+So the action renders green now; Task 3 replaces this stub with the full page. Create `app/views/lights/show.html.erb`:
+
+```erb
+<% content_for :title, @light.name %>
+<% content_for :body_class, "page-light-detail" %>
+
+<div class="ld" data-controller="light-detail"
+     data-light-detail-key-value="<%= @light.key %>"
+     data-light-detail-tab-value="<%= @row.default_tab %>">
+  <div class="ld-topbar">
+    <%= link_to "←", switches_path, class: "ld-back", "aria-label": "Zurück" %>
+    <span class="ld-title"><%= @light.name %></span>
+  </div>
+</div>
+```
+
+- [ ] **Step 6: Run the test to verify it passes**
 
 Run: `bin/rails test TEST=test/controllers/lights_controller_test.rb`
-Expected: FAIL still — the view `lights/show` does not exist yet (`ActionView::MissingTemplate`). That is expected; the view is Task 3. Proceed to Task 3, then this test passes.
+Expected: PASS (2 runs, 0 failures — the stub satisfies the `data-controller`/`data-light-detail-key-value`/name assertions; richer hero/tab assertions are added in Task 3).
 
-- [ ] **Step 6: Commit (route + action only)**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add config/routes.rb app/controllers/lights_controller.rb test/controllers/lights_controller_test.rb
-git commit -m "Add lights#show route and action (view follows)"
+git add config/routes.rb app/controllers/lights_controller.rb app/views/lights/show.html.erb test/controllers/lights_controller_test.rb
+git commit -m "Add lights#show route, action and a minimal detail view"
 ```
 
 ---
@@ -363,7 +382,7 @@ git commit -m "Add lights#show route and action (view follows)"
 ### Task 3: Detail page view (hero + tabs, server-rendered)
 
 **Files:**
-- Create: `app/views/lights/show.html.erb`
+- Modify: `app/views/lights/show.html.erb` (replace the Task 2 stub with the full page)
 - Test: `test/controllers/lights_controller_test.rb` (extend — assert structure)
 
 **Interfaces:**
@@ -379,7 +398,7 @@ git commit -m "Add lights#show route and action (view follows)"
 
 - [ ] **Step 1: Write the view**
 
-Create `app/views/lights/show.html.erb`:
+Replace the Task 2 stub at `app/views/lights/show.html.erb` with the full page:
 
 ```erb
 <% content_for :title, @light.name %>
