@@ -1185,9 +1185,8 @@ body.page-light-detail { max-width: 560px; }
 .ld-hero { display: flex; align-items: center; gap: 14px; background: var(--card);
            border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom: 12px; }
 .ld-lamp { width: 64px; height: 64px; flex-shrink: 0; border-radius: var(--radius-lg);
-           background-size: contain; background-position: center; background-repeat: no-repeat;
-           box-shadow: var(--glow-accent); }
-.ld-lamp.off { box-shadow: none; filter: grayscale(.4); }
+           background-size: contain; background-position: center; background-repeat: no-repeat; }
+.ld-lamp.off { filter: grayscale(.4); }
 .ld-power { display: flex; gap: 8px; flex: 1; }
 .ld-pill { flex: 1; padding: 10px 0; border-radius: 11px; font-weight: 600; font-size: 13px;
            border: 1px solid var(--border); background: var(--card); color: var(--muted); cursor: pointer; }
