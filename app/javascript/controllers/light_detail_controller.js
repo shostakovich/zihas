@@ -24,7 +24,7 @@ export default class extends Controller {
     this.tabValue = name
     this.panelTargets.forEach((p) => { p.hidden = p.dataset.tab !== name })
     this.element.querySelectorAll(".ld-tab").forEach((b) => {
-      b.classList.toggle("active", b.dataset.tabParam === name)
+      b.classList.toggle("active", b.dataset.lightDetailTabParam === name)
     })
   }
 

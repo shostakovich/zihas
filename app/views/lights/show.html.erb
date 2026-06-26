@@ -26,11 +26,11 @@
   </div>
 
   <div class="ld-tabs">
-    <button class="ld-tab" data-action="light-detail#tab" data-tab-param="white">Weiß</button>
+    <button class="ld-tab" data-action="light-detail#tab" data-light-detail-tab-param="white">Weiß</button>
     <% if @light.supports_color %>
-      <button class="ld-tab" data-action="light-detail#tab" data-tab-param="color">Farbe</button>
+      <button class="ld-tab" data-action="light-detail#tab" data-light-detail-tab-param="color">Farbe</button>
     <% end %>
-    <button class="ld-tab" data-action="light-detail#tab" data-tab-param="scenes">Szenen</button>
+    <button class="ld-tab" data-action="light-detail#tab" data-light-detail-tab-param="scenes">Szenen</button>
   </div>
 
   <div class="ld-panel" data-light-detail-target="panel" data-tab="white">
@@ -42,9 +42,9 @@
              aria-label="Lichtfarbe (Kelvin)">
       <div class="ld-scale"><span>2700 K · warm</span><span>6500 K · kalt</span></div>
       <div class="ld-presets">
-        <button class="ld-preset" data-action="light-detail#temp" data-temp-param="2700">Gemütlich</button>
-        <button class="ld-preset" data-action="light-detail#temp" data-temp-param="4000">Neutral</button>
-        <button class="ld-preset" data-action="light-detail#temp" data-temp-param="6000">Arbeiten</button>
+        <button class="ld-preset" data-action="light-detail#temp" data-light-detail-temp-param="2700">Gemütlich</button>
+        <button class="ld-preset" data-action="light-detail#temp" data-light-detail-temp-param="4000">Neutral</button>
+        <button class="ld-preset" data-action="light-detail#temp" data-light-detail-temp-param="6000">Arbeiten</button>
       </div>
     </div>
   </div>
@@ -56,7 +56,7 @@
         <div class="ld-swatches">
           <% %w[#ff4d4d #ff7a3d #ffd43b #43d97f #22b8cf #4d7cff #7c5cff #ff6bd6].each do |hex| %>
             <button class="ld-sw" style="background: <%= hex %>"
-                    data-action="light-detail#swatch" data-color-param="<%= hex %>"
+                    data-action="light-detail#swatch" data-light-detail-color-param="<%= hex %>"
                     aria-label="Farbe <%= hex %>"></button>
           <% end %>
           <label class="ld-sw ld-more" aria-label="Weitere Farbe">⊕

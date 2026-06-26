@@ -391,10 +391,10 @@ git commit -m "Add lights#show route, action and a minimal detail view"
   - root `[data-controller="light-detail"]` with `data-light-detail-key-value`, `data-light-detail-tab-value` (initial tab).
   - power buttons `[data-action="light-detail#on"]`, `[data-action="light-detail#off"]`.
   - brightness `input[type=range][data-light-detail-target="brightness"]`.
-  - tab buttons `[data-action="light-detail#tab"][data-tab-param="white|color|scenes"]`.
+  - tab buttons `[data-action="light-detail#tab"][data-light-detail-tab-param="white|color|scenes"]`.
   - panels `[data-light-detail-target="panel"][data-tab="white|color|scenes"]`.
   - white slider `input[type=range][data-light-detail-target="temp"]` (min 2700 max 6500).
-  - colour swatches `[data-action="light-detail#swatch"][data-color-param="#rrggbb"]` and `input[type=color][data-light-detail-target="wheel"]`.
+  - colour swatches `[data-action="light-detail#swatch"][data-light-detail-color-param="#rrggbb"]` and `input[type=color][data-light-detail-target="wheel"]`.
 
 - [ ] **Step 1: Write the view**
 
@@ -429,11 +429,11 @@ Replace the Task 2 stub at `app/views/lights/show.html.erb` with the full page:
   </div>
 
   <div class="ld-tabs">
-    <button class="ld-tab" data-action="light-detail#tab" data-tab-param="white">Weiß</button>
+    <button class="ld-tab" data-action="light-detail#tab" data-light-detail-tab-param="white">Weiß</button>
     <% if @light.supports_color %>
-      <button class="ld-tab" data-action="light-detail#tab" data-tab-param="color">Farbe</button>
+      <button class="ld-tab" data-action="light-detail#tab" data-light-detail-tab-param="color">Farbe</button>
     <% end %>
-    <button class="ld-tab" data-action="light-detail#tab" data-tab-param="scenes">Szenen</button>
+    <button class="ld-tab" data-action="light-detail#tab" data-light-detail-tab-param="scenes">Szenen</button>
   </div>
 
   <div class="ld-panel" data-light-detail-target="panel" data-tab="white">
@@ -445,9 +445,9 @@ Replace the Task 2 stub at `app/views/lights/show.html.erb` with the full page:
              aria-label="Lichtfarbe (Kelvin)">
       <div class="ld-scale"><span>2700 K · warm</span><span>6500 K · kalt</span></div>
       <div class="ld-presets">
-        <button class="ld-preset" data-action="light-detail#temp" data-tab-param="2700" data-temp-param="2700">Gemütlich</button>
-        <button class="ld-preset" data-action="light-detail#temp" data-tab-param="4000" data-temp-param="4000">Neutral</button>
-        <button class="ld-preset" data-action="light-detail#temp" data-tab-param="6000" data-temp-param="6000">Arbeiten</button>
+        <button class="ld-preset" data-action="light-detail#temp" data-light-detail-temp-param="2700">Gemütlich</button>
+        <button class="ld-preset" data-action="light-detail#temp" data-light-detail-temp-param="4000">Neutral</button>
+        <button class="ld-preset" data-action="light-detail#temp" data-light-detail-temp-param="6000">Arbeiten</button>
       </div>
     </div>
   </div>
@@ -459,7 +459,7 @@ Replace the Task 2 stub at `app/views/lights/show.html.erb` with the full page:
         <div class="ld-swatches">
           <% %w[#ff4d4d #ff7a3d #ffd43b #43d97f #22b8cf #4d7cff #7c5cff #ff6bd6].each do |hex| %>
             <button class="ld-sw" style="background: <%= hex %>"
-                    data-action="light-detail#swatch" data-color-param="<%= hex %>"
+                    data-action="light-detail#swatch" data-light-detail-color-param="<%= hex %>"
                     aria-label="Farbe <%= hex %>"></button>
           <% end %>
           <label class="ld-sw ld-more" aria-label="Weitere Farbe">⊕
@@ -490,14 +490,14 @@ Append to `test/controllers/lights_controller_test.rb` (inside the class):
     assert_select "button[data-action='light-detail#on']"
     assert_select "input[type=range][data-light-detail-target='brightness']"
     assert_select "input[type=range][data-light-detail-target='temp'][min='2700'][max='6500']"
-    assert_select "button[data-tab-param='white']"
-    assert_select "button[data-tab-param='color']"
+    assert_select "button[data-light-detail-tab-param='white']"
+    assert_select "button[data-light-detail-tab-param='color']"
   end
 
   test "show hides colour tab when the light has no colour support" do
     @light.update!(supports_color: false)
     get light_url(@light.key)
-    assert_select "button[data-tab-param='color']", count: 0
+    assert_select "button[data-light-detail-tab-param='color']", count: 0
   end
 ```
 
@@ -555,7 +555,7 @@ export default class extends Controller {
     this.tabValue = name
     this.panelTargets.forEach((p) => { p.hidden = p.dataset.tab !== name })
     this.element.querySelectorAll(".ld-tab").forEach((b) => {
-      b.classList.toggle("active", b.dataset.tabParam === name)
+      b.classList.toggle("active", b.dataset.lightDetailTabParam === name)
     })
   }
 

@@ -60,8 +60,8 @@ class LightsControllerTest < ActionDispatch::IntegrationTest
     assert_select "button[data-action='light-detail#on']"
     assert_select "input[type=range][data-light-detail-target='brightness']"
     assert_select "input[type=range][data-light-detail-target='temp'][min='2700'][max='6500']"
-    assert_select "button[data-tab-param='white']"
-    assert_select "button[data-tab-param='color']"
+    assert_select "button[data-light-detail-tab-param='white']"
+    assert_select "button[data-light-detail-tab-param='color']"
   end
 
   test "show hides colour tab when the light has no colour support" do
@@ -69,6 +69,17 @@ class LightsControllerTest < ActionDispatch::IntegrationTest
                            supports_color: false, supports_color_temp: true)
     LightState.record_state(@light.key, on: true, brightness: 60, color_temp_k: 2700)
     get light_url(@light.key)
-    assert_select "button[data-tab-param='color']", count: 0
+    assert_select "button[data-light-detail-tab-param='color']", count: 0
+  end
+
+  test "show uses namespaced Stimulus action params" do
+    @light = Light.create!(key: "ABCDEF03", name: "Farblampe",
+                           supports_color: true, supports_color_temp: true)
+    LightState.record_state(@light.key, on: true, brightness: 80, color_r: 255, color_g: 107, color_b: 61)
+    get light_url(@light.key)
+    assert_response :success
+    assert_select "button[data-light-detail-tab-param='white']"
+    assert_select "button[data-light-detail-temp-param='2700']"
+    assert_select "button[data-light-detail-color-param]"
   end
 end
