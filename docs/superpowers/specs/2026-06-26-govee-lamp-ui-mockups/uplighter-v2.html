@@ -1,0 +1,124 @@
+<style>
+  .zw { --bg:#f8f9fa; --card:#fff; --border:#dee2e6; --text:#212529; --muted:#6c757d;
+        --accent:#f59f00; --accent-bg:linear-gradient(135deg,#fff3bf 0%,#ffe066 100%);
+        --online:#40c057; }
+  .wrap { display:flex; gap:30px; flex-wrap:wrap; justify-content:center; align-items:flex-start; }
+  .phone { width:320px; background:var(--bg); border:1px solid var(--border);
+           border-radius:26px; padding:14px; box-shadow:0 8px 30px rgba(0,0,0,.10);
+           color:var(--text); font-size:13px; position:relative; }
+  .ph-cap { text-align:center; font-weight:600; margin:0 0 14px; font-size:14px; }
+  .zw .topbar { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .zw .back { width:30px; height:30px; border-radius:9px; border:1px solid var(--border);
+              background:var(--card); display:flex; align-items:center; justify-content:center; font-size:15px; }
+  .zw .title { font-weight:600; font-size:15px; }
+  .zw .card { background:var(--card); border:1px solid var(--border); border-radius:16px;
+              padding:13px; margin-bottom:10px; }
+  .zw .hero { display:flex; align-items:center; gap:13px; }
+  .lamp { width:54px; height:54px; border-radius:50%; flex-shrink:0;
+          background:radial-gradient(circle at 50% 38%, #fff3bf 0%, #ffe066 45%, #f59f00 100%);
+          box-shadow:0 0 18px 4px rgba(245,159,0,.45); display:flex; align-items:center;
+          justify-content:center; font-size:27px; }
+  .pillrow { display:flex; gap:8px; flex:1; }
+  .pill { flex:1; text-align:center; padding:9px 0; border-radius:11px; font-weight:600; font-size:12px;
+          border:1px solid var(--border); background:var(--card); color:var(--muted); }
+  .pill.on { background:var(--accent-bg); border-color:var(--accent); color:#7c5e00; }
+  .tabs { display:flex; gap:6px; margin-bottom:10px; }
+  .tabs div { flex:1; text-align:center; padding:8px 0; border-radius:11px; font-size:12px; font-weight:600;
+              border:1px solid var(--border); background:var(--card); color:var(--muted); }
+  .tabs div.act { background:var(--accent-bg); border-color:var(--accent); color:#7c5e00; }
+  .zone { background:var(--card); border:1px solid var(--border); border-radius:14px;
+          padding:11px; margin-bottom:9px; }
+  .zone.dim { opacity:.5; }
+  .zone.main { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
+  .zhead { display:flex; align-items:center; gap:9px; }
+  .dot { width:14px; height:14px; border-radius:50%; flex-shrink:0; }
+  .zname { font-weight:600; font-size:13px; }
+  .badge { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.4px;
+           background:var(--accent-bg); color:#7c5e00; border:1px solid var(--accent);
+           border-radius:6px; padding:1px 5px; margin-left:6px; }
+  .spacer { flex:1; }
+  .toggle { width:42px; height:24px; border-radius:13px; background:var(--online); position:relative; flex-shrink:0; }
+  .toggle.off { background:#ced4da; }
+  .toggle::after { content:""; position:absolute; top:2px; left:20px; width:20px; height:20px;
+                   border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+  .toggle.off::after { left:2px; }
+  .zbody { margin-top:10px; }
+  .slider { height:26px; border-radius:13px; background:linear-gradient(90deg,#fff3bf,#f59f00); position:relative; }
+  .slider .knob { position:absolute; top:3px; width:20px; height:20px; border-radius:50%;
+                  background:#fff; border:2px solid var(--accent); box-shadow:0 1px 4px rgba(0,0,0,.3); }
+  .swatches { display:flex; gap:7px; margin-top:9px; align-items:center; }
+  .sw { width:24px; height:24px; border-radius:7px; border:1px solid rgba(0,0,0,.12); }
+  .sw.sel { outline:2px solid var(--accent); outline-offset:1px; }
+  .sw.more { background:conic-gradient(red,#ff0,#0f0,#0ff,#00f,#f0f,red); }
+  .swlabel { font-size:10px; color:var(--muted); margin-left:auto; }
+  /* toast */
+  .toast { position:absolute; left:18px; right:18px; bottom:16px; background:#212529; color:#fff;
+           border-radius:12px; padding:11px 13px; font-size:12px; display:flex; align-items:center; gap:9px;
+           box-shadow:0 6px 20px rgba(0,0,0,.3); }
+  .toast .undo { margin-left:auto; color:#ffe066; font-weight:700; }
+</style>
+
+<h2>Uplighter v2 — Hauptlampe geschützt, Konflikt automatisch</h2>
+<p class="subtitle">Du tippst „Seite" an, obwohl Welle + Leselicht schon leuchten. Statt zu fragen: die App schaltet automatisch die <b>Nebenzone Welle</b> aus (nie das Leselicht) und zeigt einen Toast mit „Rückgängig".</p>
+
+<div class="wrap">
+  <div>
+    <p class="ph-cap">Tab „Zonen"</p>
+    <div class="phone zw" data-choice="auto-protect" onclick="toggleSelect(this)">
+      <div class="topbar"><div class="back">←</div><div class="title">Uplighter Stehlampe</div></div>
+
+      <div class="card hero">
+        <div class="lamp">🪔</div>
+        <div class="pillrow"><div class="pill on">An</div><div class="pill">Aus</div></div>
+      </div>
+
+      <div class="tabs"><div class="act">Zonen</div><div>Szenen</div></div>
+
+      <!-- Leselicht = Hauptlampe, hervorgehoben, bleibt an -->
+      <div class="zone main">
+        <div class="zhead"><span class="dot" style="background:#ffb24d"></span>
+          <span class="zname">Unten · Leselicht</span><span class="badge">Haupt</span>
+          <span class="spacer"></span><span class="toggle"></span></div>
+        <div class="zbody">
+          <div class="slider"><div class="knob" style="left:55%"></div></div>
+          <div class="swatches"><span class="sw" style="background:#fff" ></span>
+            <span class="sw" style="background:#ffe7c2"></span>
+            <span class="sw" style="background:#ffb24d"></span>
+            <span class="sw more"></span><span class="swlabel">warmweiß</span></div>
+        </div>
+      </div>
+
+      <!-- Seite gerade neu eingeschaltet -->
+      <div class="zone">
+        <div class="zhead"><span class="dot" style="background:#43d97f"></span>
+          <span class="zname">Seite · Ambiente</span>
+          <span class="spacer"></span><span class="toggle"></span></div>
+        <div class="zbody">
+          <div class="slider"><div class="knob" style="left:40%"></div></div>
+          <div class="swatches"><span class="sw" style="background:#43d97f" ></span>
+            <span class="sw" style="background:#7c5cff"></span>
+            <span class="sw" style="background:#ff6b3d"></span>
+            <span class="sw more"></span><span class="swlabel">RGB</span></div>
+        </div>
+      </div>
+
+      <!-- Welle automatisch ausgegangen -->
+      <div class="zone dim">
+        <div class="zhead"><span class="dot" style="background:#ced4da"></span>
+          <span class="zname">Welle · Wandwäsche</span>
+          <span class="spacer"></span><span class="toggle off"></span></div>
+      </div>
+
+      <div class="toast">🌊 Welle ausgeschaltet · max. 2 Zonen <span class="undo">Rückgängig</span></div>
+    </div>
+  </div>
+
+  <div style="max-width:230px;font-size:13px;color:var(--muted);padding-top:40px">
+    <p style="font-weight:600;color:var(--text);margin:0 0 8px">Die Regel dahinter</p>
+    <p style="margin:0 0 10px">Beim Einschalten einer 3. Zone geht automatisch die <b>zuletzt genutzte Nebenzone</b> aus.</p>
+    <p style="margin:0 0 10px">Das <b>Leselicht (Haupt)</b> wird dabei nie ausgeschaltet — außer du machst es selbst aus.</p>
+    <p style="margin:0">Welle hat RGB-LEDs → volle Farbpalette. Leselicht eher Warmweiß-Töne.</p>
+  </div>
+</div>
+
+<p class="subtitle" style="text-align:center;margin-top:14px">Passt das so? Wenn ja, ist die Uplighter durch — als Nächstes designen wir den <b>eigentlichen Farbpicker</b> (dein Wunsch: „schicker") und den Weiß-Modus.</p>

@@ -1,0 +1,136 @@
+<style>
+  .zw { --bg:#f8f9fa; --card:#fff; --border:#dee2e6; --text:#212529; --muted:#6c757d;
+        --accent:#f59f00; --accent-bg:linear-gradient(135deg,#fff3bf 0%,#ffe066 100%);
+        --online:#40c057; }
+  .phones { display:flex; gap:28px; flex-wrap:wrap; justify-content:center; }
+  .phone { width:300px; background:var(--bg); border:1px solid var(--border);
+           border-radius:26px; padding:14px; box-shadow:0 8px 30px rgba(0,0,0,.10);
+           color:var(--text); font-size:13px; }
+  .ph-cap { text-align:center; font-weight:600; margin:0 0 10px; font-size:14px; }
+  .ph-sub { text-align:center; color:var(--muted); font-size:11.5px; margin:-4px 0 16px; min-height:30px; }
+  .zw .topbar { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .zw .back { width:30px; height:30px; border-radius:9px; border:1px solid var(--border);
+              background:var(--card); display:flex; align-items:center; justify-content:center; font-size:15px; }
+  .zw .title { font-weight:600; font-size:15px; }
+  .zw .card { background:var(--card); border:1px solid var(--border); border-radius:16px;
+              padding:13px; margin-bottom:10px; }
+  .zw .hero { display:flex; align-items:center; gap:13px; }
+  .lamp { width:58px; height:58px; border-radius:50%; flex-shrink:0; position:relative;
+          background:radial-gradient(circle at 50% 38%, #fff3bf 0%, #ffe066 45%, #f59f00 100%);
+          box-shadow:0 0 18px 4px rgba(245,159,0,.45); display:flex; align-items:center;
+          justify-content:center; font-size:30px; }
+  .lamp.off { background:#eef1f4; box-shadow:none; filter:grayscale(.4); }
+  .powerwrap { flex:1; }
+  .pillrow { display:flex; gap:8px; }
+  .pill { flex:1; text-align:center; padding:8px 0; border-radius:11px; font-weight:600; font-size:12px;
+          border:1px solid var(--border); background:var(--card); color:var(--muted); }
+  .pill.on { background:var(--accent-bg); border-color:var(--accent); color:#7c5e00; }
+  .label { font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin:0 0 7px; }
+  .slider { height:34px; border-radius:17px; background:linear-gradient(90deg,#fff3bf,#f59f00);
+            position:relative; display:flex; align-items:center; }
+  .slider .knob { position:absolute; left:66%; width:26px; height:26px; border-radius:50%;
+                  background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.3); border:2px solid var(--accent); }
+  .slider .ic { margin-left:auto; margin-right:10px; font-size:14px; }
+  .slider .ic.l { margin-left:10px; margin-right:auto; opacity:.6; }
+  .seg { display:flex; background:#eef1f4; border-radius:12px; padding:3px; margin-bottom:11px; }
+  .seg div { flex:1; text-align:center; padding:7px 0; border-radius:9px; font-size:12px; font-weight:600; color:var(--muted); }
+  .seg div.act { background:var(--card); color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  .wheel { width:140px; height:140px; border-radius:50%; margin:4px auto 2px; position:relative;
+           background:conic-gradient(red,#ff0,#0f0,#0ff,#00f,#f0f,red);
+           box-shadow:inset 0 0 0 8px rgba(255,255,255,.0); }
+  .wheel::after { content:""; position:absolute; inset:0; border-radius:50%;
+                  background:radial-gradient(circle,#fff 0%,rgba(255,255,255,0) 62%); }
+  .wheel .pick { position:absolute; top:24%; left:62%; width:20px; height:20px; border-radius:50%;
+                 background:#ff6b3d; border:3px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.35); }
+  .whitebar { height:34px; border-radius:17px; margin-top:4px;
+              background:linear-gradient(90deg,#ffd9a0,#fff,#cfe3ff); position:relative; }
+  .whitebar .knob { position:absolute; left:30%; top:4px; width:26px; height:26px; border-radius:50%;
+                    background:#fff; border:2px solid var(--accent); box-shadow:0 1px 4px rgba(0,0,0,.3); }
+  .zonerow { display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid #eef1f4; }
+  .zonerow:first-of-type { border-top:none; }
+  .sw { width:26px; height:26px; border-radius:8px; flex-shrink:0; border:1px solid rgba(0,0,0,.1); }
+  .zname { font-weight:600; font-size:12.5px; }
+  .zsub { font-size:11px; color:var(--muted); }
+  .chips { display:flex; gap:8px; overflow:hidden; }
+  .chip { flex-shrink:0; padding:7px 11px; border-radius:11px; border:1px solid var(--border);
+          background:var(--card); font-size:11.5px; font-weight:600; white-space:nowrap; }
+  .chip .e { margin-right:4px; }
+  .tabs { display:flex; gap:6px; margin-bottom:10px; }
+  .tabs div { flex:1; text-align:center; padding:8px 0; border-radius:11px; font-size:11.5px; font-weight:600;
+              border:1px solid var(--border); background:var(--card); color:var(--muted); }
+  .tabs div.act { background:var(--accent-bg); border-color:var(--accent); color:#7c5e00; }
+  .hint { font-size:10.5px; color:var(--muted); text-align:center; margin-top:2px; }
+</style>
+
+<h2>Lampen-Detailseite — welche Grundstruktur?</h2>
+<p class="subtitle">Beispiel: „Wohnzimmer Stehlampe" (Floor Lamp 2, 2 Zonen). Beide haben dieselben Funktionen — Unterschied ist nur, ob man scrollt oder tabbt.</p>
+
+<div class="phones">
+
+  <!-- ===== A: Single Scroll ===== -->
+  <div>
+    <p class="ph-cap">A · Ein Scroll</p>
+    <p class="ph-sub">Alles untereinander. Du scrollst durch An/Aus → Farbe → Zonen → Szenen. Nichts versteckt.</p>
+    <div class="phone zw" data-choice="single" onclick="toggleSelect(this)">
+      <div class="topbar"><div class="back">←</div><div class="title">Wohnzimmer Stehlampe</div></div>
+
+      <div class="card hero">
+        <div class="lamp">💡</div>
+        <div class="powerwrap">
+          <div class="pillrow"><div class="pill on">An</div><div class="pill">Aus</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="label">Helligkeit</p>
+        <div class="slider"><span class="ic l">🌙</span><div class="knob"></div><span class="ic">☀️</span></div>
+      </div>
+
+      <div class="card">
+        <div class="seg"><div class="act">🎨 Farbe</div><div>🤍 Weiß</div></div>
+        <div class="wheel"><div class="pick"></div></div>
+      </div>
+
+      <div class="card">
+        <p class="label">Zonen</p>
+        <div class="zonerow"><div class="sw" style="background:#ff6b3d"></div>
+          <div><div class="zname">Säule</div><div class="zsub">Warmes Orange</div></div></div>
+        <div class="zonerow"><div class="sw" style="background:#4d7cff"></div>
+          <div><div class="zname">Sockel</div><div class="zsub">Blau</div></div></div>
+      </div>
+
+      <div class="card">
+        <p class="label">Szenen</p>
+        <div class="chips"><div class="chip"><span class="e">🌅</span>Sonnenuntergang</div>
+          <div class="chip"><span class="e">📖</span>Lesen</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== B: Hero + Tabs ===== -->
+  <div>
+    <p class="ph-cap">B · Hero + Tabs</p>
+    <p class="ph-sub">An/Aus & Helligkeit immer oben sichtbar. Darunter Tabs, die nur einen Bereich zeigen — wenig Scrollen.</p>
+    <div class="phone zw" data-choice="tabs" onclick="toggleSelect(this)">
+      <div class="topbar"><div class="back">←</div><div class="title">Wohnzimmer Stehlampe</div></div>
+
+      <div class="card hero">
+        <div class="lamp">💡</div>
+        <div class="powerwrap">
+          <div class="pillrow" style="margin-bottom:9px"><div class="pill on">An</div><div class="pill">Aus</div></div>
+          <div class="slider" style="height:26px"><div class="knob" style="width:20px;height:20px"></div><span class="ic">☀️</span></div>
+        </div>
+      </div>
+
+      <div class="tabs"><div class="act">Farbe</div><div>Weiß</div><div>Zonen</div><div>Szenen</div></div>
+
+      <div class="card">
+        <div class="wheel"><div class="pick"></div></div>
+        <p class="hint">Tab „Zonen" → jede Zone einzeln · Tab „Szenen" → Stimmungen</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="text-align:center;margin-top:18px">Klick auf das Handy, das dir besser gefällt — oder schreib mir im Terminal. Plüsch-Lampe, Farbpicker-Stil & Szenen vertiefen wir als Nächstes.</p>

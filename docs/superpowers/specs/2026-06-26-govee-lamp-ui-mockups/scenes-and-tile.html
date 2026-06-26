@@ -1,0 +1,110 @@
+<style>
+  .zw { --bg:#f8f9fa; --card:#fff; --border:#dee2e6; --text:#212529; --muted:#6c757d;
+        --accent:#f59f00; --accent-bg:linear-gradient(135deg,#fff3bf 0%,#ffe066 100%); --online:#40c057; }
+  .wrap { display:flex; gap:30px; flex-wrap:wrap; justify-content:center; align-items:flex-start; }
+  .phone { width:320px; background:var(--bg); border:1px solid var(--border); border-radius:26px;
+           padding:14px; box-shadow:0 8px 30px rgba(0,0,0,.10); color:var(--text); font-size:13px; }
+  .ph-cap { text-align:center; font-weight:600; margin:0 0 4px; font-size:14px; }
+  .ph-sub { text-align:center; color:var(--muted); font-size:11px; margin:0 0 12px; min-height:40px; }
+  .zw .topbar { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .zw .back { width:30px; height:30px; border-radius:9px; border:1px solid var(--border);
+              background:var(--card); display:flex; align-items:center; justify-content:center; font-size:15px; }
+  .zw .title { font-weight:600; font-size:15px; }
+  .zw .card { background:var(--card); border:1px solid var(--border); border-radius:16px;
+              padding:13px; margin-bottom:10px; }
+  .tabs { display:flex; gap:6px; margin-bottom:12px; }
+  .tabs div { flex:1; text-align:center; padding:8px 0; border-radius:11px; font-size:12px; font-weight:600;
+              border:1px solid var(--border); background:var(--card); color:var(--muted); }
+  .tabs div.act { background:var(--accent-bg); border-color:var(--accent); color:#7c5e00; }
+  .lbl { font-size:10px; color:var(--muted); margin:2px 0 8px; text-transform:uppercase; letter-spacing:.4px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+  .scene { border-radius:13px; overflow:hidden; border:1px solid var(--border); background:var(--card); }
+  .scene .prev { height:46px; }
+  .scene .nm { padding:7px 9px; font-size:11.5px; font-weight:600; }
+  .scene.sel { outline:2px solid var(--accent); outline-offset:1px; }
+  .scroll { max-height:150px; overflow:hidden; position:relative; }
+  /* ---- list tile (Schalten) ---- */
+  .h1 { font-size:18px; color:var(--muted); font-weight:500; margin:0 0 14px; }
+  .seclbl { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin:14px 0 8px; }
+  .tile { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:13px;
+          margin-bottom:10px; display:flex; align-items:center; gap:13px; }
+  .plush { width:60px; height:60px; border-radius:16px; flex-shrink:0; display:flex; align-items:center;
+           justify-content:center; font-size:32px; position:relative; }
+  .plush.on { background:radial-gradient(circle at 50% 35%,#fff3bf,#ffe066 55%,#f59f00);
+              box-shadow:0 0 16px 2px rgba(245,159,0,.4); }
+  .plush.off { background:#eef1f4; filter:grayscale(.4); }
+  .plush.rgb { background:radial-gradient(circle at 50% 35%,#ffd9f5,#7c5cff 70%);
+               box-shadow:0 0 16px 2px rgba(124,92,255,.4); }
+  .tinfo { flex:1; min-width:0; }
+  .tname { font-weight:600; font-size:15px; }
+  .tstate { font-size:12px; color:var(--muted); margin-top:2px; }
+  .tstate b { color:var(--text); font-weight:600; }
+  .chev { color:var(--muted); font-size:18px; }
+</style>
+
+<h2>Szenen-Tab &amp; die Lampe in der Schalten-Liste</h2>
+<p class="subtitle">Links: der Szenen-Tab auf der Detailseite. Rechts: wie Lampen in der „Schalten"-Übersicht erscheinen, bevor man reintappt — mit Plüsch-Lampe.</p>
+
+<div class="wrap">
+
+  <!-- Szenen-Tab -->
+  <div>
+    <p class="ph-cap">Detailseite · Tab „Szenen"</p>
+    <p class="ph-sub">Oben unsere eigenen „Stimmungen" (gehen überall). Darunter die echten Govee-Szenen des Geräts (scrollbar). Bei der 121-Segment-Decke ist das DER Weg.</p>
+    <div class="phone zw" data-choice="scenes" onclick="toggleSelect(this)">
+      <div class="topbar"><div class="back">←</div><div class="title">Deckenlampe Küche</div></div>
+      <div class="tabs"><div>Weiß</div><div>Farbe</div><div class="act">Szenen</div></div>
+
+      <div class="lbl">Stimmungen</div>
+      <div class="grid" style="margin-bottom:14px">
+        <div class="scene sel"><div class="prev" style="background:linear-gradient(135deg,#ffb24d,#ff7a3d)"></div><div class="nm">🌅 Sonnenuntergang</div></div>
+        <div class="scene"><div class="prev" style="background:linear-gradient(135deg,#fff4e0,#ffd9a0)"></div><div class="nm">📖 Lesen</div></div>
+        <div class="scene"><div class="prev" style="background:linear-gradient(135deg,#1a1a2e,#4d3a8c)"></div><div class="nm">🎬 Kino</div></div>
+        <div class="scene"><div class="prev" style="background:linear-gradient(135deg,#ff4d6d,#7c5cff,#22b8cf)"></div><div class="nm">🎉 Party</div></div>
+      </div>
+
+      <div class="lbl">Govee-Szenen (vom Gerät)</div>
+      <div class="scroll grid">
+        <div class="scene"><div class="prev" style="background:linear-gradient(135deg,#43d97f,#0f9d58)"></div><div class="nm">Forest</div></div>
+        <div class="scene"><div class="prev" style="background:linear-gradient(135deg,#7c5cff,#22b8cf)"></div><div class="nm">Aurora</div></div>
+        <div class="scene"><div class="prev" style="background:linear-gradient(135deg,#ff6bd6,#ff4d4d)"></div><div class="nm">Candy</div></div>
+        <div class="scene"><div class="prev" style="background:linear-gradient(135deg,#ffd43b,#ff7a3d)"></div><div class="nm">Sunrise</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Schalten-Liste -->
+  <div>
+    <p class="ph-cap">Tab „Schalten" · Lampen-Liste</p>
+    <p class="ph-sub">Plüsch-Lampe links (an = leuchtend, in Lichtfarbe getönt; aus = grau). Tipp auf die Plüsch-Lampe = direkt an/aus. Tipp auf die Karte = Detailseite (›).</p>
+    <div class="phone zw" data-choice="tile" onclick="toggleSelect(this)">
+      <div class="h1">Schalten</div>
+      <div class="seclbl">Lampen</div>
+
+      <div class="tile">
+        <div class="plush on">🛋️</div>
+        <div class="tinfo"><div class="tname">Wohnzimmer Stehlampe</div>
+          <div class="tstate"><b>An</b> · Warmweiß · 60 %</div></div>
+        <div class="chev">›</div>
+      </div>
+
+      <div class="tile">
+        <div class="plush rgb">🪔</div>
+        <div class="tinfo"><div class="tname">Uplighter</div>
+          <div class="tstate"><b>2 Zonen an</b> · Welle + Leselicht</div></div>
+        <div class="chev">›</div>
+      </div>
+
+      <div class="tile">
+        <div class="plush off">💡</div>
+        <div class="tinfo"><div class="tname">Deckenlampe Küche</div>
+          <div class="tstate">Aus</div></div>
+        <div class="chev">›</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="text-align:center;margin-top:16px">
+Frage A: Szenen-Tab so (eigene Stimmungen + Govee-Liste darunter)?  ·  Frage B: In der Liste — Plüsch tippen = an/aus, Karte tippen = Detail. Okay?  ·  Plüsch-Lampe besprechen wir gleich im Text.</p>

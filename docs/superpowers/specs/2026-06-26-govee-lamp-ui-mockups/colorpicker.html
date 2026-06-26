@@ -1,0 +1,124 @@
+<style>
+  .zw { --bg:#f8f9fa; --card:#fff; --border:#dee2e6; --text:#212529; --muted:#6c757d;
+        --accent:#f59f00; --accent-bg:linear-gradient(135deg,#fff3bf 0%,#ffe066 100%); }
+  .wrap { display:flex; gap:22px; flex-wrap:wrap; justify-content:center; align-items:flex-start; }
+  .col { width:240px; }
+  .ph-cap { text-align:center; font-weight:600; margin:0 0 4px; font-size:14px; }
+  .ph-sub { text-align:center; color:var(--muted); font-size:11px; margin:0 0 12px; min-height:56px; }
+  .panel { background:var(--bg); border:1px solid var(--border); border-radius:20px; padding:14px;
+           box-shadow:0 8px 26px rgba(0,0,0,.09); color:var(--text); }
+  .seg { display:flex; background:#eef1f4; border-radius:11px; padding:3px; margin-bottom:14px; }
+  .seg div { flex:1; text-align:center; padding:7px 0; border-radius:8px; font-size:12px; font-weight:600; color:var(--muted); }
+  .seg div.act { background:#fff; color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  /* A wheel */
+  .wheel { width:172px; height:172px; border-radius:50%; margin:6px auto 0; position:relative;
+           background:conic-gradient(red,#ff0,#0f0,#0ff,#00f,#f0f,red); }
+  .wheel::after { content:""; position:absolute; inset:0; border-radius:50%;
+                  background:radial-gradient(circle,#fff 0%,rgba(255,255,255,0) 70%); }
+  .wheel .pick { position:absolute; top:22%; left:64%; width:24px; height:24px; border-radius:50%;
+                 background:#ff7a3d; border:3px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.4); z-index:2; }
+  .britrack { height:30px; border-radius:15px; margin-top:14px; position:relative;
+              background:linear-gradient(90deg,#3a2a00,#ff7a3d); }
+  .britrack .k { position:absolute; top:3px; left:70%; width:24px; height:24px; border-radius:50%;
+                 background:#fff; border:2px solid var(--accent); box-shadow:0 1px 4px rgba(0,0,0,.3); }
+  /* B spectrum */
+  .hue { height:34px; border-radius:10px; position:relative;
+         background:linear-gradient(90deg,red,#ff0,#0f0,#0ff,#00f,#f0f,red); }
+  .hue .k, .sat .k { position:absolute; top:-3px; width:14px; height:40px; border-radius:7px;
+                     background:#fff; border:2px solid #888; box-shadow:0 1px 4px rgba(0,0,0,.3); }
+  .hue .k { left:62%; } .sat .k { left:48%; }
+  .sat { height:34px; border-radius:10px; margin-top:10px; position:relative;
+         background:linear-gradient(90deg,#fff,#ff7a3d); }
+  .lbl { font-size:10px; color:var(--muted); margin:12px 0 5px; text-transform:uppercase; letter-spacing:.4px; }
+  /* swatches */
+  .grid { display:grid; grid-template-columns:repeat(5,1fr); gap:9px; }
+  .sw { aspect-ratio:1; border-radius:10px; border:1px solid rgba(0,0,0,.1); }
+  .sw.sel { outline:2px solid var(--accent); outline-offset:2px; }
+  .sw.more { background:conic-gradient(red,#ff0,#0f0,#0ff,#00f,#f0f,red);
+             display:flex; align-items:center; justify-content:center; color:#fff; font-size:15px;
+             text-shadow:0 0 3px rgba(0,0,0,.6); }
+  .mini { display:flex; gap:7px; margin-top:12px; }
+  .mini .sw { width:30px; aspect-ratio:1; }
+</style>
+
+<h2>Farbpicker — welcher Stil?</h2>
+<p class="subtitle">Alle drei ersetzen den nativen Browser-Picker. Oben jeweils der Umschalter „Farbe / Weiß". Klick deinen Favoriten.</p>
+
+<div class="wrap">
+
+  <div class="col">
+    <p class="ph-cap">A · Farbrad</p>
+    <p class="ph-sub">Großes HSV-Rad zum Ziehen + Helligkeitsregler. Präzise, „App-Feeling". Braucht etwas Fingerspitzengefühl.</p>
+    <div class="panel" data-choice="wheel" onclick="toggleSelect(this)">
+      <div class="seg"><div class="act">🎨 Farbe</div><div>🤍 Weiß</div></div>
+      <div class="wheel"><div class="pick"></div></div>
+      <div class="lbl">Helligkeit</div>
+      <div class="britrack"><div class="k"></div></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <p class="ph-cap">B · Spektrum-Regler</p>
+    <p class="ph-sub">Farbton- und Sättigungs-Balken zum Schieben. Sehr daumenfreundlich, klare Werte, weniger „zielen".</p>
+    <div class="panel" data-choice="spectrum" onclick="toggleSelect(this)">
+      <div class="seg"><div class="act">🎨 Farbe</div><div>🤍 Weiß</div></div>
+      <div class="lbl">Farbton</div>
+      <div class="hue"><div class="k"></div></div>
+      <div class="lbl">Sättigung</div>
+      <div class="sat"><div class="k"></div></div>
+      <div class="mini"><span class="sw" style="background:#ff7a3d"></span>
+        <span class="sw" style="background:#7c5cff"></span>
+        <span class="sw" style="background:#43d97f"></span>
+        <span class="sw" style="background:#ff4d6d"></span></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <p class="ph-cap">C · Swatches + „mehr"</p>
+    <p class="ph-sub">Kuratierte Lieblingsfarben zum Ein-Tippen. „⊕" öffnet das Rad für Feintuning. Am schnellsten im Alltag.</p>
+    <div class="panel" data-choice="swatches" onclick="toggleSelect(this)">
+      <div class="seg"><div class="act">🎨 Farbe</div><div>🤍 Weiß</div></div>
+      <div class="grid">
+        <span class="sw" style="background:#ff4d4d"></span>
+        <span class="sw" style="background:#ff7a3d"></span>
+        <span class="sw" style="background:#ffd43b"></span>
+        <span class="sw" style="background:#43d97f"></span>
+        <span class="sw" style="background:#22b8cf"></span>
+        <span class="sw" style="background:#4d7cff"></span>
+        <span class="sw" style="background:#7c5cff"></span>
+        <span class="sw" style="background:#ff6bd6"></span>
+        <span class="sw sel" style="background:#ff7a3d"></span>
+        <span class="sw more">⊕</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<h3 style="text-align:center;margin-top:26px">Der Weiß-Tab (für alle gleich)</h3>
+<p class="subtitle" style="margin-bottom:12px">„Nur im weißen Licht bleiben": eigener Tab mit Wärme-Regler von Kerzig-Warm bis Tageslicht — keine Farbe im Weg.</p>
+<div class="wrap">
+  <div class="col" style="width:260px">
+    <div class="panel" data-choice="white" onclick="toggleSelect(this)">
+      <div class="seg"><div>🎨 Farbe</div><div class="act">🤍 Weiß</div></div>
+      <div class="lbl">Lichtfarbe</div>
+      <div style="height:38px;border-radius:12px;position:relative;
+                  background:linear-gradient(90deg,#ffb24d,#ffe7c2,#fff,#dcebff,#bcd6ff)">
+        <div style="position:absolute;top:5px;left:30%;width:28px;height:28px;border-radius:50%;
+                    background:#fff;border:2px solid var(--accent);box-shadow:0 1px 5px rgba(0,0,0,.3)"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:6px">
+        <span>2700 K · warm</span><span>6500 K · kalt</span></div>
+      <div class="mini" style="margin-top:14px">
+        <span class="sw" style="background:#ffd9a0;width:auto;flex:1;aspect-ratio:auto;height:30px;
+              display:flex;align-items:center;justify-content:center;font-size:10px;color:#7c5e00">Gemütlich</span>
+        <span class="sw" style="background:#fff4e0;width:auto;flex:1;aspect-ratio:auto;height:30px;
+              display:flex;align-items:center;justify-content:center;font-size:10px;color:#7c5e00">Neutral</span>
+        <span class="sw" style="background:#eaf2ff;width:auto;flex:1;aspect-ratio:auto;height:30px;
+              display:flex;align-items:center;justify-content:center;font-size:10px;color:#456">Arbeiten</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="text-align:center;margin-top:18px">Welcher Farbpicker-Stil (A/B/C)? Und passt der Weiß-Tab mit Wärme-Regler + 3 Schnell-Presets?</p>
