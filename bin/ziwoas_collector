@@ -7,6 +7,7 @@ require_relative "../config/environment"
 require "mqtt_router"
 require "shelly_status_handler"
 require "govee_status_handler"
+require "govee_discovery_handler"
 require "fritz_mqtt_bridge"
 require "config_loader"
 require "fritz_dect_client"
@@ -23,7 +24,8 @@ threads    = []
 stoppables = []
 
 handlers = [ ShellyStatusHandler.new(mqtt_config: config.mqtt, plugs: config.plugs, logger: logger) ]
-handlers << GoveeStatusHandler.new(topic_prefix: config.govee.topic_prefix, logger: logger) if config.govee
+handlers << GoveeStatusHandler.new(logger: logger)
+handlers << GoveeDiscoveryHandler.new(logger: logger)
 
 router = MqttRouter.new(mqtt_config: config.mqtt, handlers: handlers, logger: logger)
 stoppables << router
