@@ -1,5 +1,7 @@
 # Per-light view model for the "Schalten" tab tile and the detail page.
 class LightRow
+  Zone = Struct.new(:key, :label, :role, :on)
+
   attr_reader :light, :state
 
   def self.build_all(lights)
@@ -31,7 +33,21 @@ class LightRow
   # White when there is no RGB colour, or a positive colour temperature is set.
   def white? = color_temp_k.to_i.positive? || rgb.nil?
 
-  def default_tab = (on? && !white?) ? "color" : "white"
+  def zone_lamp? = light.zone_lamp?
+
+  def zones
+    bits = state&.zone_states || {}
+    light.zones.filter_map { |k|
+      meta = Light::ZONE_META[k]
+      next unless meta
+      Zone.new(k, meta[:label], meta[:role], !!bits[k])
+    }.sort_by { |z| z.role == "main" ? 0 : 1 }
+  end
+
+  def default_tab
+    return "zones" if zone_lamp?
+    (on? && !white?) ? "color" : "white"
+  end
 
   def summary
     return "Aus" unless on?

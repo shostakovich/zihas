@@ -66,4 +66,31 @@ class LightRowTest < ActiveSupport::TestCase
     assert r.white?
     assert_equal "white", r.default_tab
   end
+
+  test "zone_lamp? mirrors the light" do
+    light = Light.new(zones: %w[bottomLightToggle sideLightToggle])
+    assert LightRow.new(light: light, state: nil).zone_lamp?
+  end
+
+  test "zones presents main-first with labels and on-state" do
+    light = Light.new(zones: %w[rippleLightToggle bottomLightToggle sideLightToggle])
+    state = LightState.new(zone_states: { "bottomLightToggle" => true, "rippleLightToggle" => false })
+    rows  = LightRow.new(light: light, state: state).zones
+    assert_equal %w[bottomLightToggle rippleLightToggle sideLightToggle], rows.map(&:key)
+    assert_equal "main", rows.first.role
+    assert_equal "Leselicht", rows.first.label
+    assert_equal true,  rows.first.on
+    assert_equal false, rows[1].on # ripple, no state -> false
+    assert_equal false, rows[2].on # side, missing -> false
+  end
+
+  test "default_tab is zones for a zone lamp" do
+    light = Light.new(zones: %w[bottomLightToggle sideLightToggle])
+    assert_equal "zones", LightRow.new(light: light, state: nil).default_tab
+  end
+
+  test "default_tab keeps the simple-lamp logic otherwise" do
+    light = Light.new(zones: [])
+    assert_equal "white", LightRow.new(light: light, state: nil).default_tab
+  end
 end
