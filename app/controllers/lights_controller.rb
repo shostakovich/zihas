@@ -1,7 +1,12 @@
 class LightsController < ApplicationController
-  before_action :set_light, only: %i[edit update destroy]
+  before_action :set_light, only: %i[show edit update destroy]
 
   def index = (@lights = Light.includes(:room).order(:name))
+
+  def show
+    @row = LightRow.new(light: @light, state: LightState.find_by(light_key: @light.key))
+  end
+
   def edit; end
 
   def update

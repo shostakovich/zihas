@@ -8,7 +8,7 @@ Rails.application.routes.draw do
 
   get "/switches", to: "switches#index", as: :switches
   resources :rooms, except: [ :show ]
-  resources :lights, param: :key, only: %i[index edit update destroy]
+  resources :lights, param: :key, only: %i[index show edit update destroy]
 
   get "/solakon", to: "solakon#index", as: :solakon
   get "/solakon/history", to: "solakon#history", as: :solakon_history

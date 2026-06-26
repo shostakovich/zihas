@@ -1,0 +1,11 @@
+<% content_for :title, @light.name %>
+<% content_for :body_class, "page-light-detail" %>
+
+<div class="ld" data-controller="light-detail"
+     data-light-detail-key-value="<%= @light.key %>"
+     data-light-detail-tab-value="<%= @row.default_tab %>">
+  <div class="ld-topbar">
+    <%= link_to "←", switches_path, class: "ld-back", "aria-label": "Zurück" %>
+    <span class="ld-title"><%= @light.name %></span>
+  </div>
+</div>

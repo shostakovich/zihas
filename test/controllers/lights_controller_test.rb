@@ -34,4 +34,20 @@ class LightsControllerTest < ActionDispatch::IntegrationTest
   test "there is no manual create route" do
     assert_raises(NameError) { new_light_path }
   end
+
+  test "show renders the detail page for a light by key" do
+    @light = Light.create!(key: "ABCDEF01", name: "Wohnzimmer Stehlampe",
+                           supports_color: true, supports_color_temp: true)
+    LightState.record_state(@light.key, on: true, brightness: 60, color_temp_k: 2700)
+    get light_url(@light.key)
+    assert_response :success
+    assert_match "Wohnzimmer Stehlampe", @response.body
+    assert_select "[data-controller='light-detail']"
+    assert_select "[data-light-detail-key-value=?]", @light.key
+  end
+
+  test "show 404s for unknown key" do
+    get light_url("NOPE")
+    assert_response :not_found
+  end
 end
