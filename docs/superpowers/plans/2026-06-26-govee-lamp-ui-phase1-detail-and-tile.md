@@ -14,6 +14,7 @@
 - German UI copy throughout (matches existing app).
 - Lights are addressed by `:key`, never `:id` (`Light#to_param` returns `key`). Route param is `param: :key`.
 - Theme CSS variables (already defined in `application.css`): `--bg #f8f9fa`, `--card #fff`, `--border #dee2e6`, `--text #212529`, `--muted #6c757d`, `--accent #f59f00`, `--accent-bg` (warm gradient), `--online #40c057`, `--offline #adb5bd`.
+- **Design tokens (added in Task 0):** all Phase 1 CSS MUST consume tokens, not new literals — radii `--radius-sm 8px` / `--radius-md 12px` / `--radius-lg 16px` / `--radius-pill 999px`; warm shades `--accent-tint #fff3bf` / `--accent-tint-2 #ffe066` / `--accent-ink #7c5e00`; surfaces `--surface-sunk #eef1f4` / `--surface-hover #f1f3f5`; `--danger #e03131`; `--focus-ring (2px solid var(--accent))`; `--glow-accent` (lamp glow). One-off radii not in the scale (e.g. 10px, 11px) stay literal.
 - Commands go to `POST /lights/:light_key/command` (`light_command_url`) with `command` ∈ `turn|brightness|color|color_temp`. Do not invent new commands in Phase 1.
 - Colour temperature is sent in **kelvin** to the controller (the controller/GoveeCommander converts to mired). Range: 2700 K (warm) … 6500 K (cold).
 - Run the full check with `bin/ci` before declaring done; it must be run with the dev stack **stopped** (SQLite lock). Individual tests: `bin/rails test TEST=path -n test_name`.
@@ -39,6 +40,94 @@
 - Modify `app/assets/stylesheets/application.css` — detail-page styles, nicer slider, tabs, swatches, white slider, and `.sw-light-card` grid + plush knob.
 - Modify `test/controllers/lights_controller_test.rb` (create if missing) — show action.
 - Modify `test/controllers/switches_controller_test.rb` (create if missing) — tile renders link + knob.
+
+---
+
+### Task 0: Extract design tokens into `:root`
+
+**Files:**
+- Modify: `app/assets/stylesheets/application.css` (the `:root` block + file-wide literal→token migration)
+
+**Interfaces:**
+- Produces: the token layer every later CSS task (5, 7) consumes. No markup or behaviour change — this is a **value-preserving** refactor (computed styles identical), so it has no dedicated test; verification is the full suite + rubocop staying green.
+
+**Why ordering matters:** do the literal→`var()` replacements **before** adding the `:root` definitions. The definition lines themselves contain the literals (`--surface-sunk: #eef1f4;`), so adding them first would make a global replace rewrite them to `var(--surface-sunk: var(--surface-sunk))`. Replace first, define last.
+
+- [ ] **Step 1: Migrate repeated colour literals (file-wide)**
+
+In `app/assets/stylesheets/application.css`, replace ALL occurrences (these colours currently appear only in rule bodies and the `--accent-bg` gradient — replacing the gradient's `#fff3bf`/`#ffe066` is intended and yields the token-based gradient automatically):
+
+- `#eef1f4` → `var(--surface-sunk)`
+- `#f1f3f5` → `var(--surface-hover)`
+- `#7c5e00` → `var(--accent-ink)`
+- `#e03131` → `var(--danger)`
+- `#fff3bf` → `var(--accent-tint)`
+- `#ffe066` → `var(--accent-tint-2)`
+
+- [ ] **Step 2: Migrate repeated radii and the focus ring (file-wide)**
+
+Replace ALL occurrences (substring-exact, so `border-radius: 0 0 8px 0` in `.skip-link` is untouched):
+
+- `border-radius: 8px` → `border-radius: var(--radius-sm)`
+- `border-radius: 12px` → `border-radius: var(--radius-md)`
+- `border-radius: 16px` → `border-radius: var(--radius-lg)`
+- `border-radius: 999px` → `border-radius: var(--radius-pill)`
+- `outline: 2px solid var(--accent)` → `outline: var(--focus-ring)`
+
+- [ ] **Step 3: Add the token definitions to `:root`**
+
+In the `:root` block of `app/assets/stylesheets/application.css`, replace the `--accent-bg` line with the expanded token set. Change:
+
+```css
+  --accent-bg: linear-gradient(135deg, #fff3bf 0%, #ffe066 100%);
+```
+
+(which Step 1 has already turned into `linear-gradient(135deg, var(--accent-tint) 0%, var(--accent-tint-2) 100%)`) so the final `:root` reads:
+
+```css
+:root {
+  --bg: #f8f9fa;
+  --card: #ffffff;
+  --border: #dee2e6;
+  --text: #212529;
+  --muted: #6c757d;
+  --accent: #f59f00;
+  /* warm accent shades */
+  --accent-tint: #fff3bf;
+  --accent-tint-2: #ffe066;
+  --accent-ink: #7c5e00;
+  --accent-bg: linear-gradient(135deg, var(--accent-tint) 0%, var(--accent-tint-2) 100%);
+  /* surfaces & state */
+  --surface-sunk: #eef1f4;
+  --surface-hover: #f1f3f5;
+  --danger: #e03131;
+  --online: #40c057;
+  --offline: #adb5bd;
+  --solar: #f59e0b;
+  /* radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+  /* effects */
+  --focus-ring: 2px solid var(--accent);
+  --glow-accent: 0 0 16px 3px rgba(245, 159, 0, .42);
+}
+```
+
+- [ ] **Step 4: Verify nothing changed visually (suite + rubocop)**
+
+Run: `bin/rails test`
+Expected: PASS (unchanged — no test asserts on these literals).
+Run: `bin/rubocop` (or rely on `bin/ci` in Task 8) — CSS is not linted by rubocop, but confirm the suite is green.
+Spot-check: `grep -n '#eef1f4\|#7c5e00\|#fff3bf\|border-radius: 16px' app/assets/stylesheets/application.css` should now only match inside the `:root` definitions.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add app/assets/stylesheets/application.css
+git commit -m "Extract design tokens (radii, accent shades, surfaces, focus ring) into :root"
+```
 
 ---
 
@@ -556,23 +645,23 @@ body.page-light-detail { max-width: 560px; }
            background: var(--card); display: inline-flex; align-items: center; justify-content: center;
            font-size: 17px; text-decoration: none; color: var(--text); }
 .ld-title { font-weight: 600; font-size: 18px; }
-.ld-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+.ld-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg);
            padding: 14px; margin-bottom: 12px; }
 .ld-hero { display: flex; align-items: center; gap: 14px; background: var(--card);
-           border: 1px solid var(--border); border-radius: 16px; padding: 14px; margin-bottom: 12px; }
+           border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom: 12px; }
 .ld-lamp { width: 58px; height: 58px; border-radius: 50%; flex-shrink: 0;
-           background: radial-gradient(circle at 50% 38%, #fff3bf 0%, #ffe066 45%, var(--accent) 100%);
-           box-shadow: 0 0 18px 4px rgba(245,159,0,.45); }
-.ld-hero.is-off .ld-lamp { background: #eef1f4; box-shadow: none; filter: grayscale(.4); }
+           background: radial-gradient(circle at 50% 38%, var(--accent-tint) 0%, var(--accent-tint-2) 45%, var(--accent) 100%);
+           box-shadow: var(--glow-accent); }
+.ld-hero.is-off .ld-lamp { background: var(--surface-sunk); box-shadow: none; filter: grayscale(.4); }
 .ld-power { display: flex; gap: 8px; flex: 1; }
 .ld-pill { flex: 1; padding: 10px 0; border-radius: 11px; font-weight: 600; font-size: 13px;
            border: 1px solid var(--border); background: var(--card); color: var(--muted); cursor: pointer; }
-.ld-pill.on { background: var(--accent-bg); border-color: var(--accent); color: #7c5e00; }
+.ld-pill.on { background: var(--accent-bg); border-color: var(--accent); color: var(--accent-ink); }
 .ld-label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted);
             margin: 0 0 9px; }
 /* nicer slider (replaces bare range) */
-.ld-range { -webkit-appearance: none; appearance: none; width: 100%; height: 34px; border-radius: 17px;
-            background: linear-gradient(90deg, #fff3bf, var(--accent)); outline: none; }
+.ld-range { -webkit-appearance: none; appearance: none; width: 100%; height: 34px; border-radius: var(--radius-pill);
+            background: linear-gradient(90deg, var(--accent-tint), var(--accent)); outline: none; }
 .ld-range.ld-white { background: linear-gradient(90deg, #ffb24d, #ffe7c2, #fff, #dcebff, #bcd6ff); }
 .ld-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 28px; height: 28px;
             border-radius: 50%; background: #fff; border: 2px solid var(--accent);
@@ -588,18 +677,18 @@ body.page-light-detail { max-width: 560px; }
 .ld-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
 .ld-tab { flex: 1; padding: 9px 0; border-radius: 11px; font-size: 12px; font-weight: 600;
           border: 1px solid var(--border); background: var(--card); color: var(--muted); cursor: pointer; }
-.ld-tab.active { background: var(--accent-bg); border-color: var(--accent); color: #7c5e00; }
+.ld-tab.active { background: var(--accent-bg); border-color: var(--accent); color: var(--accent-ink); }
 .ld-swatches { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
 .ld-sw { aspect-ratio: 1; border-radius: 10px; border: 1px solid rgba(0,0,0,.12); cursor: pointer;
          display: inline-flex; align-items: center; justify-content: center; }
-.ld-sw:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ld-sw:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
 .ld-more { background: conic-gradient(red,#ff0,#0f0,#0ff,#00f,#f0f,red); color: #fff; font-size: 17px;
            text-shadow: 0 0 3px rgba(0,0,0,.6); position: relative; overflow: hidden; }
 .ld-more input[type=color] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .ld-soon { color: var(--muted); font-size: 14px; }
-.ld-error { font-size: 12px; color: #e03131; margin-top: 2px; min-height: 16px; }
+.ld-error { font-size: 12px; color: var(--danger); margin-top: 2px; min-height: 16px; }
 .ld.pending { opacity: .85; }
-.ld.unconfirmed .ld-hero { border-color: #e03131; }
+.ld.unconfirmed .ld-hero { border-color: var(--danger); }
 ```
 
 - [ ] **Step 2: Manual check (stated, not automated)**
@@ -809,10 +898,10 @@ Append to `app/assets/stylesheets/application.css` (near the other `.sw-*` rules
 .sw-swatch { width: 13px; height: 13px; border-radius: 4px; border: 1px solid rgba(0,0,0,.15); }
 /* plush placeholder: a glowing knob, tinted via CSS (real assets in Phase 4) */
 .sw-lamp-knob { border-color: var(--accent);
-                background: radial-gradient(circle at 50% 38%, #fff3bf, #ffe066 55%, var(--accent));
-                background-image: none; box-shadow: 0 0 14px 2px rgba(245,159,0,.4); }
+                background: radial-gradient(circle at 50% 38%, var(--accent-tint), var(--accent-tint-2) 55%, var(--accent));
+                background-image: none; box-shadow: var(--glow-accent); }
 .sw-lamp-knob.off { border-color: var(--offline);
-                    background: #eef1f4; box-shadow: none; filter: grayscale(.35); }
+                    background: var(--surface-sunk); box-shadow: none; filter: grayscale(.35); }
 ```
 
 - [ ] **Step 6: Run the test to verify it passes**
@@ -869,6 +958,8 @@ git commit -m "Fix rubocop offences in lamp UI Phase 1"
 **Placeholder scan:** No "TBD/TODO" in steps; every code step shows complete code. The `⊕` native-colour-input and the CSS-glow plush are real, working implementations (not placeholders) with their richer successors scheduled in later phases — called out so they are not mistaken for finished scope.
 
 **Type/selector consistency:** Stimulus identifier `light-detail` matches the file `light_detail_controller.js` and `data-controller="light-detail"`. Targets used in Task 4 (`panel, brightness, temp, wheel, error, lamp`) all exist in Task 3's markup. Command names (`turn|brightness|color|color_temp`) and the broadcast field names (`light_key, on, brightness, color_temp_k`) match `LightSwitchesController` and `GoveeStatusHandler` verbatim. `light_path`/`light_url` is enabled by adding `:show` (Task 2). `row.summary`/`row.chip` (Task 1) are the exact methods the tile (Task 7) calls.
+
+**Token consistency:** every token used in Tasks 5 & 7 (`--radius-lg`, `--radius-pill`, `--accent-tint`, `--accent-tint-2`, `--accent-ink`, `--surface-sunk`, `--danger`, `--focus-ring`, `--glow-accent`) is defined in Task 0's `:root` block. Task 0 runs first, so the tokens exist before any consumer. One-off radii (10px, 11px) and the multi-stop white-slider gradient stay literal by design (not part of the scale / single-use).
 
 ## Follow-up plans (not this plan)
 
