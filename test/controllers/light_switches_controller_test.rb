@@ -55,8 +55,8 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "mood applies colour for an rgb mood (sunset)" do
-    GoveeCommander.stub :turn, ->(*, **) {} do
-      GoveeCommander.stub :set_brightness, ->(*, **) {} do
+    GoveeCommander.stub :turn, ->(*, **) { } do
+      GoveeCommander.stub :set_brightness, ->(*, **) { } do
         GoveeCommander.stub :set_color, ->(l, **kw) { @calls << [ kw[:r], kw[:g], kw[:b] ] } do
           post light_command_url(light_key: @light.key), params: { command: "mood", mood: "sunset" }
         end

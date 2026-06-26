@@ -48,3 +48,6 @@
 
 /config/govee2mqtt.env
 /vendor/govee2mqtt/
+
+# ruby-lsp local tooling
+/.ruby-lsp/
