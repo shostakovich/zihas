@@ -11,7 +11,7 @@
   </div>
 
   <div class="ld-hero<%= ' is-off' unless @row.on? %>">
-    <div class="ld-lamp" data-light-detail-target="lamp"></div>
+    <div class="ld-lamp plush-<%= @light.plush_type %><%= ' off' unless @row.on? %>" data-light-detail-target="lamp"></div>
     <div class="ld-power">
       <button class="ld-pill<%= ' on' if @row.on? %>" data-action="light-detail#on">An</button>
       <button class="ld-pill<%= ' on' unless @row.on? %>" data-action="light-detail#off">Aus</button>

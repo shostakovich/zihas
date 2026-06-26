@@ -7,7 +7,7 @@ class SwitchesControllerTest < ActionDispatch::IntegrationTest
     SwitchCommand.delete_all
     Sample.delete_all
     Light.delete_all
-    @light = Light.create!(key: "ABCDEF01", name: "Wohnzimmer Stehlampe")
+    @light = Light.create!(key: "ABCDEF01", name: "Wohnzimmer Stehlampe", sku: "H607C")
     LightState.record_state(@light.key, on: true, brightness: 60, color_temp_k: 2700)
   end
 
@@ -18,6 +18,11 @@ class SwitchesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".sw-light-card[data-light-key=?] button.sw-knob", @light.key
     assert_match "Wohnzimmer Stehlampe", @response.body
     assert_match "An · Weiß · 60 %", @response.body
+  end
+
+  test "lamp tile knob carries the per-SKU plush class" do
+    get switches_url
+    assert_select "button.sw-lamp-knob.plush-floorlamp"
   end
 
   test "GET /switches lists only switchable plugs" do

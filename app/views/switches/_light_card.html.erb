@@ -9,7 +9,7 @@
     </div>
   <% end %>
 
-  <button class="sw-knob sw-lamp-knob<%= ' off' unless row.on? %>"
+  <button class="sw-knob sw-lamp-knob plush-<%= row.light.plush_type %><%= ' off' unless row.on? %>"
           data-action="lights#toggle" data-lights-key-param="<%= row.light.key %>"
           aria-label="<%= row.light.name %> umschalten"></button>
 

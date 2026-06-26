@@ -102,4 +102,10 @@ class LightsControllerTest < ActionDispatch::IntegrationTest
     get light_url(light.key)
     assert_select "button[data-action='light-detail#scene']", count: 0
   end
+
+  test "detail hero lamp carries the per-SKU plush class" do
+    light = Light.create!(key: "ABCDEF07", name: "Decke", sku: "H60A6")
+    get light_url(light.key)
+    assert_select ".ld-lamp.plush-ceiling"
+  end
 end

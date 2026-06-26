@@ -92,7 +92,7 @@ export default class extends Controller {
     clearTimeout(this._timeout)
     this.element.classList.remove("pending", "unconfirmed")
     if (this.hasErrorTarget) this.errorTarget.textContent = ""
-    this.element.classList.toggle("is-off", light.on === false)
+    if (this.hasLampTarget) this.lampTarget.classList.toggle("off", light.on === false)
     this.element.querySelectorAll(".ld-pill").forEach((b) => {
       const wantsOn = b.dataset.action?.includes("#on") ?? false
       b.classList.toggle("on", wantsOn === (light.on === true))

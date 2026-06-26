@@ -1184,10 +1184,10 @@ body.page-light-detail { max-width: 560px; }
            padding: 14px; margin-bottom: 12px; }
 .ld-hero { display: flex; align-items: center; gap: 14px; background: var(--card);
            border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom: 12px; }
-.ld-lamp { width: 58px; height: 58px; border-radius: 50%; flex-shrink: 0;
-           background: radial-gradient(circle at 50% 38%, var(--accent-tint) 0%, var(--accent-tint-2) 45%, var(--accent) 100%);
+.ld-lamp { width: 64px; height: 64px; flex-shrink: 0; border-radius: var(--radius-lg);
+           background-size: contain; background-position: center; background-repeat: no-repeat;
            box-shadow: var(--glow-accent); }
-.ld-hero.is-off .ld-lamp { background: var(--surface-sunk); box-shadow: none; filter: grayscale(.4); }
+.ld-lamp.off { box-shadow: none; filter: grayscale(.4); }
 .ld-power { display: flex; gap: 8px; flex: 1; }
 .ld-pill { flex: 1; padding: 10px 0; border-radius: 11px; font-weight: 600; font-size: 13px;
            border: 1px solid var(--border); background: var(--card); color: var(--muted); cursor: pointer; }
@@ -1235,12 +1235,20 @@ body.page-light-detail { max-width: 560px; }
                 text-decoration: none; }
 .sw-light-card .sw-watt-chip { grid-area: aux; }
 .sw-swatch { width: 13px; height: 13px; border-radius: 4px; border: 1px solid rgba(0,0,0,.15); }
-/* plush placeholder: a glowing knob, tinted via CSS (real assets in Phase 4) */
-.sw-lamp-knob { border-color: var(--accent);
-                background: radial-gradient(circle at 50% 38%, var(--accent-tint), var(--accent-tint-2) 55%, var(--accent));
-                background-image: none; box-shadow: var(--glow-accent); }
-.sw-lamp-knob.off { border-color: var(--offline);
-                    background: var(--surface-sunk); box-shadow: none; filter: grayscale(.35); }
+/* plush lamp: per-SKU artwork via background-image (same technique as .sw-knob) */
+.sw-lamp-knob { border-color: var(--accent); background-color: transparent; box-shadow: var(--glow-accent); }
+.sw-lamp-knob.off { border-color: var(--offline); background-color: var(--surface-sunk);
+                    box-shadow: none; filter: grayscale(.35); }
+.plush-uplighter { background-image: url(lamp_uplighter_on.webp); }
+.plush-uplighter.off { background-image: url(lamp_uplighter_off.webp); }
+.plush-floorlamp { background-image: url(lamp_floorlamp_on.webp); }
+.plush-floorlamp.off { background-image: url(lamp_floorlamp_off.webp); }
+.plush-sconce { background-image: url(lamp_sconce_on.webp); }
+.plush-sconce.off { background-image: url(lamp_sconce_off.webp); }
+.plush-ceiling { background-image: url(lamp_ceiling_on.webp); }
+.plush-ceiling.off { background-image: url(lamp_ceiling_off.webp); }
+.plush-generic { background-image: url(lamp_generic_on.webp); }
+.plush-generic.off { background-image: url(lamp_generic_off.webp); }
 
 /* ---- Szenen tab (Stimmungen + Govee scenes) ---- */
 .ld-scenes { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
