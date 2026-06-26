@@ -27,4 +27,43 @@ class LightRowTest < ActiveSupport::TestCase
     assert_equal 0,     row.brightness
     assert_equal false, row.reachable?
   end
+
+  def row(attrs)
+    light = Light.new(key: "K1", name: "Lampe")
+    state = attrs.nil? ? nil : LightState.new(attrs.merge(light_key: "K1"))
+    LightRow.new(light: light, state: state)
+  end
+
+  test "off light summarises as Aus and has no chip" do
+    r = row(on: false, brightness: 60)
+    assert_equal "Aus", r.summary
+    assert_nil r.chip
+    refute r.on?
+  end
+
+  test "white light when colour temp set" do
+    r = row(on: true, brightness: 60, color_temp_k: 2700)
+    assert r.white?
+    assert_equal "white", r.default_tab
+    assert_equal "An · Weiß · 60 %", r.summary
+    assert_nil r.color_hex
+  end
+
+  test "colour light exposes hex and colour tab" do
+    r = row(on: true, brightness: 40, color_r: 255, color_g: 107, color_b: 61)
+    refute r.white?
+    assert_equal "color", r.default_tab
+    assert_equal "#ff6b3d", r.color_hex
+    assert_equal [ 255, 107, 61 ], r.rgb
+    assert_equal "An · Farbe · 40 %", r.summary
+    assert_equal "#ff6b3d", r.chip[:swatch]
+    assert_equal "40 %", r.chip[:label]
+  end
+
+  test "no state defaults to off white" do
+    r = row(nil)
+    assert_equal "Aus", r.summary
+    assert r.white?
+    assert_equal "white", r.default_tab
+  end
 end
