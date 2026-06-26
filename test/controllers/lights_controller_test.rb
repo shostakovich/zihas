@@ -108,4 +108,27 @@ class LightsControllerTest < ActionDispatch::IntegrationTest
     get light_url(light.key)
     assert_select ".ld-lamp.plush-ceiling"
   end
+
+  test "zone lamp renders a Zonen tab and one card per zone, main badged" do
+    Light.create!(name: "Up", key: "UP1", sku: "H60B0",
+                  zones: %w[bottomLightToggle sideLightToggle rippleLightToggle])
+    get light_url(key: "UP1")
+    assert_response :success
+    assert_select "button.ld-tab[data-light-detail-tab-param=zones]"
+    assert_select ".ld-panel[data-tab=zones]"
+    assert_select ".ld-zone", 3
+    assert_select ".ld-zone.main .ld-zone-badge", text: "Haupt"
+    # max-2 surfaced to the client + zones default tab
+    assert_select ".ld[data-light-detail-max-zones-value='2']"
+    assert_select ".ld[data-light-detail-tab-value=zones]"
+    # whole-lamp tabs still present
+    assert_select "button.ld-tab[data-light-detail-tab-param=white]"
+  end
+
+  test "simple lamp renders no Zonen tab" do
+    Light.create!(name: "Lamp", key: "S1", supports_color: true)
+    get light_url(key: "S1")
+    assert_select "button.ld-tab[data-light-detail-tab-param=zones]", false
+    assert_select ".ld-panel[data-tab=zones]", false
+  end
 end

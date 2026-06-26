@@ -3,7 +3,8 @@
 
 <div class="ld" data-controller="light-detail"
      data-light-detail-key-value="<%= @light.key %>"
-     data-light-detail-tab-value="<%= @row.default_tab %>">
+     data-light-detail-tab-value="<%= @row.default_tab %>"
+     data-light-detail-max-zones-value="<%= @light.max_active_zones || 0 %>">
 
   <div class="ld-topbar">
     <%= link_to "←", switches_path, class: "ld-back", "aria-label": "Zurück" %>
@@ -26,12 +27,35 @@
   </div>
 
   <div class="ld-tabs">
+    <% if @row.zone_lamp? %>
+      <button class="ld-tab" data-action="light-detail#tab" data-light-detail-tab-param="zones">Zonen</button>
+    <% end %>
     <button class="ld-tab" data-action="light-detail#tab" data-light-detail-tab-param="white">Weiß</button>
     <% if @light.supports_color %>
       <button class="ld-tab" data-action="light-detail#tab" data-light-detail-tab-param="color">Farbe</button>
     <% end %>
     <button class="ld-tab" data-action="light-detail#tab" data-light-detail-tab-param="scenes">Szenen</button>
   </div>
+
+  <% if @row.zone_lamp? %>
+    <div class="ld-panel" data-light-detail-target="panel" data-tab="zones" hidden>
+      <% @row.zones.each do |zone| %>
+        <div class="ld-zone<%= ' main' if zone.role == 'main' %><%= ' off' unless zone.on %>"
+             data-zone-key="<%= zone.key %>" data-zone-role="<%= zone.role %>">
+          <span class="ld-zone-dot"></span>
+          <span class="ld-zone-nm"><%= zone.label %></span>
+          <% if zone.role == "main" %><span class="ld-zone-badge">Haupt</span><% end %>
+          <span class="ld-zone-spacer"></span>
+          <button class="ld-zone-toggle<%= ' on' if zone.on %>"
+                  data-action="light-detail#zone"
+                  data-light-detail-zone-param="<%= zone.key %>"
+                  data-light-detail-role-param="<%= zone.role %>"
+                  aria-label="<%= zone.label %> an/aus"></button>
+        </div>
+      <% end %>
+      <p class="ld-zone-hint">Farbe &amp; Weiß gelten für die ganze Lampe (Tabs oben).</p>
+    </div>
+  <% end %>
 
   <div class="ld-panel" data-light-detail-target="panel" data-tab="white">
     <div class="ld-card">
@@ -52,7 +76,7 @@
   <% if @light.supports_color %>
     <div class="ld-panel" data-light-detail-target="panel" data-tab="color" hidden>
       <div class="ld-card">
-        <p class="ld-label">Farbe</p>
+        <p class="ld-label"><%= @row.zone_lamp? ? "Farbe · Welle + Seite" : "Farbe" %></p>
         <div class="ld-swatches">
           <% %w[#ff4d4d #ff7a3d #ffd43b #43d97f #22b8cf #4d7cff #7c5cff #ff6bd6].each do |hex| %>
             <button class="ld-sw" style="background: <%= hex %>"
@@ -94,6 +118,11 @@
         </div>
       <% end %>
     </div>
+  </div>
+
+  <div class="ld-toast" data-light-detail-target="toast" hidden>
+    <span data-light-detail-target="toastMsg"></span>
+    <button class="ld-toast-undo" data-action="light-detail#undoZone">Rückgängig</button>
   </div>
 
   <div class="ld-error" data-light-detail-target="error"></div>
