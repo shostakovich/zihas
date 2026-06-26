@@ -23,9 +23,16 @@ der Lampen (keine manuelle Pflege mehr). Cloud-Effekte/Szenen bleiben **out of s
   - `effect`/`effect_list` sind vorhanden, werden aber (noch) nicht genutzt
 - **Discovery:** retained Config unter `{prefix}/light/{unique_id}/config`
   - `prefix` = `--hass-discovery-prefix` (CLI-Flag, **kein** Env-Binding), Default `homeassistant`
-  - **Wir setzen den Prefix auf `ziwoas`** (selbsterklärend, kollisionsfrei falls je ein echtes HA am selben Broker hängt)
-  - Config-Payload liefert: `name`, `unique_id`, `command_topic`, `state_topic`,
-    `supported_color_modes`, `effect_list`, `min_mireds`/`max_mireds`, `device.identifiers`
+  - **Wir setzen den Prefix auf `gv2mqtt`**, damit *alle* govee2mqtt-Topics unter einem
+    Namespace liegen (`gv2mqtt/*`). Der Command/State-Base `gv2mqtt` ist im Source
+    hartcodiert (kein Flag) → das ist der nicht-konfigurierbare Teil, also richten wir
+    die Discovery danach aus.
+  - `unique_id` = `gv2mqtt-{MAC}` (HA-Konvention, MAC mit Vendor-Präfix). Der Discovery-
+    Topic-Knoten ist also `gv2mqtt-{MAC}`, **nicht** die nackte MAC — daher MAC **nicht**
+    aus dem Topic-Pfad ableiten.
+  - Config-Payload liefert: `name`, `unique_id` (`gv2mqtt-{MAC}`), `command_topic` und
+    `state_topic` (beide mit **nackter** MAC), `supported_color_modes`, `effect_list`,
+    `min_mireds`/`max_mireds`, `device.identifiers` (`gv2mqtt-{MAC}`).
 - **Deploy:** Image `ghcr.io/wez/govee2mqtt:latest`, **`network_mode: host` erforderlich**
   (LAN-Multicast), Konfiguration via Env (`GOVEE_EMAIL/PASSWORD/API_KEY`,
   `GOVEE_MQTT_HOST/PORT`, optional `GOVEE_MQTT_USER/PASSWORD`,
@@ -45,7 +52,7 @@ ZiWoAS besitzt das LAN-Protokoll.
 ```
 Web → GoveeCommander → MQTT(gv2mqtt/light/{MAC}/command, HA-JSON) → govee2mqtt → Lampe
 Lampe → govee2mqtt → MQTT(gv2mqtt/light/{MAC}/state) → GoveeStatusHandler → LightState → ActionCable
-govee2mqtt → MQTT(ziwoas/light/{uid}/config, retained) → GoveeDiscoveryHandler → Light (upsert)
+govee2mqtt → MQTT(gv2mqtt/light/{uid}/config, retained) → GoveeDiscoveryHandler → Light (upsert)
 ```
 
 `MqttRouter` und das Web-UI bleiben strukturell unverändert.
@@ -92,8 +99,11 @@ aber jede publiziert **ein** Teil-JSON nach `gv2mqtt/light/#{light.key}/command`
 
 ### GoveeDiscoveryHandler (neu, Single-Purpose)
 
-- Subscription: `ziwoas/light/+/config` (retained).
-- Konstante `DISCOVERY_PREFIX = "ziwoas"` (muss mit dem Launch-Flag übereinstimmen).
+- Subscription: `gv2mqtt/light/+/config` (retained).
+- Konstante `DISCOVERY_PREFIX = "gv2mqtt"` (muss mit dem Launch-Flag übereinstimmen).
+- **MAC-Quelle:** aus `command_topic`/`state_topic` des Payloads parsen
+  (`gv2mqtt/light/{MAC}/state` → nackte MAC), **nicht** aus dem Topic-Pfad (der trägt
+  `gv2mqtt-{MAC}`). Das `unique_id`/`uid` ist für uns Ballast und wird ignoriert.
 - Parst die Config-JSON, **upsert `Light` per MAC**:
   - `key` = MAC, `sku`, `supports_color`/`supports_color_temp` aus `supported_color_modes`.
   - `name` **nur beim Anlegen** setzen – Benutzer-Edits nie überschreiben.
@@ -127,7 +137,7 @@ aber jede publiziert **ein** Teil-JSON nach `gv2mqtt/light/#{light.key}/command`
   bekannte Tag/Commit gepinnt) und das native `govee`-Binary direkt als
   `govee:`-Prozess in `Procfile.dev` laufen lassen — **kein Docker**:
   ```
-  govee: <pfad>/govee --hass-discovery-prefix ziwoas serve   # + Env aus config/govee2mqtt.env
+  govee: <pfad>/govee --hass-discovery-prefix gv2mqtt serve   # + Env aus config/govee2mqtt.env
   ```
 - Die alte `govee: ./bin/govee_bridge`-Zeile entfällt.
 - Genaue CLI-Subcommand-/Arg-Reihenfolge im Plan gegen `govee --help` verifizieren.
@@ -136,7 +146,7 @@ aber jede publiziert **ein** Teil-JSON nach `gv2mqtt/light/#{light.key}/command`
 
 - Neuer Service `govee2mqtt`: `image: ghcr.io/wez/govee2mqtt:latest`,
   `network_mode: host`, `env_file: config/govee2mqtt.env`, persistentes
-  `/data`-Volume, `restart: unless-stopped`, Discovery-Prefix `ziwoas` via `command:`.
+  `/data`-Volume, `restart: unless-stopped`, Discovery-Prefix `gv2mqtt` via `command:`.
 
 ### Credentials
 
