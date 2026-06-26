@@ -62,4 +62,29 @@ class LightTest < ActiveSupport::TestCase
     assert_equal "generic", Light.new(sku: "H9999").plush_type
     assert_equal "generic", Light.new(sku: nil).plush_type
   end
+
+  test "zones defaults to an empty array" do
+    assert_equal [], Light.new.zones
+  end
+
+  test "zones round-trips a JSON array of toggle keys" do
+    l = Light.create!(name: "Up", key: "UP1", zones: %w[bottomLightToggle rippleLightToggle])
+    assert_equal %w[bottomLightToggle rippleLightToggle], l.reload.zones
+  end
+
+  test "zone_lamp? is true only with two or more zones" do
+    assert_not Light.new(zones: %w[bottomLightToggle]).zone_lamp?
+    assert     Light.new(zones: %w[bottomLightToggle sideLightToggle]).zone_lamp?
+  end
+
+  test "ZONE_META labels the known uplighter toggles with a main role" do
+    assert_equal "Leselicht", Light::ZONE_META["bottomLightToggle"][:label]
+    assert_equal "main",      Light::ZONE_META["bottomLightToggle"][:role]
+    assert_equal "side",      Light::ZONE_META["rippleLightToggle"][:role]
+  end
+
+  test "max_active_zones is 2 for the H60B0 uplighter and nil otherwise" do
+    assert_equal 2,   Light.new(sku: "H60B0").max_active_zones
+    assert_nil        Light.new(sku: "H607C").max_active_zones
+  end
 end
