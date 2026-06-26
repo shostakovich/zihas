@@ -62,6 +62,14 @@ class GoveeCommanderTest < ActiveSupport::TestCase
     assert_equal 370, GoveeCommander.kelvin_to_mired(2700) # 370.37 -> 370
   end
 
+  test "set_effect includes state ON and the effect name" do
+    c = FakeMqtt.new
+    GoveeCommander.set_effect(@light, effect: "Forest", **opts(c))
+    topic, payload = c.published.first
+    assert_equal "gv2mqtt/light/14ABDB4844064B60/command", topic
+    assert_equal({ "state" => "ON", "effect" => "Forest" }, JSON.parse(payload))
+  end
+
   test "publish failure raises GoveeCommander::Error" do
     c = FakeMqtt.new(fail_connect: true)
     assert_raises(GoveeCommander::Error) do

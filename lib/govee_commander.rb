@@ -28,6 +28,10 @@ class GoveeCommander
             mqtt_config:, mqtt_factory:)
   end
 
+  def self.set_effect(light, effect:, mqtt_config:, mqtt_factory: nil)
+    publish(light, { "state" => "ON", "effect" => effect.to_s }, mqtt_config:, mqtt_factory:)
+  end
+
   def self.kelvin_to_mired(kelvin) = (1_000_000.0 / kelvin.to_i).round
 
   def self.publish(light, payload, mqtt_config:, mqtt_factory: nil)
