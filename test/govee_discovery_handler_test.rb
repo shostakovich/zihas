@@ -93,4 +93,16 @@ class GoveeDiscoveryHandlerTest < ActiveSupport::TestCase
     assert_equal 0, Light.count
     assert_match(/invalid json/i, @log_io.string)
   end
+
+  test "stores firmware_scenes from effect_list, dropping the blank entry" do
+    @handler.handle("gv2mqtt/light/x/config",
+      config("effect_list" => [ "", "Sunset", "Ocean", "Party" ]))
+    light = Light.find_by(key: "14ABDB4844064B60")
+    assert_equal %w[Sunset Ocean Party], light.firmware_scenes
+  end
+
+  test "leaves firmware_scenes empty when effect_list is absent" do
+    @handler.handle("gv2mqtt/light/x/config", config)
+    assert_equal [], Light.find_by(key: "14ABDB4844064B60").firmware_scenes
+  end
 end

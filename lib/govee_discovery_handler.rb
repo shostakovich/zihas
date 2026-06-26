@@ -5,6 +5,9 @@ require "json"
 # device id parsed from the config's state_topic (the topic-path node is the
 # unique_id "gv2mqtt-<id>", so we do NOT use it). Never deletes; sets name only
 # on first create so user edits to name/room are preserved.
+# Scenes come from the effect_list field of the main-light discovery config —
+# the select entity does not exist for these devices (gv2mqtt/select/… is never
+# published), so firmware_scenes is populated here instead.
 class GoveeDiscoveryHandler
   DISCOVERY_PREFIX = "gv2mqtt"
 
@@ -39,6 +42,8 @@ class GoveeDiscoveryHandler
     modes = Array(data["supported_color_modes"])
     light.supports_color      = modes.include?("rgb")
     light.supports_color_temp = modes.include?("color_temp")
+    effects = Array(data["effect_list"]).map(&:to_s).reject { |e| e.strip.empty? }
+    light.firmware_scenes = effects if effects.any?
     light.save!
   rescue JSON::ParserError => e
     @logger.warn("GoveeDiscoveryHandler: invalid JSON on #{topic}: #{e.message}")

@@ -8,7 +8,6 @@ require "mqtt_router"
 require "shelly_status_handler"
 require "govee_status_handler"
 require "govee_discovery_handler"
-require "govee_scene_discovery_handler"
 require "govee_zone_discovery_handler"
 require "fritz_mqtt_bridge"
 require "config_loader"
@@ -29,7 +28,6 @@ handlers = [ ShellyStatusHandler.new(mqtt_config: config.mqtt, plugs: config.plu
 handlers << GoveeStatusHandler.new(logger: logger)
 handlers << GoveeDiscoveryHandler.new(logger: logger)
 handlers << GoveeZoneDiscoveryHandler.new(logger: logger)
-handlers << GoveeSceneDiscoveryHandler.new(logger: logger)
 
 router = MqttRouter.new(mqtt_config: config.mqtt, handlers: handlers, logger: logger)
 stoppables << router
