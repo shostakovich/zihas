@@ -5,8 +5,8 @@ import { Controller } from "@hotwired/stimulus"
 import consumer from "channels/consumer"
 
 export default class extends Controller {
-  static values = { key: String, tab: String }
-  static targets = ["panel", "brightness", "temp", "wheel", "error", "lamp"]
+  static values = { key: String, tab: String, maxZones: Number }
+  static targets = ["panel", "brightness", "temp", "wheel", "error", "lamp", "toast", "toastMsg"]
 
   connect() {
     this.showTab(this.tabValue || "white")
@@ -68,6 +68,73 @@ export default class extends Controller {
     btn.classList.add("sel")
   }
 
+  // --- zones ---
+  zone(event) {
+    const key = event.params.zone
+    const role = event.params.role
+    const card = this.zoneCard(key)
+    if (!card) return
+    const turningOn = card.classList.contains("off")
+
+    if (turningOn && role === "side" && this.maxZonesValue > 0) {
+      const onCards = this.onZoneCards()
+      if (onCards.length >= this.maxZonesValue) {
+        const victim = this.victimSideCard(card)
+        if (victim) {
+          this.setZoneCard(victim, false)
+          this.send({ command: "zone", zone: victim.dataset.zoneKey, on: "false" })
+          this._undo = { victimKey: victim.dataset.zoneKey, newKey: key }
+          this.showToast(`${this.zoneLabel(victim)} ausgeschaltet · max. ${this.maxZonesValue} Zonen`)
+        }
+      }
+    }
+
+    this.setZoneCard(card, turningOn)
+    if (turningOn && role === "side") this._lastSide = key
+    this.send({ command: "zone", zone: key, on: String(turningOn) })
+  }
+
+  undoZone() {
+    if (!this._undo) return this.hideToast()
+    const victim = this.zoneCard(this._undo.victimKey)
+    const added = this.zoneCard(this._undo.newKey)
+    if (victim) { this.setZoneCard(victim, true);  this.send({ command: "zone", zone: this._undo.victimKey, on: "true" }) }
+    if (added)  { this.setZoneCard(added, false);  this.send({ command: "zone", zone: this._undo.newKey, on: "false" }) }
+    this._lastSide = this._undo.victimKey
+    this._undo = null
+    this.hideToast()
+  }
+
+  // zone helpers
+  zoneCard(key) { return this.element.querySelector(`.ld-zone[data-zone-key="${key}"]`) }
+  zoneLabel(card) { return card.querySelector(".ld-zone-nm")?.textContent ?? "Zone" }
+  onZoneCards() { return [...this.element.querySelectorAll(".ld-zone:not(.off)")] }
+
+  victimSideCard(exclude) {
+    const sides = this.onZoneCards().filter((c) => c.dataset.zoneRole === "side" && c !== exclude)
+    const last = this._lastSide && sides.find((c) => c.dataset.zoneKey === this._lastSide)
+    return last || sides[0] || null
+  }
+
+  setZoneCard(card, on) {
+    card.classList.toggle("off", !on)
+    card.querySelector(".ld-zone-toggle")?.classList.toggle("on", on)
+  }
+
+  showToast(msg) {
+    if (!this.hasToastTarget) return
+    if (this.hasToastMsgTarget) this.toastMsgTarget.textContent = msg
+    this.toastTarget.hidden = false
+    clearTimeout(this._toastTimer)
+    this._toastTimer = setTimeout(() => this.hideToast(), 5000)
+  }
+
+  hideToast() {
+    clearTimeout(this._toastTimer)
+    this._undo = null
+    if (this.hasToastTarget) this.toastTarget.hidden = true
+  }
+
   // --- plumbing ---
   debounce(fn) { clearTimeout(this._d); this._d = setTimeout(fn, 250) }
 
@@ -102,6 +169,12 @@ export default class extends Controller {
     }
     if (typeof light.color_temp_k === "number" && this.hasTempTarget) {
       this.tempTarget.value = light.color_temp_k
+    }
+    if (light.zones && typeof light.zones === "object") {
+      for (const [key, on] of Object.entries(light.zones)) {
+        const card = this.zoneCard(key)
+        if (card) this.setZoneCard(card, on === true)
+      }
     }
   }
 
