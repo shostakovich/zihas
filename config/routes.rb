@@ -7,7 +7,6 @@ Rails.application.routes.draw do
   get "/sensors/series", to: "sensors#series", as: :sensors_series
 
   get "/switches", to: "switches#index", as: :switches
-  resources :rooms, except: [ :show ]
   resources :lights, param: :key, only: %i[index show edit update destroy]
 
   get "/solakon", to: "solakon#index", as: :solakon
@@ -22,11 +21,6 @@ Rails.application.routes.draw do
 
   scope "/lights/:light_key" do
     post "command", to: "light_switches#create", as: :light_command
-  end
-
-  resources :presets, except: [ :show ]
-  resources :scenes, except: [ :show ] do
-    post :apply, on: :member
   end
 
   get "/api/today", to: "api#today"

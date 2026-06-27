@@ -3,7 +3,6 @@ class CreateLights < ActiveRecord::Migration[8.1]
     create_table :lights do |t|
       t.string  :key,            null: false
       t.string  :name,           null: false
-      t.references :room,        foreign_key: true, null: true
       t.string  :sku
       t.string  :shelly_plug_id
       t.boolean :supports_color,      null: false, default: false

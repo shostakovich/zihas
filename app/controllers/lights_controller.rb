@@ -1,7 +1,7 @@
 class LightsController < ApplicationController
   before_action :set_light, only: %i[show edit update destroy]
 
-  def index = (@lights = Light.includes(:room).order(:name))
+  def index = (@lights = Light.order(:name))
 
   def show
     @row = LightRow.new(light: @light, state: LightState.find_by(light_key: @light.key))
@@ -27,7 +27,7 @@ class LightsController < ApplicationController
   def set_light = (@light = Light.find_by!(key: params[:key]))
 
   def light_params
-    params.require(:light).permit(:name, :room_id, :shelly_plug_id,
+    params.require(:light).permit(:name, :shelly_plug_id,
                                   :supports_color, :supports_color_temp)
   end
 end

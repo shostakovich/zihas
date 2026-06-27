@@ -18,9 +18,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_26_161512) do
   end
 
   create_table "daily_totals", primary_key: [ "plug_id", "date" ], force: :cascade do |t|
-    t.string "date", limit: 255, null: false
+    t.string "date", null: false
     t.float "energy_wh", null: false
-    t.string "plug_id", limit: 255, null: false
+    t.string "plug_id", null: false
   end
 
   create_table "light_states", force: :cascade do |t|
@@ -44,7 +44,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_26_161512) do
     t.text "firmware_scenes"
     t.string "key", null: false
     t.string "name", null: false
-    t.integer "room_id"
     t.string "shelly_plug_id"
     t.string "sku"
     t.boolean "supports_color", default: false, null: false
@@ -52,7 +51,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_26_161512) do
     t.datetime "updated_at", null: false
     t.text "zones"
     t.index [ "key" ], name: "index_lights_on_key", unique: true
-    t.index [ "room_id" ], name: "index_lights_on_room_id"
   end
 
   create_table "plug_states", force: :cascade do |t|
@@ -63,56 +61,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_26_161512) do
     t.index [ "plug_id" ], name: "index_plug_states_on_plug_id", unique: true
   end
 
-  create_table "presets", force: :cascade do |t|
-    t.integer "brightness"
-    t.integer "color_b"
-    t.integer "color_g"
-    t.integer "color_r"
-    t.integer "color_temp_k"
-    t.datetime "created_at", null: false
-    t.string "name", null: false
-    t.boolean "on", default: true, null: false
-    t.datetime "updated_at", null: false
-  end
-
-  create_table "rooms", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.string "name", null: false
-    t.datetime "updated_at", null: false
-    t.index [ "name" ], name: "index_rooms_on_name", unique: true
-  end
-
   create_table "samples", primary_key: [ "plug_id", "ts" ], force: :cascade do |t|
     t.float "aenergy_wh", null: false
     t.float "apower_w", null: false
-    t.string "plug_id", limit: 255, null: false
+    t.string "plug_id", null: false
     t.bigint "ts", null: false
-    t.index [ "ts" ], name: "idx_samples_ts"
+    t.index [ "ts" ], name: "index_samples_on_ts"
   end
 
   create_table "samples_5min", primary_key: [ "plug_id", "bucket_ts" ], force: :cascade do |t|
     t.float "avg_power_w", null: false
     t.bigint "bucket_ts", null: false
     t.float "energy_delta_wh", null: false
-    t.string "plug_id", limit: 255, null: false
+    t.string "plug_id", null: false
     t.integer "sample_count", null: false
-  end
-
-  create_table "scene_entries", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.integer "light_id", null: false
-    t.integer "preset_id", null: false
-    t.integer "scene_id", null: false
-    t.datetime "updated_at", null: false
-    t.index [ "light_id" ], name: "index_scene_entries_on_light_id"
-    t.index [ "preset_id" ], name: "index_scene_entries_on_preset_id"
-    t.index [ "scene_id" ], name: "index_scene_entries_on_scene_id"
-  end
-
-  create_table "scenes", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.string "name", null: false
-    t.datetime "updated_at", null: false
   end
 
   create_table "scheduler_states", force: :cascade do |t|
@@ -260,9 +222,4 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_26_161512) do
     t.index [ "kind", "timestamp" ], name: "idx_weather_records_kind_ts"
     t.index [ "lat", "lon", "timestamp" ], name: "idx_weather_records_location_ts"
   end
-
-  add_foreign_key "lights", "rooms"
-  add_foreign_key "scene_entries", "lights"
-  add_foreign_key "scene_entries", "presets"
-  add_foreign_key "scene_entries", "scenes"
 end

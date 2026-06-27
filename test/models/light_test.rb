@@ -33,13 +33,6 @@ class LightTest < ActiveSupport::TestCase
     assert_equal "A1B2C3D4E5F60001", light.to_param
   end
 
-  test "optionally belongs to a room" do
-    room  = Room.create!(name: "Salon")
-    light = Light.create!(name: "Salon Lampe", key: "A1B2C3D4E5F60002", room: room)
-    assert_equal room, light.room
-    assert_includes room.lights, light
-  end
-
   test "firmware_scenes defaults to an empty array" do
     light = Light.create!(name: "Decke", key: "A1B2C3D4E5F60100")
     assert_equal [], light.reload.firmware_scenes
