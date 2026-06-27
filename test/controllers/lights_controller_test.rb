@@ -58,7 +58,7 @@ class LightsControllerTest < ActionDispatch::IntegrationTest
     get light_url(@light.key)
     assert_response :success
     assert_select "#light_power .ld-pill"
-    assert_select "input[type=range][data-light-detail-target='brightness']"
+    assert_select "input[type=range][data-action='light-detail#brightness']"
     assert_select "input[type=range][data-light-detail-target='temp'][min='2700'][max='6500']"
     assert_select "button[data-light-detail-tab-param='white']"
     assert_select "button[data-light-detail-tab-param='color']"
@@ -86,21 +86,21 @@ class LightsControllerTest < ActionDispatch::IntegrationTest
   test "scenes tab renders the curated Stimmungen" do
     light = Light.create!(key: "ABCDEF04", name: "Decke")
     get light_url(light.key)
-    assert_select "button[data-action='light-detail#mood'][data-light-detail-mood-param='reading']"
-    assert_select "button[data-light-detail-mood-param='party']"
+    assert_select "form.ld-inline-form input[name='mood'][value='reading']"
+    assert_select "form.ld-inline-form input[name='mood'][value='party']"
   end
 
   test "scenes tab renders the device firmware scenes when present" do
     light = Light.create!(key: "ABCDEF05", name: "Decke", firmware_scenes: %w[Forest Aurora])
     get light_url(light.key)
-    assert_select "button[data-action='light-detail#scene'][data-light-detail-scene-param='Forest']"
-    assert_select "button[data-light-detail-scene-param='Aurora']"
+    assert_select "form.ld-inline-form input[name='effect'][value='Forest']"
+    assert_select "form.ld-inline-form input[name='effect'][value='Aurora']"
   end
 
   test "scenes tab omits the Govee section when the light has no scenes" do
     light = Light.create!(key: "ABCDEF06", name: "Decke", firmware_scenes: [])
     get light_url(light.key)
-    assert_select "button[data-action='light-detail#scene']", count: 0
+    assert_select "form.ld-inline-form input[name='effect']", count: 0
   end
 
   test "detail hero lamp carries the per-SKU plush class" do

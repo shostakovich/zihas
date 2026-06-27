@@ -17,7 +17,7 @@
   <div class="ld-card">
     <p class="ld-label">Helligkeit</p>
     <input class="ld-range" type="range" min="1" max="100" value="<%= [@row.brightness, 1].max %>"
-           data-light-detail-target="brightness" data-action="light-detail#brightness"
+           data-action="light-detail#brightness"
            aria-label="Helligkeit">
   </div>
 
@@ -81,11 +81,12 @@
       <p class="ld-label">Stimmungen</p>
       <div class="ld-scenes">
         <% LightMood::ALL.each do |mood| %>
-          <button class="ld-scene" data-action="light-detail#mood"
-                  data-light-detail-mood-param="<%= mood.id %>">
+          <%= button_to light_command_path(light_key: @light.key),
+                params: { command: "mood", mood: mood.id },
+                class: "ld-scene", form_class: "ld-inline-form" do %>
             <span class="ld-scene-prev" style="background: <%= mood.gradient %>"></span>
             <span class="ld-scene-nm"><%= mood.emoji %> <%= mood.name %></span>
-          </button>
+          <% end %>
         <% end %>
       </div>
 
@@ -93,11 +94,12 @@
         <p class="ld-label" style="margin-top: 16px;">Govee-Szenen</p>
         <div class="ld-scenes ld-scenes-scroll">
           <% @light.firmware_scenes.each do |scene| %>
-            <button class="ld-scene" data-action="light-detail#scene"
-                    data-light-detail-scene-param="<%= scene %>">
+            <%= button_to light_command_path(light_key: @light.key),
+                  params: { command: "effect", effect: scene },
+                  class: "ld-scene", form_class: "ld-inline-form" do %>
               <span class="ld-scene-prev" style="background: <%= scene_gradient(scene) %>"></span>
               <span class="ld-scene-nm"><%= scene %></span>
-            </button>
+            <% end %>
           <% end %>
         </div>
       <% end %>
