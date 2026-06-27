@@ -170,11 +170,12 @@ Aufbau und Partial-Auswahl) bleiben im Controller — reine View-Logik gehört d
 
 ### Routing
 
-- Neu: `PATCH /lights/:light_key/command → lights#command` (as: `:light_command`).
-- Alt entfällt: `post "command", to: "light_switches#create"`.
-- Die Views nutzen schon `light_command_path(light_key:)` mit `params[:command]` —
-  Helper-Name bleibt, nur HTTP-Methode/Target ändern sich. `button_to` mit
-  `method: :patch` prüfen.
+- `POST /lights/:light_key/command → lights#command` (as: `:light_command`).
+- Alt entfällt: `to: "light_switches#create"` (nur das Ziel ändert sich auf `lights#command`).
+- **POST bleibt** (nicht PATCH): Views (`button_to … light_command_path`) und die
+  bestehende Integrationstest-Suite bleiben dadurch unverändert — die Tests sind das
+  Refactor-Sicherheitsnetz. Außerdem konsistent mit `plug_switches#create`
+  (`post "switch"`). Eine spätere Umstellung auf PATCH wäre ein trivialer Folgeschritt.
 
 ## Datenfluss
 
