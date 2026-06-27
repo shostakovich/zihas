@@ -54,7 +54,7 @@ class LightSwitchesController < ApplicationController
       return head :unprocessable_entity
     end
 
-    head :accepted
+    head :no_content
   rescue GoveeCommander::Error
     head :service_unavailable
   end

@@ -30,15 +30,23 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
     GoveeCommander.stub :set_brightness, ->(l, **kw) { @calls << kw[:value] } do
       post light_command_url(light_key: @light.key), params: { command: "brightness", value: "42" }
     end
-    assert_response :accepted
+    assert_response :no_content
     assert_equal [ 42 ], @calls
+  end
+
+  test "brightness responds 204 no_content for fire-and-forget" do
+    @light = Light.create!(name: "L", key: "S3", zones: [])
+    GoveeCommander.stub(:set_brightness, ->(*, **) {}) do
+      post light_command_url(light_key: "S3"), params: { command: "brightness", value: "42" }
+    end
+    assert_response :no_content
   end
 
   test "effect forwards the scene name" do
     GoveeCommander.stub :set_effect, ->(l, **kw) { @calls << [ l.key, kw[:effect] ] } do
       post light_command_url(light_key: @light.key), params: { command: "effect", effect: "Forest" }
     end
-    assert_response :accepted
+    assert_response :no_content
     assert_equal [ [ "A1B2C3D4E5F60030", "Forest" ] ], @calls
   end
 
@@ -50,7 +58,7 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
         end
       end
     end
-    assert_response :accepted
+    assert_response :no_content
     assert_equal [ [ :turn, true ], [ :brightness, 80 ], [ :temp, 3000 ] ], @calls
   end
 
@@ -62,7 +70,7 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
         end
       end
     end
-    assert_response :accepted
+    assert_response :no_content
     assert_equal [ [ 255, 122, 61 ] ], @calls
   end
 

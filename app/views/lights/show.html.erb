@@ -3,8 +3,7 @@
 
 <div class="ld" data-controller="light-detail"
      data-light-detail-key-value="<%= @light.key %>"
-     data-light-detail-tab-value="<%= @row.default_tab %>"
-     data-light-detail-max-zones-value="<%= @light.max_active_zones || 0 %>">
+     data-light-detail-tab-value="<%= @row.default_tab %>">
 
   <%= turbo_stream_from "light_#{@light.key}" %>
 
@@ -69,7 +68,7 @@
                     aria-label="Farbe <%= hex %>"></button>
           <% end %>
           <label class="ld-sw ld-more" aria-label="Weitere Farbe">⊕
-            <input type="color" data-light-detail-target="wheel"
+            <input type="color"
                    data-action="light-detail#wheel" value="<%= @row.color_hex || '#ff7a3d' %>">
           </label>
         </div>
@@ -107,5 +106,4 @@
 
   <%= render "lights/toast", message: nil, undo: nil %>
 
-  <div class="ld-error" data-light-detail-target="error"></div>
 </div>

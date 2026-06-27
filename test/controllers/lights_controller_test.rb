@@ -118,8 +118,7 @@ class LightsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".ld-panel[data-tab=zones]"
     assert_select ".ld-zone", 3
     assert_select ".ld-zone.main .ld-zone-badge", text: "Haupt"
-    # max-2 surfaced to the client + zones default tab
-    assert_select ".ld[data-light-detail-max-zones-value='2']"
+    # zones default tab
     assert_select ".ld[data-light-detail-tab-value=zones]"
     # whole-lamp tabs still present
     assert_select "button.ld-tab[data-light-detail-tab-param=white]"
