@@ -37,6 +37,14 @@ class LightSwitchesController < ApplicationController
       GoveeCommander.set_color_temp(light, kelvin: params[:temp_k].to_i, **opts)
     when "effect"
       GoveeCommander.set_effect(light, effect: params[:effect].to_s, **opts)
+    when "zone_undo"
+      victim = params[:victim]; added = params[:added]
+      return head :unprocessable_entity unless light.zones.include?(victim) && light.zones.include?(added)
+      LightState.record_zone_state(light.key, victim, true)
+      GoveeCommander.set_zone(light, zone: victim, on: true, **opts)
+      LightState.record_zone_state(light.key, added, false)
+      GoveeCommander.set_zone(light, zone: added, on: false, **opts)
+      return respond_zone(light, victim, added, toast: { message: nil, undo: nil })
     when "mood"
       return head :unprocessable_entity unless apply_mood(light, params[:mood])
     else

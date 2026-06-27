@@ -118,6 +118,24 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "turbo-stream[action=replace][target=light_toast]"
   end
 
+  test "zone_undo restores the victim, turns off the added zone and clears the toast" do
+    light = Light.create!(name: "Up", key: "UP4", zones: %w[rippleLightToggle sideLightToggle])
+    LightState.record_zone_state("UP4", "sideLightToggle", true)
+    calls = []
+    GoveeCommander.stub(:set_zone, ->(l, zone:, on:, **) { calls << [ zone, on ] }) do
+      post light_command_url(light_key: "UP4"),
+           params: { command: "zone_undo", victim: "rippleLightToggle", added: "sideLightToggle" },
+           as: :turbo_stream
+    end
+    assert_response :success
+    state = LightState.find_by(light_key: "UP4")
+    assert_equal true,  state.zone_states["rippleLightToggle"]
+    assert_equal false, state.zone_states["sideLightToggle"]
+    assert_includes calls, [ "rippleLightToggle", true ]
+    assert_includes calls, [ "sideLightToggle", false ]
+    assert_select "turbo-stream[action=replace][target=light_toast]"
+  end
+
   test "zone command responds with a turbo stream replacing the card" do
     Light.create!(name: "Up", key: "UP2", zones: %w[bottomLightToggle rippleLightToggle])
     GoveeCommander.stub(:set_zone, ->(*, **) {}) do
