@@ -18,8 +18,8 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
   end
 
-  test "turn calls GoveeCommander and responds 202" do
-    GoveeCommander.stub :turn, ->(l, **kw) { @calls << [ l.key, kw[:on] ] } do
+  test "turn calls Govees::Commander and responds 202" do
+    Govees::Commander.stub :turn, ->(l, **kw) { @calls << [ l.key, kw[:on] ] } do
       post light_command_url(light_key: @light.key), params: { command: "turn", on: "true" }
     end
     assert_response :success
@@ -27,7 +27,7 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "brightness forwards the integer value" do
-    GoveeCommander.stub :set_brightness, ->(l, **kw) { @calls << kw[:value] } do
+    Govees::Commander.stub :set_brightness, ->(l, **kw) { @calls << kw[:value] } do
       post light_command_url(light_key: @light.key), params: { command: "brightness", value: "42" }
     end
     assert_response :no_content
@@ -36,14 +36,14 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
 
   test "brightness responds 204 no_content for fire-and-forget" do
     @light = Light.create!(name: "L", key: "S3", zones: [])
-    GoveeCommander.stub(:set_brightness, ->(*, **) {}) do
+    Govees::Commander.stub(:set_brightness, ->(*, **) {}) do
       post light_command_url(light_key: "S3"), params: { command: "brightness", value: "42" }
     end
     assert_response :no_content
   end
 
   test "effect forwards the scene name" do
-    GoveeCommander.stub :set_effect, ->(l, **kw) { @calls << [ l.key, kw[:effect] ] } do
+    Govees::Commander.stub :set_scene, ->(l, **kw) { @calls << [ l.key, kw[:scene] ] } do
       post light_command_url(light_key: @light.key), params: { command: "effect", effect: "Forest" }
     end
     assert_response :no_content
@@ -51,8 +51,8 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "broker failure responds 503" do
-    failing = ->(*, **) { raise GoveeCommander::Error, "broker down" }
-    GoveeCommander.stub :turn, failing do
+    failing = ->(*, **) { raise Govees::Commander::Error, "broker down" }
+    Govees::Commander.stub :turn, failing do
       post light_command_url(light_key: @light.key), params: { command: "turn", on: "true" }
     end
     assert_response :service_unavailable
@@ -60,7 +60,7 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
 
   test "zone command toggles a valid zone" do
     light = Light.create!(name: "Up", key: "UP1", zones: %w[bottomLightToggle rippleLightToggle])
-    GoveeCommander.stub(:set_zone, ->(l, zone:, on:, **) {
+    Govees::Commander.stub(:set_zone, ->(l, zone:, on:, **) {
       assert_equal "rippleLightToggle", zone
       assert_equal true, on
     }) do
@@ -81,7 +81,7 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
     LightState.record_zone_state("UP3", "bottomLightToggle", true) # Haupt an
     LightState.record_zone_state("UP3", "rippleLightToggle", true) # eine Seite an -> 2 an == Limit
     calls = []
-    GoveeCommander.stub(:set_zone, ->(l, zone:, on:, **) { calls << [ zone, on ] }) do
+    Govees::Commander.stub(:set_zone, ->(l, zone:, on:, **) { calls << [ zone, on ] }) do
       post light_command_url(light_key: "UP3"),
            params: { command: "zone", zone: "sideLightToggle", on: "true" }, as: :turbo_stream
     end
@@ -99,7 +99,7 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
 
   test "turn optimistically persists on and replaces the power partial" do
     @light = Light.create!(name: "Lampe", key: "S2", zones: [])
-    GoveeCommander.stub(:turn, ->(*, **) {}) do
+    Govees::Commander.stub(:turn, ->(*, **) {}) do
       post light_command_url(light_key: "S2"),
            params: { command: "turn", on: "true" }, as: :turbo_stream
     end
@@ -112,7 +112,7 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
     light = Light.create!(name: "Up", key: "UP4", zones: %w[rippleLightToggle sideLightToggle])
     LightState.record_zone_state("UP4", "sideLightToggle", true)
     calls = []
-    GoveeCommander.stub(:set_zone, ->(l, zone:, on:, **) { calls << [ zone, on ] }) do
+    Govees::Commander.stub(:set_zone, ->(l, zone:, on:, **) { calls << [ zone, on ] }) do
       post light_command_url(light_key: "UP4"),
            params: { command: "zone_undo", victim: "rippleLightToggle", added: "sideLightToggle" },
            as: :turbo_stream
@@ -128,7 +128,7 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
 
   test "zone command responds with a turbo stream replacing the card" do
     Light.create!(name: "Up", key: "UP2", zones: %w[bottomLightToggle rippleLightToggle])
-    GoveeCommander.stub(:set_zone, ->(*, **) {}) do
+    Govees::Commander.stub(:set_zone, ->(*, **) {}) do
       post light_command_url(light_key: "UP2"),
            params: { command: "zone", zone: "rippleLightToggle", on: "true" },
            as: :turbo_stream
@@ -140,7 +140,7 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
 
   test "zone command persists the zone state" do
     Light.create!(name: "Up", key: "UP1", zones: %w[bottomLightToggle rippleLightToggle])
-    GoveeCommander.stub(:set_zone, ->(*, **) {}) do
+    Govees::Commander.stub(:set_zone, ->(*, **) {}) do
       post light_command_url(light_key: "UP1"), params: { command: "zone", zone: "rippleLightToggle", on: "true" }
     end
     assert_response :success
@@ -150,7 +150,7 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
   test "turn routes a zone lamp through powerSwitch" do
     light = Light.create!(name: "Up", key: "UP1", zones: %w[bottomLightToggle sideLightToggle])
     called = {}
-    GoveeCommander.stub(:set_zone, ->(l, zone:, on:, **) { called[:zone] = zone; called[:on] = on }) do
+    Govees::Commander.stub(:set_zone, ->(l, zone:, on:, **) { called[:zone] = zone; called[:on] = on }) do
       post light_command_url(light_key: "UP1"), params: { command: "turn", on: "true" }
     end
     assert_equal "powerSwitch", called[:zone]
@@ -161,10 +161,10 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
   test "turn still uses the light command for a simple lamp" do
     Light.create!(name: "Lamp", key: "S1", zones: [])
     called = false
-    GoveeCommander.stub(:turn, ->(l, on:, **) { called = true }) do
+    Govees::Commander.stub(:turn, ->(l, on:, **) { called = true }) do
       post light_command_url(light_key: "S1"), params: { command: "turn", on: "false" }
     end
-    assert called, "simple lamp uses GoveeCommander.turn"
+    assert called, "simple lamp uses Govees::Commander.turn"
     assert_response :success
   end
 end

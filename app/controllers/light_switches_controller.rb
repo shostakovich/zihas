@@ -1,5 +1,5 @@
 # app/controllers/light_switches_controller.rb
-require "govee_commander"
+require "govees/commander"
 
 class LightSwitchesController < ApplicationController
   def create
@@ -10,9 +10,9 @@ class LightSwitchesController < ApplicationController
     when "turn"
       on = cast_bool(params[:on])
       if light.zone_lamp?
-        GoveeCommander.set_zone(light, zone: "powerSwitch", on: on, **opts)
+        Govees::Commander.set_zone(light, zone: "powerSwitch", on: on, **opts)
       else
-        GoveeCommander.turn(light, on: on, **opts)
+        Govees::Commander.turn(light, on: on, **opts)
       end
       LightState.record_state(light.key, on: on)
       return respond_power(light)
@@ -22,10 +22,10 @@ class LightSwitchesController < ApplicationController
       evicted = on ? evict_for(light, params[:zone]) : nil
       if evicted
         LightState.record_zone_state(light.key, evicted, false)
-        GoveeCommander.set_zone(light, zone: evicted, on: false, **opts)
+        Govees::Commander.set_zone(light, zone: evicted, on: false, **opts)
       end
       LightState.record_zone_state(light.key, params[:zone], on)
-      GoveeCommander.set_zone(light, zone: params[:zone], on: on, **opts)
+      Govees::Commander.set_zone(light, zone: params[:zone], on: on, **opts)
       if evicted
         toast = { message: "#{Light::ZONE_META.dig(evicted, :label)} ausgeschaltet · max. #{light.max_active_zones} Zonen",
                   undo: { light_key: light.key, victim: evicted, added: params[:zone] } }
@@ -33,27 +33,27 @@ class LightSwitchesController < ApplicationController
       end
       return respond_zone(light, params[:zone])
     when "brightness"
-      GoveeCommander.set_brightness(light, value: params[:value].to_i, **opts)
+      Govees::Commander.set_brightness(light, value: params[:value].to_i, **opts)
     when "color"
-      GoveeCommander.set_color(light, r: params[:r].to_i, g: params[:g].to_i, b: params[:b].to_i, **opts)
+      Govees::Commander.set_color(light, r: params[:r].to_i, g: params[:g].to_i, b: params[:b].to_i, **opts)
     when "color_temp"
-      GoveeCommander.set_color_temp(light, kelvin: params[:temp_k].to_i, **opts)
-    when "effect"
-      GoveeCommander.set_effect(light, effect: params[:effect].to_s, **opts)
+      Govees::Commander.set_color_temp(light, kelvin: params[:temp_k].to_i, **opts)
+    when "effect", "scene"
+      Govees::Commander.set_scene(light, scene: params[:effect] || params[:scene], **opts)
     when "zone_undo"
       victim = params[:victim]; added = params[:added]
       return head :unprocessable_entity unless light.zones.include?(victim) && light.zones.include?(added)
       LightState.record_zone_state(light.key, victim, true)
-      GoveeCommander.set_zone(light, zone: victim, on: true, **opts)
+      Govees::Commander.set_zone(light, zone: victim, on: true, **opts)
       LightState.record_zone_state(light.key, added, false)
-      GoveeCommander.set_zone(light, zone: added, on: false, **opts)
+      Govees::Commander.set_zone(light, zone: added, on: false, **opts)
       return respond_zone(light, victim, added, toast: { message: nil, undo: nil })
     else
       return head :unprocessable_entity
     end
 
     head :no_content
-  rescue GoveeCommander::Error
+  rescue Govees::Commander::Error
     head :service_unavailable
   end
 
