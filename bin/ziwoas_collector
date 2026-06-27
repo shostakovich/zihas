@@ -6,10 +6,9 @@ $stdout.sync = true
 require_relative "../config/environment"
 require "mqtt_router"
 require "shelly_status_handler"
-require "govee_status_handler"
-require "govee_discovery_handler"
-require "govee_zone_discovery_handler"
-require "govee_zone_state_handler"
+require "govees/subscriber"
+require "govees/bridge"
+require "govees/platform_api"
 require "fritz_mqtt_bridge"
 require "config_loader"
 require "fritz_dect_client"
@@ -26,10 +25,7 @@ threads    = []
 stoppables = []
 
 handlers = [ ShellyStatusHandler.new(mqtt_config: config.mqtt, plugs: config.plugs, logger: logger) ]
-handlers << GoveeStatusHandler.new(logger: logger)
-handlers << GoveeDiscoveryHandler.new(logger: logger)
-handlers << GoveeZoneDiscoveryHandler.new(logger: logger)
-handlers << GoveeZoneStateHandler.new(logger: logger)
+handlers << Govees::Subscriber.new(logger: logger)
 
 router = MqttRouter.new(mqtt_config: config.mqtt, handlers: handlers, logger: logger)
 stoppables << router
@@ -37,6 +33,13 @@ threads << Thread.new {
   Thread.current.name = "mqtt_router"
   router.run
 }
+
+if config.govee
+  api    = Govees::PlatformApi.new(api_key: config.govee.api_key)
+  bridge = Govees::Bridge.new(mqtt_config: config.mqtt, govee_config: config.govee, api: api, logger: logger)
+  stoppables << bridge
+  threads << Thread.new { Thread.current.name = "govees_bridge"; bridge.run }
+end
 
 if fritz_plugs.any?
   fritz_client = FritzDectClient.new(
