@@ -38,6 +38,8 @@ module Govees
       light.supports_color_temp = !!data["supports_color_temp"]
       light.zones           = Array(data["zones"]).map(&:to_s)
       light.firmware_scenes = Array(data["scenes"]).map(&:to_s)
+      room_name = data["room"].to_s.presence
+      light.room = Room.find_or_create_by!(name: room_name) if room_name
       light.save!
     rescue JSON::ParserError => e
       @logger.warn("Govees::Subscriber: invalid config JSON on #{topic}: #{e.message}")

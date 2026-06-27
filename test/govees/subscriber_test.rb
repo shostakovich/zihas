@@ -5,6 +5,7 @@ require "govees/subscriber"
 class GoveesSubscriberConfigTest < ActiveSupport::TestCase
   setup do
     Light.delete_all
+    Room.delete_all
     @sub = Govees::Subscriber.new(logger: Logger.new(IO::NULL))
   end
 
@@ -34,6 +35,31 @@ class GoveesSubscriberConfigTest < ActiveSupport::TestCase
   test "config ignores invalid JSON" do
     assert_nothing_raised { @sub.handle("govees/K1/config", "x{") }
     assert_equal 0, Light.count
+  end
+
+  test "config with room assigns the Light to a Room (creating it if needed)" do
+    @sub.handle("govees/K1/config", JSON.generate(
+      "sku" => "H60B0", "name" => "Uplighter", "room" => "Wohnzimmer",
+      "supports_color" => true, "supports_color_temp" => true, "zones" => [], "scenes" => []))
+    l = Light.find_by!(key: "K1")
+    assert_not_nil l.room
+    assert_equal "Wohnzimmer", l.room.name
+  end
+
+  test "config with room reuses existing Room record" do
+    existing = Room.create!(name: "Schlafzimmer")
+    @sub.handle("govees/K1/config", JSON.generate(
+      "sku" => "H60B0", "name" => "Lamp", "room" => "Schlafzimmer",
+      "supports_color" => false, "supports_color_temp" => false, "zones" => [], "scenes" => []))
+    assert_equal existing.id, Light.find_by!(key: "K1").room_id
+    assert_equal 1, Room.count
+  end
+
+  test "config without room leaves room nil" do
+    @sub.handle("govees/K1/config", JSON.generate(
+      "sku" => "H60B0", "name" => "Lamp",
+      "supports_color" => false, "supports_color_temp" => false, "zones" => [], "scenes" => []))
+    assert_nil Light.find_by!(key: "K1").room
   end
 end
 

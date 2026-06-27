@@ -7,9 +7,11 @@ module Govees
   # limited to Light::ZONE_META keys, scenes reduced to names + an internal
   # name->{id,paramId} index. LAN discovery only contributes the IP.
   class DeviceRegistry
-    def initialize(api:, logger:)
+    def initialize(api:, logger:, names: {})
       @api    = api
       @logger = logger
+      # Normalize keys up-front so lookups work regardless of separator style.
+      @names  = names.transform_keys { |k| self.class.normalize_mac(k.to_s) }
       @by_key = {}
     end
 
@@ -43,15 +45,19 @@ module Govees
     def build(raw)
       api_id = raw["device"].to_s
       return nil if api_id.empty?
-      caps      = Array(raw["capabilities"])
-      instances = caps.map { |c| c["instance"] }
+      key        = self.class.normalize_mac(api_id)
+      override   = @names[key]
+      caps       = Array(raw["capabilities"])
+      instances  = caps.map { |c| c["instance"] }
       power_only = instances == [ "powerSwitch" ]
-      zones = instances & Light::ZONE_META.keys
+      zones      = instances & Light::ZONE_META.keys
       scenes, index = power_only ? [ [], {} ] : load_scenes(raw)
 
       Device.new(
-        key: self.class.normalize_mac(api_id), api_id: api_id, sku: raw["sku"].to_s,
-        name: raw["deviceName"].to_s, ip: nil,
+        key: key, api_id: api_id, sku: raw["sku"].to_s,
+        name: (override && override[:name].presence) || raw["deviceName"].to_s,
+        room: override&.fetch(:room, nil),
+        ip: nil,
         supports_color:      instances.include?("colorRgb"),
         supports_color_temp: instances.include?("colorTemperatureK"),
         zones: zones, scenes: scenes, scene_index: index, power_only: power_only)
