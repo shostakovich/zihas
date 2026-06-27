@@ -18,6 +18,7 @@ class LightSwitchesController < ApplicationController
       on = cast_bool(params[:on])
       LightState.record_zone_state(light.key, params[:zone], on)
       GoveeCommander.set_zone(light, zone: params[:zone], on: on, **opts)
+      return respond_zone(light, params[:zone])
     when "brightness"
       GoveeCommander.set_brightness(light, value: params[:value].to_i, **opts)
     when "color"
@@ -41,6 +42,16 @@ class LightSwitchesController < ApplicationController
 
   def opts = { mqtt_config: app_config.mqtt }
   def cast_bool(v) = ActiveModel::Type::Boolean.new.cast(v)
+
+  def respond_zone(light, *zone_keys, toast: nil)
+    zones = LightRow.new(light: light, state: LightState.find_by(light_key: light.key)).zones.index_by(&:key)
+    streams = zone_keys.map { |k|
+      turbo_stream.replace("zone_#{k}", partial: "lights/zone", locals: { zone: zones[k], light_key: light.key })
+    }
+    streams << turbo_stream.replace("light_toast", partial: "lights/toast",
+      locals: { message: toast&.dig(:message), undo: toast&.dig(:undo) }) if toast
+    render turbo_stream: streams
+  end
 
   def apply_mood(light, id)
     mood = LightMood.find(id)

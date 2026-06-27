@@ -87,7 +87,7 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
     }) do
       post light_command_url(light_key: "UP1"), params: { command: "zone", zone: "rippleLightToggle", on: "true" }
     end
-    assert_response :accepted
+    assert_response :success
   end
 
   test "zone command rejects a zone not on this light" do
@@ -96,12 +96,24 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
   end
 
+  test "zone command responds with a turbo stream replacing the card" do
+    Light.create!(name: "Up", key: "UP2", zones: %w[bottomLightToggle rippleLightToggle])
+    GoveeCommander.stub(:set_zone, ->(*, **) {}) do
+      post light_command_url(light_key: "UP2"),
+           params: { command: "zone", zone: "rippleLightToggle", on: "true" },
+           as: :turbo_stream
+    end
+    assert_response :success
+    assert_equal "text/vnd.turbo-stream.html", @response.media_type
+    assert_select "turbo-stream[action=replace][target=zone_rippleLightToggle]"
+  end
+
   test "zone command persists the zone state" do
     Light.create!(name: "Up", key: "UP1", zones: %w[bottomLightToggle rippleLightToggle])
     GoveeCommander.stub(:set_zone, ->(*, **) {}) do
       post light_command_url(light_key: "UP1"), params: { command: "zone", zone: "rippleLightToggle", on: "true" }
     end
-    assert_response :accepted
+    assert_response :success
     assert_equal({ "rippleLightToggle" => true }, LightState.find_by(light_key: "UP1").zone_states)
   end
 
