@@ -8,11 +8,14 @@ class LightSwitchesController < ApplicationController
 
     case params[:command]
     when "turn"
+      on = cast_bool(params[:on])
       if light.zone_lamp?
-        GoveeCommander.set_zone(light, zone: "powerSwitch", on: cast_bool(params[:on]), **opts)
+        GoveeCommander.set_zone(light, zone: "powerSwitch", on: on, **opts)
       else
-        GoveeCommander.turn(light, on: cast_bool(params[:on]), **opts)
+        GoveeCommander.turn(light, on: on, **opts)
       end
+      LightState.record_state(light.key, on: on)
+      return respond_power(light)
     when "zone"
       return head :unprocessable_entity unless light.zones.include?(params[:zone])
       on = cast_bool(params[:on])
@@ -60,6 +63,11 @@ class LightSwitchesController < ApplicationController
 
   def opts = { mqtt_config: app_config.mqtt }
   def cast_bool(v) = ActiveModel::Type::Boolean.new.cast(v)
+
+  def respond_power(light)
+    row = LightRow.new(light: light, state: LightState.find_by(light_key: light.key))
+    render turbo_stream: turbo_stream.replace("light_power", partial: "lights/power", locals: { light: light, row: row })
+  end
 
   def evict_for(light, zone)
     return nil unless Light::ZONE_META.dig(zone, :role) == "side"

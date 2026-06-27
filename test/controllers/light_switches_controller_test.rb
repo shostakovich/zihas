@@ -22,7 +22,7 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
     GoveeCommander.stub :turn, ->(l, **kw) { @calls << [ l.key, kw[:on] ] } do
       post light_command_url(light_key: @light.key), params: { command: "turn", on: "true" }
     end
-    assert_response :accepted
+    assert_response :success
     assert_equal [ [ "A1B2C3D4E5F60030", true ] ], @calls
   end
 
@@ -118,6 +118,17 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "turbo-stream[action=replace][target=light_toast]"
   end
 
+  test "turn optimistically persists on and replaces the power partial" do
+    @light = Light.create!(name: "Lampe", key: "S2", zones: [])
+    GoveeCommander.stub(:turn, ->(*, **) {}) do
+      post light_command_url(light_key: "S2"),
+           params: { command: "turn", on: "true" }, as: :turbo_stream
+    end
+    assert_response :success
+    assert_equal true, LightState.find_by(light_key: "S2").on
+    assert_select "turbo-stream[action=replace][target=light_power]"
+  end
+
   test "zone_undo restores the victim, turns off the added zone and clears the toast" do
     light = Light.create!(name: "Up", key: "UP4", zones: %w[rippleLightToggle sideLightToggle])
     LightState.record_zone_state("UP4", "sideLightToggle", true)
@@ -165,7 +176,7 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
     end
     assert_equal "powerSwitch", called[:zone]
     assert_equal true, called[:on]
-    assert_response :accepted
+    assert_response :success
   end
 
   test "turn still uses the light command for a simple lamp" do
@@ -175,6 +186,6 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
       post light_command_url(light_key: "S1"), params: { command: "turn", on: "false" }
     end
     assert called, "simple lamp uses GoveeCommander.turn"
-    assert_response :accepted
+    assert_response :success
   end
 end
