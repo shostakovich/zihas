@@ -15,7 +15,9 @@ class LightSwitchesController < ApplicationController
       end
     when "zone"
       return head :unprocessable_entity unless light.zones.include?(params[:zone])
-      GoveeCommander.set_zone(light, zone: params[:zone], on: cast_bool(params[:on]), **opts)
+      on = cast_bool(params[:on])
+      LightState.record_zone_state(light.key, params[:zone], on)
+      GoveeCommander.set_zone(light, zone: params[:zone], on: on, **opts)
     when "brightness"
       GoveeCommander.set_brightness(light, value: params[:value].to_i, **opts)
     when "color"

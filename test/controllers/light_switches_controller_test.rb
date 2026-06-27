@@ -96,6 +96,15 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
   end
 
+  test "zone command persists the zone state" do
+    Light.create!(name: "Up", key: "UP1", zones: %w[bottomLightToggle rippleLightToggle])
+    GoveeCommander.stub(:set_zone, ->(*, **) {}) do
+      post light_command_url(light_key: "UP1"), params: { command: "zone", zone: "rippleLightToggle", on: "true" }
+    end
+    assert_response :accepted
+    assert_equal({ "rippleLightToggle" => true }, LightState.find_by(light_key: "UP1").zone_states)
+  end
+
   test "turn routes a zone lamp through powerSwitch" do
     light = Light.create!(name: "Up", key: "UP1", zones: %w[bottomLightToggle sideLightToggle])
     called = {}
