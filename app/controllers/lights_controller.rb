@@ -54,6 +54,7 @@ class LightsController < ApplicationController
     when Lights::Results::Power     then respond_power(light)
     when Lights::Results::Zones     then respond_zones(light, result.zone_keys, result.toast)
     when Lights::Results::NoContent then head :no_content
+    else raise ArgumentError, "unhandled command result #{result.class}"
     end
   end
 
