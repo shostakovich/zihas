@@ -2,24 +2,27 @@ require "json"
 
 module Govees
   # The ziwoas-facing counterpart of the bridge: the single MQTT handler that
-  # consumes govees/<key>/config and govees/<key>/state. This task implements the
-  # config side (Light upsert, curated scenes/zones from the bridge); Task 10 adds
-  # state. Implements the MqttRouter handler contract.
+  # consumes govees/<key>/config (Light upsert) and govees/<key>/state
+  # (LightState + broadcasts). Native units (brightness 0-100, Kelvin, rgb);
+  # absent state fields are left untouched. Implements the MqttRouter contract.
   class Subscriber
     PREFIX = "govees/"
+    BROADCAST_FIELDS = %i[on brightness color_r color_g color_b color_temp_k reachable].freeze
 
     def initialize(logger:)
       @logger = logger
     end
 
-    def subscriptions = [ "govees/+/config" ]
+    def subscriptions = [ "govees/+/config", "govees/+/state" ]
 
     def matches?(topic)
-      topic.start_with?(PREFIX) && topic.end_with?("/config")
+      topic.start_with?(PREFIX) && (topic.end_with?("/config") || topic.end_with?("/state"))
     end
 
     def handle(topic, payload)
-      return handle_config(topic, payload) if topic.end_with?("/config")
+      if topic.end_with?("/config") then handle_config(topic, payload)
+      elsif topic.end_with?("/state") then handle_state(topic, payload)
+      end
     end
 
     private
@@ -38,6 +41,46 @@ module Govees
       light.save!
     rescue JSON::ParserError => e
       @logger.warn("Govees::Subscriber: invalid config JSON on #{topic}: #{e.message}")
+    end
+
+    def handle_state(topic, payload)
+      key   = topic.split("/")[1]
+      data  = JSON.parse(payload)
+      attrs = parse_state(data).merge(last_seen_at: Time.current)
+      LightState.record_state(key, attrs)
+      data["zone_states"].each { |inst, on| LightState.record_zone_state(key, inst, !!on) } if data["zone_states"].is_a?(Hash)
+      broadcast(key, attrs, data["zone_states"])
+      broadcast_turbo(key)
+    rescue JSON::ParserError => e
+      @logger.warn("Govees::Subscriber: invalid state JSON on #{topic}: #{e.message}")
+    end
+
+    def parse_state(data)
+      attrs = { on: !!data["on"], reachable: data.key?("reachable") ? !!data["reachable"] : true }
+      attrs[:brightness] = data["brightness"] if data.key?("brightness")
+      if (c = data["color"])
+        attrs[:color_r] = c["r"]; attrs[:color_g] = c["g"]; attrs[:color_b] = c["b"]
+      end
+      attrs[:color_temp_k] = data["color_temp_k"] if data["color_temp_k"]
+      attrs
+    end
+
+    def broadcast(key, attrs, zone_states)
+      payload = attrs.slice(*BROADCAST_FIELDS).merge(light_key: key)
+      payload[:zones] = zone_states if zone_states.is_a?(Hash)
+      ActionCable.server.broadcast("dashboard", { lights: [ payload ] })
+    rescue => e
+      @logger.warn("Govees::Subscriber: broadcast failed: #{e.message}")
+    end
+
+    def broadcast_turbo(key)
+      light = Light.find_by(key: key)
+      return unless light
+      row = LightRow.new(light: light, state: LightState.find_by(light_key: key))
+      Turbo::StreamsChannel.broadcast_replace_to("light_#{key}",
+        target: "light_power", partial: "lights/power", locals: { light: light, row: row })
+    rescue => e
+      @logger.warn("Govees::Subscriber: turbo broadcast failed: #{e.message}")
     end
   end
 end

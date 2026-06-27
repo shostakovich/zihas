@@ -36,3 +36,57 @@ class GoveesSubscriberConfigTest < ActiveSupport::TestCase
     assert_equal 0, Light.count
   end
 end
+
+class GoveesSubscriberStateTest < ActiveSupport::TestCase
+  setup do
+    LightState.delete_all; Light.delete_all
+    @sub = Govees::Subscriber.new(logger: Logger.new(IO::NULL))
+  end
+
+  def topic(k) = "govees/#{k}/state"
+
+  test "subscriptions and matches now include state topics" do
+    assert_equal [ "govees/+/config", "govees/+/state" ], @sub.subscriptions
+    assert @sub.matches?("govees/K/state")
+    assert @sub.matches?("govees/K/config")
+  end
+
+  test "records native brightness, kelvin and rgb without conversion" do
+    @sub.handle(topic("K"), JSON.generate("on" => true, "brightness" => 60,
+      "color" => { "r" => 1, "g" => 2, "b" => 3 }, "reachable" => true))
+    s = LightState.find_by(light_key: "K")
+    assert_equal true, s.on
+    assert_equal 60, s.brightness
+    assert_equal 3, s.color_b
+  end
+
+  test "color_temp_k is stored verbatim (no mired math)" do
+    @sub.handle(topic("K"), JSON.generate("on" => true, "color_temp_k" => 3000, "reachable" => true))
+    assert_equal 3000, LightState.find_by(light_key: "K").color_temp_k
+  end
+
+  test "zone_states bits are recorded" do
+    @sub.handle(topic("K"), JSON.generate("on" => true, "reachable" => true,
+      "zone_states" => { "rippleLightToggle" => true, "sideLightToggle" => false }))
+    s = LightState.find_by(light_key: "K")
+    assert_equal true,  s.zone_states["rippleLightToggle"]
+    assert_equal false, s.zone_states["sideLightToggle"]
+  end
+
+  test "broadcasts on the dashboard stream" do
+    broadcasts = []
+    server = ActionCable.server
+    orig = server.method(:broadcast)
+    server.define_singleton_method(:broadcast) { |s, d| broadcasts << [ s, d ] }
+    @sub.handle(topic("K"), JSON.generate("on" => true, "brightness" => 55, "reachable" => true))
+    assert_equal "dashboard", broadcasts.first[0]
+    assert_equal 55, broadcasts.first[1][:lights].first[:brightness]
+  ensure
+    server.define_singleton_method(:broadcast, orig)
+  end
+
+  test "state ignores invalid JSON" do
+    assert_nothing_raised { @sub.handle(topic("K"), "x{") }
+    assert_equal 0, LightState.count
+  end
+end
