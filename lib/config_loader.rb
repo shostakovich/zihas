@@ -15,9 +15,11 @@ class ConfigLoader
   TrmnlCfg     = Struct.new(:energy_webhook_url, :sensors_webhook_url, keyword_init: true)
   SolakonCfg   = Struct.new(:host, :port, :unit_id, :monitoring_enabled, :control_enabled,
                               :stale_after_s, keyword_init: true)
+  GoveeCfg     = Struct.new(:api_key, :lan_poll_seconds, :api_poll_seconds,
+                            :pending_window_seconds, :names, keyword_init: true)
   Config       = Struct.new(:electricity_price_eur_per_kwh, :timezone,
                             :mqtt, :fritz_poll, :plugs, :fritz_box, :weather,
-                            :switchbot, :sensors, :trmnl, :solakon,
+                            :switchbot, :sensors, :trmnl, :solakon, :govee,
                             keyword_init: true)
 
   module StringRequirement
@@ -128,8 +130,9 @@ class ConfigLoader
     weather    = build_weather(@raw["weather"])
     switchbot  = build_switchbot(@raw["switchbot"])
     sensors    = build_sensors(@raw["sensors"])
-    trmnl = build_trmnl(@raw["trmnl"])
-    solakon = build_solakon(@raw["solakon"])
+    trmnl      = build_trmnl(@raw["trmnl"])
+    solakon    = build_solakon(@raw["solakon"])
+    govee      = build_govee(@raw["govee"])
 
     if plugs.any? { |p| p.driver == :fritz_dect } && fritz_box.nil?
       raise Error, "fritz_box config required when using driver: fritz_dect"
@@ -151,6 +154,7 @@ class ConfigLoader
       sensors:    sensors,
       trmnl:      trmnl,
       solakon:    solakon,
+      govee:      govee,
     )
   end
 
@@ -281,7 +285,8 @@ class ConfigLoader
   end
 
   def build_plugs(list)
-    raise Error, "plugs must be a non-empty list" unless list.is_a?(Array) && !list.empty?
+    raise Error, "plugs must be a list" unless list.is_a?(Array)
+    return [] if list.empty?
 
     ids   = []
     plugs = list.map.with_index do |h, i|
@@ -295,6 +300,22 @@ class ConfigLoader
     end
 
     plugs
+  end
+
+  def build_govee(h)
+    return nil if h.nil?
+    h = require_hash(h, "govee")
+    names = Array(h["devices"]).each_with_object({}) do |d, acc|
+      key = require_string(d["key"], "govee.devices[].key")
+      acc[key] = { name: d["name"].to_s, room: d["room"] }
+    end
+    GoveeCfg.new(
+      api_key:                ENV["GOVEE_API_KEY"].to_s,
+      lan_poll_seconds:       (h["lan_poll_seconds"] || 8).to_i,
+      api_poll_seconds:       (h["api_poll_seconds"] || 180).to_i,
+      pending_window_seconds: (h["pending_window_seconds"] || 5).to_i,
+      names:                  names,
+    )
   end
 
   include StringRequirement

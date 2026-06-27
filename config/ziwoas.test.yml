@@ -32,3 +32,12 @@ sensors:
 trmnl:
   energy_webhook_url:  https://example.test/energy
   sensors_webhook_url: https://example.test/sensors
+
+govee:
+  lan_poll_seconds: 8
+  api_poll_seconds: 180
+  pending_window_seconds: 5
+  devices:
+    - key: 14ABDB4844064B60
+      name: Uplighter
+      room: Wohnzimmer

@@ -524,4 +524,35 @@ class ConfigLoaderTest < Minitest::Test
     yaml = valid_yaml + "solakon:\n  port: 502\n"
     assert_raises(ConfigLoader::Error) { load_yaml(yaml) }
   end
+
+  def test_govee_block_parses_intervals_and_device_name_map_api_key_from_env
+    yaml = <<~YML
+      electricity_price_eur_per_kwh: 0.3
+      timezone: Europe/Berlin
+      mqtt: { host: h, port: 1883, topic_prefix: shellies }
+      plugs: []
+      govee:
+        lan_poll_seconds: 8
+        api_poll_seconds: 180
+        pending_window_seconds: 5
+        devices:
+          - { key: 14ABDB4844064B60, name: "Uplighter", room: "Wohnzimmer" }
+    YML
+    file = Tempfile.new([ "z", ".yml" ]); file.write(yaml); file.flush
+    ENV["GOVEE_API_KEY"] = "secret-key"
+    cfg = ConfigLoader.load(file.path)
+    assert_equal "secret-key", cfg.govee.api_key
+    assert_equal 8, cfg.govee.lan_poll_seconds
+    assert_equal({ name: "Uplighter", room: "Wohnzimmer" }, cfg.govee.names["14ABDB4844064B60"])
+  ensure
+    ENV.delete("GOVEE_API_KEY"); file&.close!
+  end
+
+  def test_absent_govee_block_yields_nil_bridge_off
+    yaml = "electricity_price_eur_per_kwh: 0.3\ntimezone: Europe/Berlin\nmqtt: { host: h, port: 1883, topic_prefix: shellies }\nplugs: []\n"
+    file = Tempfile.new([ "z", ".yml" ]); file.write(yaml); file.flush
+    assert_nil ConfigLoader.load(file.path).govee
+  ensure
+    file&.close!
+  end
 end

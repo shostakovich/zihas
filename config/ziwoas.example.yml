@@ -38,6 +38,17 @@ mqtt:
 #   energy_webhook_url:  https://trmnl.com/api/custom_plugins/<energy-uuid>
 #   sensors_webhook_url: https://trmnl.com/api/custom_plugins/<sensors-uuid>
 
+# Govee lights bridge (LAN-first + Platform API). Omit to disable.
+# API key comes from ENV GOVEE_API_KEY (never store the secret here).
+# govee:
+#   lan_poll_seconds: 8
+#   api_poll_seconds: 180
+#   pending_window_seconds: 5
+#   devices:
+#     - key: 14ABDB4844064B60   # MAC, colons stripped, uppercase
+#       name: Uplighter
+#       room: Wohnzimmer
+
 plugs:
   - id: bkw
     name: Balkonkraftwerk
