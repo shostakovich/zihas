@@ -33,15 +33,14 @@
 - `lib/govees/reconciler.rb` — LAN poll tick, API poll tick, on-demand API clarification.
 - `lib/govees/bridge.rb` — orchestrator: owns MQTT client (sub `govees/+/set`, pub config/state), starts/stops threads, publishes on state change.
 
-**Rewritten consumer (`lib/`):**
-- `lib/govees_discovery_handler.rb` (replaces `govee_discovery_handler.rb` + `govee_zone_discovery_handler.rb`).
-- `lib/govees_status_handler.rb` (replaces `govee_status_handler.rb` + `govee_zone_state_handler.rb`).
-- `lib/govees_commander.rb` (replaces `govee_commander.rb`).
+**Rewritten consumer (`lib/govees/`):** the whole ziwoas-facing counterpart, two classes:
+- `lib/govees/subscriber.rb` (`Govees::Subscriber`) — single inbound MQTT handler for both `govees/+/config` (→ `Light` upsert) and `govees/+/state` (→ `LightState` + broadcasts). Replaces all four old handlers (`govee_discovery_handler.rb` + `govee_zone_discovery_handler.rb` + `govee_status_handler.rb` + `govee_zone_state_handler.rb`).
+- `lib/govees/commander.rb` (`Govees::Commander`) — outbound web publisher of `set` verbs to `govees/<key>/set`. Replaces `govee_commander.rb`.
 
 **Modified:**
 - `lib/config_loader.rb` — add `GoveeCfg` + `build_govee`.
-- `bin/ziwoas_collector` — wire the bridge + new handlers; drop old handlers.
-- `app/controllers/light_switches_controller.rb` — call `GoveesCommander` with `set`-verbs.
+- `bin/ziwoas_collector` — wire `Govees::Bridge` + register `Govees::Subscriber`; drop old handlers.
+- `app/controllers/light_switches_controller.rb` — call `Govees::Commander` with `set`-verbs.
 - `config/ziwoas.example.yml` — document the `govee:` block.
 
 **Removed (final task):** `config/govee2mqtt.env*`, `vendor/govee2mqtt/`, `Brewfile` rust line, `docs/govee2mqtt-setup.md`, the `govee2mqtt` service in `docker-compose*.yml`, the `govee` entry in `Procfile.dev`, and the four `govee_*` handler files + their tests.
@@ -1514,38 +1513,40 @@ git commit -m "feat(govees): config loader govee section (intervals, device name
 
 ---
 
-## Task 9: `GoveesDiscoveryHandler` — consume `govees/<id>/config`
+## Task 9: `Govees::Subscriber` — consume `govees/<id>/config`
 
-Replaces `govee_discovery_handler.rb` + `govee_zone_discovery_handler.rb`.
+Start the single consumer-side class. It implements the `MqttRouter` handler
+contract (`#subscriptions`, `#matches?`, `#handle`). This task handles the
+config topic; Task 10 extends the same class with state. Together they replace
+all four old handlers.
 
 **Files:**
-- Create: `lib/govees_discovery_handler.rb`
-- Test: `test/govees_discovery_handler_test.rb`
+- Create: `lib/govees/subscriber.rb`
+- Test: `test/govees/subscriber_test.rb`
 
 **Interfaces:**
-- Produces: `GoveesDiscoveryHandler.new(logger:)` with `#subscriptions = ["govees/+/config"]`, `#matches?(topic)`, `#handle(topic, payload)` → upserts `Light` (key from topic, `name` on create only, `sku`, `supports_color`, `supports_color_temp`, `firmware_scenes` from `scenes`, `zones` from `zones`).
+- Produces: `Govees::Subscriber.new(logger:)` with `#subscriptions` (returns `["govees/+/config"]` after this task, `["govees/+/config", "govees/+/state"]` after Task 10), `#matches?(topic)`, `#handle(topic, payload)`. For a `/config` topic: upserts `Light` (key from topic, `name` on create only, `sku`, `supports_color`, `supports_color_temp`, `firmware_scenes` from `scenes`, `zones` from `zones`).
 
 - [ ] **Step 1: Write the failing test**
 
 ```ruby
-# test/govees_discovery_handler_test.rb
+# test/govees/subscriber_test.rb
 require "test_helper"
-require "govees_discovery_handler"
+require "govees/subscriber"
 
-class GoveesDiscoveryHandlerTest < ActiveSupport::TestCase
+class GoveesSubscriberConfigTest < ActiveSupport::TestCase
   setup do
     Light.delete_all
-    @handler = GoveesDiscoveryHandler.new(logger: Logger.new(IO::NULL))
+    @sub = Govees::Subscriber.new(logger: Logger.new(IO::NULL))
   end
 
-  test "subscriptions and matches target govees config topics" do
-    assert_equal [ "govees/+/config" ], @handler.subscriptions
-    assert @handler.matches?("govees/14ABDB4844064B60/config")
-    refute @handler.matches?("govees/14ABDB4844064B60/state")
+  test "subscribes to and matches govees config topics" do
+    assert_includes @sub.subscriptions, "govees/+/config"
+    assert @sub.matches?("govees/14ABDB4844064B60/config")
   end
 
-  test "handle upserts a Light with sku, capabilities, scenes and zones" do
-    @handler.handle("govees/K1/config", JSON.generate(
+  test "config upserts a Light with sku, capabilities, scenes and zones" do
+    @sub.handle("govees/K1/config", JSON.generate(
       "sku" => "H60B0", "name" => "Uplighter", "supports_color" => true,
       "supports_color_temp" => true, "zones" => [ "rippleLightToggle" ], "scenes" => [ "Sunset" ]))
     l = Light.find_by(key: "K1")
@@ -1558,12 +1559,12 @@ class GoveesDiscoveryHandlerTest < ActiveSupport::TestCase
 
   test "user rename is preserved on later config" do
     Light.create!(key: "K1", name: "Mein Name", zones: [])
-    @handler.handle("govees/K1/config", JSON.generate("sku" => "H60B0", "name" => "Uplighter", "zones" => [], "scenes" => []))
+    @sub.handle("govees/K1/config", JSON.generate("sku" => "H60B0", "name" => "Uplighter", "zones" => [], "scenes" => []))
     assert_equal "Mein Name", Light.find_by(key: "K1").name
   end
 
-  test "ignores invalid JSON" do
-    assert_nothing_raised { @handler.handle("govees/K1/config", "x{") }
+  test "config ignores invalid JSON" do
+    assert_nothing_raised { @sub.handle("govees/K1/config", "x{") }
     assert_equal 0, Light.count
   end
 end
@@ -1571,97 +1572,104 @@ end
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `bin/rails test test/govees_discovery_handler_test.rb`
-Expected: FAIL with `cannot load such file -- govees_discovery_handler`
+Run: `bin/rails test test/govees/subscriber_test.rb`
+Expected: FAIL with `cannot load such file -- govees/subscriber`
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ruby
-# lib/govees_discovery_handler.rb
+# lib/govees/subscriber.rb
 require "json"
 
-# Consumes the govees bridge's retained config (govees/<key>/config) and upserts
-# Light rows. Key comes from the topic. name is set only on create so user
-# renames survive. Scenes/zones come pre-curated from the bridge.
-class GoveesDiscoveryHandler
-  PREFIX = "govees/"
+module Govees
+  # The ziwoas-facing counterpart of the bridge: the single MQTT handler that
+  # consumes govees/<key>/config and govees/<key>/state. This task implements the
+  # config side (Light upsert, curated scenes/zones from the bridge); Task 10 adds
+  # state. Implements the MqttRouter handler contract.
+  class Subscriber
+    PREFIX = "govees/"
 
-  def initialize(logger:)
-    @logger = logger
-  end
+    def initialize(logger:)
+      @logger = logger
+    end
 
-  def subscriptions = [ "govees/+/config" ]
+    def subscriptions = [ "govees/+/config" ]
 
-  def matches?(topic)
-    topic.start_with?(PREFIX) && topic.end_with?("/config")
-  end
+    def matches?(topic)
+      topic.start_with?(PREFIX) && topic.end_with?("/config")
+    end
 
-  def handle(topic, payload)
-    key  = topic.split("/")[1]
-    data = JSON.parse(payload)
-    light = Light.find_or_initialize_by(key: key)
-    name = data["name"].to_s
-    light.name = name.presence || key if light.new_record?
-    light.sku = data["sku"] if data["sku"].present?
-    light.supports_color      = !!data["supports_color"]
-    light.supports_color_temp = !!data["supports_color_temp"]
-    light.zones           = Array(data["zones"]).map(&:to_s)
-    light.firmware_scenes = Array(data["scenes"]).map(&:to_s)
-    light.save!
-  rescue JSON::ParserError => e
-    @logger.warn("GoveesDiscoveryHandler: invalid JSON on #{topic}: #{e.message}")
+    def handle(topic, payload)
+      return handle_config(topic, payload) if topic.end_with?("/config")
+    end
+
+    private
+
+    def handle_config(topic, payload)
+      key  = topic.split("/")[1]
+      data = JSON.parse(payload)
+      light = Light.find_or_initialize_by(key: key)
+      name = data["name"].to_s
+      light.name = name.presence || key if light.new_record?
+      light.sku = data["sku"] if data["sku"].present?
+      light.supports_color      = !!data["supports_color"]
+      light.supports_color_temp = !!data["supports_color_temp"]
+      light.zones           = Array(data["zones"]).map(&:to_s)
+      light.firmware_scenes = Array(data["scenes"]).map(&:to_s)
+      light.save!
+    rescue JSON::ParserError => e
+      @logger.warn("Govees::Subscriber: invalid config JSON on #{topic}: #{e.message}")
+    end
   end
 end
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `bin/rails test test/govees_discovery_handler_test.rb`
+Run: `bin/rails test test/govees/subscriber_test.rb`
 Expected: PASS (4 runs, 0 failures)
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add lib/govees_discovery_handler.rb test/govees_discovery_handler_test.rb
-git commit -m "feat(govees): discovery handler for govees/<id>/config"
+git add lib/govees/subscriber.rb test/govees/subscriber_test.rb
+git commit -m "feat(govees): subscriber consumes govees/<id>/config (Light upsert)"
 ```
 
 ---
 
-## Task 10: `GoveesStatusHandler` — consume `govees/<id>/state`
+## Task 10: `Govees::Subscriber` — extend with `govees/<id>/state`
 
-Replaces `govee_status_handler.rb` + `govee_zone_state_handler.rb`. Native units (no Mired). Includes zone bits.
+Extend the same class with state consumption. Native units (no Mired), zone bits
+included. Now fully replaces all four old handlers.
 
 **Files:**
-- Create: `lib/govees_status_handler.rb`
-- Test: `test/govees_status_handler_test.rb`
+- Modify: `lib/govees/subscriber.rb`
+- Test: `test/govees/subscriber_test.rb` (append a state test class)
 
 **Interfaces:**
-- Produces: `GoveesStatusHandler.new(logger:)` with `#subscriptions = ["govees/+/state"]`, `#matches?`, `#handle`. Writes `LightState.record_state` (native brightness/kelvin/rgb, never clobbers absent fields) + `record_zone_state` per zone bit, and broadcasts on `"dashboard"` + the per-light turbo `light_power` partial (preserving the existing broadcast shape from `GoveeStatusHandler`).
+- Produces (extends Task 9): `#subscriptions` now returns `["govees/+/config", "govees/+/state"]`; `#matches?` also matches `/state`; `#handle` routes `/state` to `LightState.record_state` (native brightness/kelvin/rgb, never clobbers absent fields) + `record_zone_state` per zone bit, then broadcasts on `"dashboard"` + the per-light turbo `light_power` partial (same broadcast shape as the old `GoveeStatusHandler`).
 
 - [ ] **Step 1: Write the failing test**
 
 ```ruby
-# test/govees_status_handler_test.rb
-require "test_helper"
-require "govees_status_handler"
-
-class GoveesStatusHandlerTest < ActiveSupport::TestCase
+# append to test/govees/subscriber_test.rb
+class GoveesSubscriberStateTest < ActiveSupport::TestCase
   setup do
     LightState.delete_all; Light.delete_all
-    @handler = GoveesStatusHandler.new(logger: Logger.new(IO::NULL))
+    @sub = Govees::Subscriber.new(logger: Logger.new(IO::NULL))
   end
 
   def topic(k) = "govees/#{k}/state"
 
-  test "subscriptions and matches target govees state topics" do
-    assert_equal [ "govees/+/state" ], @handler.subscriptions
-    assert @handler.matches?("govees/K/state")
-    refute @handler.matches?("govees/K/config")
+  test "subscriptions and matches now include state topics" do
+    assert_equal [ "govees/+/config", "govees/+/state" ], @sub.subscriptions
+    assert @sub.matches?("govees/K/state")
+    assert @sub.matches?("govees/K/config")
   end
 
   test "records native brightness, kelvin and rgb without conversion" do
-    @handler.handle(topic("K"), JSON.generate("on" => true, "brightness" => 60,
+    @sub.handle(topic("K"), JSON.generate("on" => true, "brightness" => 60,
       "color" => { "r" => 1, "g" => 2, "b" => 3 }, "reachable" => true))
     s = LightState.find_by(light_key: "K")
     assert_equal true, s.on
@@ -1670,12 +1678,12 @@ class GoveesStatusHandlerTest < ActiveSupport::TestCase
   end
 
   test "color_temp_k is stored verbatim (no mired math)" do
-    @handler.handle(topic("K"), JSON.generate("on" => true, "color_temp_k" => 3000, "reachable" => true))
+    @sub.handle(topic("K"), JSON.generate("on" => true, "color_temp_k" => 3000, "reachable" => true))
     assert_equal 3000, LightState.find_by(light_key: "K").color_temp_k
   end
 
   test "zone_states bits are recorded" do
-    @handler.handle(topic("K"), JSON.generate("on" => true, "reachable" => true,
+    @sub.handle(topic("K"), JSON.generate("on" => true, "reachable" => true,
       "zone_states" => { "rippleLightToggle" => true, "sideLightToggle" => false }))
     s = LightState.find_by(light_key: "K")
     assert_equal true,  s.zone_states["rippleLightToggle"]
@@ -1687,15 +1695,15 @@ class GoveesStatusHandlerTest < ActiveSupport::TestCase
     server = ActionCable.server
     orig = server.method(:broadcast)
     server.define_singleton_method(:broadcast) { |s, d| broadcasts << [ s, d ] }
-    @handler.handle(topic("K"), JSON.generate("on" => true, "brightness" => 55, "reachable" => true))
+    @sub.handle(topic("K"), JSON.generate("on" => true, "brightness" => 55, "reachable" => true))
     assert_equal "dashboard", broadcasts.first[0]
     assert_equal 55, broadcasts.first[1][:lights].first[:brightness]
   ensure
     server.define_singleton_method(:broadcast, orig)
   end
 
-  test "ignores invalid JSON" do
-    assert_nothing_raised { @handler.handle(topic("K"), "x{") }
+  test "state ignores invalid JSON" do
+    assert_nothing_raised { @sub.handle(topic("K"), "x{") }
     assert_equal 0, LightState.count
   end
 end
@@ -1703,108 +1711,134 @@ end
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `bin/rails test test/govees_status_handler_test.rb`
-Expected: FAIL with `cannot load such file -- govees_status_handler`
+Run: `bin/rails test test/govees/subscriber_test.rb`
+Expected: FAIL (subscriptions mismatch; `/state` not handled)
 
 - [ ] **Step 3: Write minimal implementation**
 
+Edit `lib/govees/subscriber.rb` — extend the class:
+
 ```ruby
-# lib/govees_status_handler.rb
+# lib/govees/subscriber.rb  (full file after this task)
 require "json"
 
-# Consumes the govees bridge state (govees/<key>/state). Native units: brightness
-# 0-100, color_temp_k in Kelvin, color rgb. Absent fields are left untouched so a
-# colour-temp-only update never clobbers the last RGB. Zone bits land in
-# LightState#zone_states. Broadcasts mirror the previous GoveeStatusHandler.
-class GoveesStatusHandler
-  PREFIX = "govees/"
-  BROADCAST_FIELDS = %i[on brightness color_r color_g color_b color_temp_k reachable].freeze
+module Govees
+  # The ziwoas-facing counterpart of the bridge: the single MQTT handler that
+  # consumes govees/<key>/config (Light upsert) and govees/<key>/state
+  # (LightState + broadcasts). Native units (brightness 0-100, Kelvin, rgb);
+  # absent state fields are left untouched. Implements the MqttRouter contract.
+  class Subscriber
+    PREFIX = "govees/"
+    BROADCAST_FIELDS = %i[on brightness color_r color_g color_b color_temp_k reachable].freeze
 
-  def initialize(logger:)
-    @logger = logger
-  end
-
-  def subscriptions = [ "govees/+/state" ]
-
-  def matches?(topic)
-    topic.start_with?(PREFIX) && topic.end_with?("/state")
-  end
-
-  def handle(topic, payload)
-    key   = topic.split("/")[1]
-    data  = JSON.parse(payload)
-    attrs = parse_state(data).merge(last_seen_at: Time.current)
-    LightState.record_state(key, attrs)
-    Array(data["zone_states"]).to_h.each { |inst, on| LightState.record_zone_state(key, inst, !!on) } if data["zone_states"].is_a?(Hash)
-    broadcast(key, attrs, data["zone_states"])
-    broadcast_turbo(key)
-  rescue JSON::ParserError => e
-    @logger.warn("GoveesStatusHandler: invalid JSON on #{topic}: #{e.message}")
-  end
-
-  private
-
-  def parse_state(data)
-    attrs = { on: !!data["on"], reachable: data.key?("reachable") ? !!data["reachable"] : true }
-    attrs[:brightness] = data["brightness"] if data.key?("brightness")
-    if (c = data["color"])
-      attrs[:color_r] = c["r"]; attrs[:color_g] = c["g"]; attrs[:color_b] = c["b"]
+    def initialize(logger:)
+      @logger = logger
     end
-    attrs[:color_temp_k] = data["color_temp_k"] if data["color_temp_k"]
-    attrs
-  end
 
-  def broadcast(key, attrs, zone_states)
-    payload = attrs.slice(*BROADCAST_FIELDS).merge(light_key: key)
-    payload[:zones] = zone_states if zone_states.is_a?(Hash)
-    ActionCable.server.broadcast("dashboard", { lights: [ payload ] })
-  rescue => e
-    @logger.warn("GoveesStatusHandler: broadcast failed: #{e.message}")
-  end
+    def subscriptions = [ "govees/+/config", "govees/+/state" ]
 
-  def broadcast_turbo(key)
-    light = Light.find_by(key: key)
-    return unless light
-    row = LightRow.new(light: light, state: LightState.find_by(light_key: key))
-    Turbo::StreamsChannel.broadcast_replace_to("light_#{key}",
-      target: "light_power", partial: "lights/power", locals: { light: light, row: row })
-  rescue => e
-    @logger.warn("GoveesStatusHandler: turbo broadcast failed: #{e.message}")
+    def matches?(topic)
+      topic.start_with?(PREFIX) && (topic.end_with?("/config") || topic.end_with?("/state"))
+    end
+
+    def handle(topic, payload)
+      if topic.end_with?("/config") then handle_config(topic, payload)
+      elsif topic.end_with?("/state") then handle_state(topic, payload)
+      end
+    end
+
+    private
+
+    def handle_config(topic, payload)
+      key  = topic.split("/")[1]
+      data = JSON.parse(payload)
+      light = Light.find_or_initialize_by(key: key)
+      name = data["name"].to_s
+      light.name = name.presence || key if light.new_record?
+      light.sku = data["sku"] if data["sku"].present?
+      light.supports_color      = !!data["supports_color"]
+      light.supports_color_temp = !!data["supports_color_temp"]
+      light.zones           = Array(data["zones"]).map(&:to_s)
+      light.firmware_scenes = Array(data["scenes"]).map(&:to_s)
+      light.save!
+    rescue JSON::ParserError => e
+      @logger.warn("Govees::Subscriber: invalid config JSON on #{topic}: #{e.message}")
+    end
+
+    def handle_state(topic, payload)
+      key   = topic.split("/")[1]
+      data  = JSON.parse(payload)
+      attrs = parse_state(data).merge(last_seen_at: Time.current)
+      LightState.record_state(key, attrs)
+      data["zone_states"].each { |inst, on| LightState.record_zone_state(key, inst, !!on) } if data["zone_states"].is_a?(Hash)
+      broadcast(key, attrs, data["zone_states"])
+      broadcast_turbo(key)
+    rescue JSON::ParserError => e
+      @logger.warn("Govees::Subscriber: invalid state JSON on #{topic}: #{e.message}")
+    end
+
+    def parse_state(data)
+      attrs = { on: !!data["on"], reachable: data.key?("reachable") ? !!data["reachable"] : true }
+      attrs[:brightness] = data["brightness"] if data.key?("brightness")
+      if (c = data["color"])
+        attrs[:color_r] = c["r"]; attrs[:color_g] = c["g"]; attrs[:color_b] = c["b"]
+      end
+      attrs[:color_temp_k] = data["color_temp_k"] if data["color_temp_k"]
+      attrs
+    end
+
+    def broadcast(key, attrs, zone_states)
+      payload = attrs.slice(*BROADCAST_FIELDS).merge(light_key: key)
+      payload[:zones] = zone_states if zone_states.is_a?(Hash)
+      ActionCable.server.broadcast("dashboard", { lights: [ payload ] })
+    rescue => e
+      @logger.warn("Govees::Subscriber: broadcast failed: #{e.message}")
+    end
+
+    def broadcast_turbo(key)
+      light = Light.find_by(key: key)
+      return unless light
+      row = LightRow.new(light: light, state: LightState.find_by(light_key: key))
+      Turbo::StreamsChannel.broadcast_replace_to("light_#{key}",
+        target: "light_power", partial: "lights/power", locals: { light: light, row: row })
+    rescue => e
+      @logger.warn("Govees::Subscriber: turbo broadcast failed: #{e.message}")
+    end
   end
 end
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `bin/rails test test/govees_status_handler_test.rb`
-Expected: PASS (6 runs, 0 failures)
+Run: `bin/rails test test/govees/subscriber_test.rb`
+Expected: PASS (10 runs, 0 failures — config + state)
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add lib/govees_status_handler.rb test/govees_status_handler_test.rb
-git commit -m "feat(govees): status handler for govees/<id>/state (native units + zones)"
+git add lib/govees/subscriber.rb test/govees/subscriber_test.rb
+git commit -m "feat(govees): subscriber consumes govees/<id>/state (native units + zones)"
 ```
 
 ---
 
-## Task 11: `GoveesCommander` + controller switch to `set` verbs
+## Task 11: `Govees::Commander` + controller switch to `set` verbs
 
 **Files:**
-- Create: `lib/govees_commander.rb`
+- Create: `lib/govees/commander.rb`
 - Modify: `app/controllers/light_switches_controller.rb`
-- Test: `test/govees_commander_test.rb`, update `test/controllers/light_switches_controller_test.rb`
+- Test: `test/govees/commander_test.rb`, update `test/controllers/light_switches_controller_test.rb`
 
 **Interfaces:**
-- Produces: `GoveesCommander.publish(light, verb, mqtt_config:, mqtt_factory: nil)` — publishes `JSON.generate(verb)` to `govees/<key>/set` over a short-lived MQTT connection; raises `GoveesCommander::Error` on failure. Thin convenience wrappers: `.turn(light, on:, ...)`, `.set_brightness`, `.set_color`, `.set_color_temp`, `.set_zone(light, zone:, on:, ...)`, `.set_scene(light, scene:, ...)`.
+- Produces: `Govees::Commander.publish(light, verb, mqtt_config:, mqtt_factory: nil)` — publishes `JSON.generate(verb)` to `govees/<key>/set` over a short-lived MQTT connection; raises `Govees::Commander::Error` on failure. Thin convenience wrappers: `.turn(light, on:, ...)`, `.set_brightness`, `.set_color`, `.set_color_temp`, `.set_zone(light, zone:, on:, ...)`, `.set_scene(light, scene:, ...)`.
 - Controller maps params → verbs. Eviction/`max_active_zones` logic and immediate `LightState.record_*` + turbo responses stay exactly as today; only the publish target changes.
 
 - [ ] **Step 1: Write the failing test**
 
 ```ruby
-# test/govees_commander_test.rb
+# test/govees/commander_test.rb
 require "test_helper"
-require "govees_commander"
+require "govees/commander"
 
 class GoveesCommanderTest < ActiveSupport::TestCase
   class FakeClient
@@ -1820,7 +1854,7 @@ class GoveesCommanderTest < ActiveSupport::TestCase
 
   test "publishes a brightness verb to govees/<key>/set" do
     client = FakeClient.new
-    GoveesCommander.set_brightness(light, value: 40, mqtt_config: cfg, mqtt_factory: -> { client })
+    Govees::Commander.set_brightness(light, value: 40, mqtt_config: cfg, mqtt_factory: -> { client })
     topic, payload = client.published.first
     assert_equal "govees/K1/set", topic
     assert_equal({ "brightness" => 40 }, JSON.parse(payload))
@@ -1828,14 +1862,14 @@ class GoveesCommanderTest < ActiveSupport::TestCase
 
   test "set_zone publishes a zone verb" do
     client = FakeClient.new
-    GoveesCommander.set_zone(light, zone: "rippleLightToggle", on: true, mqtt_config: cfg, mqtt_factory: -> { client })
+    Govees::Commander.set_zone(light, zone: "rippleLightToggle", on: true, mqtt_config: cfg, mqtt_factory: -> { client })
     assert_equal({ "zone" => { "name" => "rippleLightToggle", "on" => true } }, JSON.parse(client.published.first[1]))
   end
 
   test "raises Error when publish fails" do
     failing = Object.new.tap { |c| c.define_singleton_method(:connect) { raise "no broker" } }
-    assert_raises(GoveesCommander::Error) do
-      GoveesCommander.turn(light, on: true, mqtt_config: cfg, mqtt_factory: -> { failing })
+    assert_raises(Govees::Commander::Error) do
+      Govees::Commander.turn(light, on: true, mqtt_config: cfg, mqtt_factory: -> { failing })
     end
   end
 end
@@ -1843,64 +1877,66 @@ end
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `bin/rails test test/govees_commander_test.rb`
-Expected: FAIL with `cannot load such file -- govees_commander`
+Run: `bin/rails test test/govees/commander_test.rb`
+Expected: FAIL with `cannot load such file -- govees/commander`
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ruby
-# lib/govees_commander.rb
+# lib/govees/commander.rb
 require "mqtt"
 require "json"
 
-# Web-side choke point for govees commands: publishes a single `set` verb to
-# govees/<key>/set over a short-lived MQTT connection. The bridge does the rest
-# (routing, optimistic state, reconcile).
-class GoveesCommander
-  class Error < StandardError; end
+module Govees
+  # Web-side choke point for govees commands: publishes a single `set` verb to
+  # govees/<key>/set over a short-lived MQTT connection. The bridge does the rest
+  # (routing, optimistic state, reconcile).
+  class Commander
+    class Error < StandardError; end
 
-  SET_TOPIC = "govees/%s/set".freeze
+    SET_TOPIC = "govees/%s/set".freeze
 
-  def self.turn(light, on:, **kw)            = publish(light, { "power" => (on ? "on" : "off") }, **kw)
-  def self.set_brightness(light, value:, **kw) = publish(light, { "brightness" => value.to_i }, **kw)
-  def self.set_color(light, r:, g:, b:, **kw)  = publish(light, { "color" => { "r" => r.to_i, "g" => g.to_i, "b" => b.to_i } }, **kw)
-  def self.set_color_temp(light, kelvin:, **kw) = publish(light, { "color_temp_k" => kelvin.to_i }, **kw)
-  def self.set_zone(light, zone:, on:, **kw)   = publish(light, { "zone" => { "name" => zone, "on" => on } }, **kw)
-  def self.set_scene(light, scene:, **kw)      = publish(light, { "scene" => scene.to_s }, **kw)
+    def self.turn(light, on:, **kw)             = publish(light, { "power" => (on ? "on" : "off") }, **kw)
+    def self.set_brightness(light, value:, **kw) = publish(light, { "brightness" => value.to_i }, **kw)
+    def self.set_color(light, r:, g:, b:, **kw)  = publish(light, { "color" => { "r" => r.to_i, "g" => g.to_i, "b" => b.to_i } }, **kw)
+    def self.set_color_temp(light, kelvin:, **kw) = publish(light, { "color_temp_k" => kelvin.to_i }, **kw)
+    def self.set_zone(light, zone:, on:, **kw)   = publish(light, { "zone" => { "name" => zone, "on" => on } }, **kw)
+    def self.set_scene(light, scene:, **kw)      = publish(light, { "scene" => scene.to_s }, **kw)
 
-  def self.publish(light, verb, mqtt_config:, mqtt_factory: nil)
-    factory = mqtt_factory || -> { MQTT::Client.new(host: mqtt_config.host, port: mqtt_config.port) }
-    client  = factory.call
-    begin
-      client.connect
-      client.publish(format(SET_TOPIC, light.key), JSON.generate(verb))
-    rescue StandardError => e
-      raise Error, "MQTT publish for '#{light.key}' failed: #{e.class}: #{e.message}"
-    ensure
-      begin; client.disconnect; rescue StandardError; nil; end
+    def self.publish(light, verb, mqtt_config:, mqtt_factory: nil)
+      factory = mqtt_factory || -> { MQTT::Client.new(host: mqtt_config.host, port: mqtt_config.port) }
+      client  = factory.call
+      begin
+        client.connect
+        client.publish(format(SET_TOPIC, light.key), JSON.generate(verb))
+      rescue StandardError => e
+        raise Error, "MQTT publish for '#{light.key}' failed: #{e.class}: #{e.message}"
+      ensure
+        begin; client.disconnect; rescue StandardError; nil; end
+      end
     end
   end
 end
 ```
 
-Now update `app/controllers/light_switches_controller.rb`: replace `require "govee_commander"` with `require "govees_commander"`, and swap every `GoveeCommander.` call for `GoveesCommander.` with the new signatures. The `turn` branch: zone lamps still use `set_zone(..., zone: "powerSwitch", on:)`; whole lamps `turn(on:)`. The `effect` branch becomes `scene`:
+Now update `app/controllers/light_switches_controller.rb`: replace `require "govee_commander"` with `require "govees/commander"`, and swap every `GoveeCommander.` call for `Govees::Commander.` with the new signatures. The `turn` branch: zone lamps still use `set_zone(..., zone: "powerSwitch", on:)`; whole lamps `turn(on:)`. The `effect` branch becomes `scene`:
 
 ```ruby
     when "effect", "scene"
-      GoveesCommander.set_scene(light, scene: params[:effect] || params[:scene], **opts)
+      Govees::Commander.set_scene(light, scene: params[:effect] || params[:scene], **opts)
 ```
 
-And `rescue GoveeCommander::Error` → `rescue GoveesCommander::Error`. Leave all `LightState.record_*`, eviction, and `respond_*` code unchanged.
+And `rescue GoveeCommander::Error` → `rescue Govees::Commander::Error`. Leave all `LightState.record_*`, eviction, and `respond_*` code unchanged.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `bin/rails test test/govees_commander_test.rb test/controllers/light_switches_controller_test.rb`
-Expected: PASS (update controller-test stubs/expectations from `GoveeCommander` to `GoveesCommander` and from `gv2mqtt` topics to `govees` verbs as needed)
+Run: `bin/rails test test/govees/commander_test.rb test/controllers/light_switches_controller_test.rb`
+Expected: PASS (update controller-test stubs/expectations from `GoveeCommander` to `Govees::Commander` and from `gv2mqtt` topics to `govees` verbs as needed)
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add lib/govees_commander.rb app/controllers/light_switches_controller.rb test/govees_commander_test.rb test/controllers/light_switches_controller_test.rb
+git add lib/govees/commander.rb app/controllers/light_switches_controller.rb test/govees/commander_test.rb test/controllers/light_switches_controller_test.rb
 git commit -m "feat(govees): commander + controller publish set verbs to govees/<id>/set"
 ```
 
@@ -1913,8 +1949,8 @@ git commit -m "feat(govees): commander + controller publish set verbs to govees/
 - Test: `test/bin/ziwoas_collector_smoke_test.rb` (new, light smoke) — or extend existing collector test if present.
 
 **Interfaces:**
-- Consumes: `Govees::Bridge`, `GoveesStatusHandler`, `GoveesDiscoveryHandler`, `config.govee`.
-- Behavior: register the two new handlers in the `MqttRouter` handler list (replacing the four `Govee*Handler`s); when `config.govee` is present, build a `Govees::PlatformApi` + `Govees::Bridge` and run it on its own supervised thread (added to `stoppables`/`threads`), guarded so the collector still boots when `config.govee` is nil.
+- Consumes: `Govees::Bridge`, `Govees::Subscriber`, `config.govee`.
+- Behavior: register the single `Govees::Subscriber` in the `MqttRouter` handler list (replacing the four `Govee*Handler`s); when `config.govee` is present, build a `Govees::PlatformApi` + `Govees::Bridge` and run it on its own supervised thread (added to `stoppables`/`threads`), guarded so the collector still boots when `config.govee` is nil.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1923,11 +1959,11 @@ git commit -m "feat(govees): commander + controller publish set verbs to govees/
 require "test_helper"
 
 class ZiwoasCollectorSmokeTest < ActiveSupport::TestCase
-  test "collector file requires the govees handlers and bridge, not the old govee ones" do
+  test "collector requires the govees subscriber and bridge, not the old govee handlers" do
     src = File.read(Rails.root.join("bin/ziwoas_collector"))
-    assert_includes src, %(require "govees_status_handler")
-    assert_includes src, %(require "govees_discovery_handler")
+    assert_includes src, %(require "govees/subscriber")
     assert_includes src, %(require "govees/bridge")
+    assert_includes src, "Govees::Subscriber.new"
     refute_includes src, %(require "govee_status_handler")
     refute_includes src, %(require "govee_zone_state_handler")
   end
@@ -1942,12 +1978,11 @@ Expected: FAIL (old requires still present)
 - [ ] **Step 3: Write minimal implementation**
 
 Edit `bin/ziwoas_collector`:
-- Replace the four `require "govee_*"` lines with `require "govees_status_handler"`, `require "govees_discovery_handler"`, `require "govees/bridge"`, `require "govees/platform_api"`.
-- Replace the four handler registrations with:
+- Replace the four `require "govee_*"` lines with `require "govees/subscriber"`, `require "govees/bridge"`, `require "govees/platform_api"`.
+- Replace the four handler registrations with the single subscriber:
 
 ```ruby
-handlers << GoveesStatusHandler.new(logger: logger)
-handlers << GoveesDiscoveryHandler.new(logger: logger)
+handlers << Govees::Subscriber.new(logger: logger)
 ```
 
 - After the router thread block, add:
