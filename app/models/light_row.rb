@@ -44,10 +44,8 @@ class LightRow
     }.sort_by { |z| z.role == "main" ? 0 : 1 }
   end
 
-  def default_tab
-    return "zones" if zone_lamp?
-    (on? && !white?) ? "color" : "white"
-  end
+  # Detail page always opens on the white tab; zones live in the hero tile now.
+  def default_tab = "white"
 
   def summary
     return "Aus" unless on?

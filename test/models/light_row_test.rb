@@ -49,10 +49,9 @@ class LightRowTest < ActiveSupport::TestCase
     assert_nil r.color_hex
   end
 
-  test "colour light exposes hex and colour tab" do
+  test "colour light exposes hex and rgb" do
     r = row(on: true, brightness: 40, color_r: 255, color_g: 107, color_b: 61)
     refute r.white?
-    assert_equal "color", r.default_tab
     assert_equal "#ff6b3d", r.color_hex
     assert_equal [ 255, 107, 61 ], r.rgb
     assert_equal "An · Farbe · 40 %", r.summary
@@ -84,13 +83,10 @@ class LightRowTest < ActiveSupport::TestCase
     assert_equal false, rows[2].on # side, missing -> false
   end
 
-  test "default_tab is zones for a zone lamp" do
-    light = Light.new(zones: %w[bottomLightToggle sideLightToggle])
-    assert_equal "zones", LightRow.new(light: light, state: nil).default_tab
-  end
-
-  test "default_tab keeps the simple-lamp logic otherwise" do
-    light = Light.new(zones: [])
-    assert_equal "white", LightRow.new(light: light, state: nil).default_tab
+  test "default_tab is always white (zones moved to the hero tile)" do
+    zone_lamp   = Light.new(zones: %w[bottomLightToggle sideLightToggle])
+    simple_lamp = Light.new(zones: [])
+    assert_equal "white", LightRow.new(light: zone_lamp, state: nil).default_tab
+    assert_equal "white", LightRow.new(light: simple_lamp, state: nil).default_tab
   end
 end

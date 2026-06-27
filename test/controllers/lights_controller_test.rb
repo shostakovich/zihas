@@ -83,13 +83,6 @@ class LightsControllerTest < ActionDispatch::IntegrationTest
     assert_select "button[data-light-detail-color-param]"
   end
 
-  test "scenes tab renders the curated Stimmungen" do
-    light = Light.create!(key: "ABCDEF04", name: "Decke")
-    get light_url(light.key)
-    assert_select "form.ld-inline-form input[name='mood'][value='reading']"
-    assert_select "form.ld-inline-form input[name='mood'][value='party']"
-  end
-
   test "scenes tab renders the device firmware scenes when present" do
     light = Light.create!(key: "ABCDEF05", name: "Decke", firmware_scenes: %w[Forest Aurora])
     get light_url(light.key)
@@ -97,10 +90,11 @@ class LightsControllerTest < ActionDispatch::IntegrationTest
     assert_select "form.ld-inline-form input[name='effect'][value='Aurora']"
   end
 
-  test "scenes tab omits the Govee section when the light has no scenes" do
+  test "scenes tab shows a hint instead of buttons when the light has no scenes" do
     light = Light.create!(key: "ABCDEF06", name: "Decke", firmware_scenes: [])
     get light_url(light.key)
     assert_select "form.ld-inline-form input[name='effect']", count: 0
+    assert_select ".ld-panel[data-tab=scenes] .ld-zone-hint", text: "Diese Lampe meldet keine Govee-Szenen."
   end
 
   test "detail hero lamp carries the per-SKU plush class" do
@@ -109,35 +103,45 @@ class LightsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".ld-lamp.plush-ceiling"
   end
 
-  test "zone lamp renders a Zonen tab and one card per zone, main badged" do
+  test "zone lamp renders one toggle button per zone inside the hero, no Zonen tab" do
     Light.create!(name: "Up", key: "UP1", sku: "H60B0",
                   zones: %w[bottomLightToggle sideLightToggle rippleLightToggle])
     get light_url(key: "UP1")
     assert_response :success
-    assert_select "button.ld-tab[data-light-detail-tab-param=zones]"
-    assert_select ".ld-panel[data-tab=zones]"
-    assert_select ".ld-zone", 3
-    assert_select ".ld-zone.main .ld-zone-badge", text: "Haupt"
-    # zones default tab
-    assert_select ".ld[data-light-detail-tab-value=zones]"
-    # whole-lamp tabs still present
+    # zones live in the hero tile now, not a tab/panel
+    assert_select "button.ld-tab[data-light-detail-tab-param=zones]", false
+    assert_select ".ld-panel[data-tab=zones]", false
+    assert_select "#light_power .ld-zones-row .ld-zone-btn", 3
+    # detail page always opens on the white tab
+    assert_select ".ld[data-light-detail-tab-value=white]"
     assert_select "button.ld-tab[data-light-detail-tab-param=white]"
   end
 
-  test "simple lamp renders no Zonen tab" do
-    Light.create!(name: "Lamp", key: "S1", supports_color: true)
-    get light_url(key: "S1")
-    assert_select "button.ld-tab[data-light-detail-tab-param=zones]", false
-    assert_select ".ld-panel[data-tab=zones]", false
+  test "zone buttons are visible when the lamp is on, hidden when off" do
+    Light.create!(name: "Up", key: "UPVIS", sku: "H60B0",
+                  zones: %w[bottomLightToggle sideLightToggle])
+    # off (no state) -> zones row carries the is-off hide marker
+    get light_url(key: "UPVIS")
+    assert_select ".ld-zones-row.is-off"
+    # on -> no hide marker
+    LightState.record_state("UPVIS", on: true)
+    get light_url(key: "UPVIS")
+    assert_select ".ld-zones-row:not(.is-off)"
   end
 
-  test "show renders a zone card with id and reflects persisted zone_states" do
+  test "simple lamp renders no zone buttons" do
+    Light.create!(name: "Lamp", key: "S1", supports_color: true)
+    get light_url(key: "S1")
+    assert_select ".ld-zones-row", false
+    assert_select ".ld-zone-btn", false
+  end
+
+  test "show renders a zone toggle with stable id and reflects persisted zone_states" do
     light = Light.create!(name: "Up", key: "UP9", zones: %w[bottomLightToggle rippleLightToggle])
     LightState.record_zone_state("UP9", "rippleLightToggle", true)
     get light_url(key: "UP9")
     assert_response :success
-    assert_select "#zone_rippleLightToggle"
-    assert_select "#zone_rippleLightToggle.ld-zone:not(.off)"
-    assert_select "#zone_bottomLightToggle.ld-zone.off"
+    assert_select "form#zone_rippleLightToggle .ld-zone-btn.on"
+    assert_select "form#zone_bottomLightToggle .ld-zone-btn:not(.on)"
   end
 end

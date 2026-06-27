@@ -22,24 +22,12 @@
   </div>
 
   <div class="ld-tabs">
-    <% if @row.zone_lamp? %>
-      <button class="ld-tab" data-action="light-detail#tab" data-light-detail-tab-param="zones">Zonen</button>
-    <% end %>
     <button class="ld-tab" data-action="light-detail#tab" data-light-detail-tab-param="white">Weiß</button>
     <% if @light.supports_color %>
       <button class="ld-tab" data-action="light-detail#tab" data-light-detail-tab-param="color">Farbe</button>
     <% end %>
     <button class="ld-tab" data-action="light-detail#tab" data-light-detail-tab-param="scenes">Szenen</button>
   </div>
-
-  <% if @row.zone_lamp? %>
-    <div class="ld-panel" data-light-detail-target="panel" data-tab="zones" hidden>
-      <% @row.zones.each do |zone| %>
-        <%= render "lights/zone", zone: zone, light_key: @light.key %>
-      <% end %>
-      <p class="ld-zone-hint">Farbe &amp; Weiß gelten für die ganze Lampe (Tabs oben).</p>
-    </div>
-  <% end %>
 
   <div class="ld-panel" data-light-detail-target="panel" data-tab="white">
     <div class="ld-card">
@@ -78,20 +66,8 @@
 
   <div class="ld-panel" data-light-detail-target="panel" data-tab="scenes" hidden>
     <div class="ld-card">
-      <p class="ld-label">Stimmungen</p>
-      <div class="ld-scenes">
-        <% LightMood::ALL.each do |mood| %>
-          <%= button_to light_command_path(light_key: @light.key),
-                params: { command: "mood", mood: mood.id },
-                class: "ld-scene", form_class: "ld-inline-form" do %>
-            <span class="ld-scene-prev" style="background: <%= mood.gradient %>"></span>
-            <span class="ld-scene-nm"><%= mood.emoji %> <%= mood.name %></span>
-          <% end %>
-        <% end %>
-      </div>
-
       <% if @light.firmware_scenes.any? %>
-        <p class="ld-label" style="margin-top: 16px;">Govee-Szenen</p>
+        <p class="ld-label">Govee-Szenen</p>
         <div class="ld-scenes ld-scenes-scroll">
           <% @light.firmware_scenes.each do |scene| %>
             <%= button_to light_command_path(light_key: @light.key),
@@ -102,6 +78,9 @@
             <% end %>
           <% end %>
         </div>
+      <% else %>
+        <p class="ld-label">Szenen</p>
+        <p class="ld-zone-hint">Diese Lampe meldet keine Govee-Szenen.</p>
       <% end %>
     </div>
   </div>

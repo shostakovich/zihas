@@ -48,8 +48,6 @@ class LightSwitchesController < ApplicationController
       LightState.record_zone_state(light.key, added, false)
       GoveeCommander.set_zone(light, zone: added, on: false, **opts)
       return respond_zone(light, victim, added, toast: { message: nil, undo: nil })
-    when "mood"
-      return head :unprocessable_entity unless apply_mood(light, params[:mood])
     else
       return head :unprocessable_entity
     end
@@ -87,19 +85,5 @@ class LightSwitchesController < ApplicationController
     streams << turbo_stream.replace("light_toast", partial: "lights/toast",
       locals: { message: toast&.dig(:message), undo: toast&.dig(:undo) }) if toast
     render turbo_stream: streams
-  end
-
-  def apply_mood(light, id)
-    mood = LightMood.find(id)
-    return false unless mood
-
-    GoveeCommander.turn(light, on: true, **opts)
-    GoveeCommander.set_brightness(light, value: mood.brightness, **opts) if mood.brightness
-    if mood.color_temp_k
-      GoveeCommander.set_color_temp(light, kelvin: mood.color_temp_k, **opts)
-    elsif mood.color
-      GoveeCommander.set_color(light, r: mood.color[:r], g: mood.color[:g], b: mood.color[:b], **opts)
-    end
-    true
   end
 end

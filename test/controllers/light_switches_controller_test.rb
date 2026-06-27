@@ -50,35 +50,6 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ [ "A1B2C3D4E5F60030", "Forest" ] ], @calls
   end
 
-  test "mood applies turn, brightness and colour-temp for a white mood (reading)" do
-    GoveeCommander.stub :turn, ->(l, **kw) { @calls << [ :turn, kw[:on] ] } do
-      GoveeCommander.stub :set_brightness, ->(l, **kw) { @calls << [ :brightness, kw[:value] ] } do
-        GoveeCommander.stub :set_color_temp, ->(l, **kw) { @calls << [ :temp, kw[:kelvin] ] } do
-          post light_command_url(light_key: @light.key), params: { command: "mood", mood: "reading" }
-        end
-      end
-    end
-    assert_response :no_content
-    assert_equal [ [ :turn, true ], [ :brightness, 80 ], [ :temp, 3000 ] ], @calls
-  end
-
-  test "mood applies colour for an rgb mood (sunset)" do
-    GoveeCommander.stub :turn, ->(*, **) { } do
-      GoveeCommander.stub :set_brightness, ->(*, **) { } do
-        GoveeCommander.stub :set_color, ->(l, **kw) { @calls << [ kw[:r], kw[:g], kw[:b] ] } do
-          post light_command_url(light_key: @light.key), params: { command: "mood", mood: "sunset" }
-        end
-      end
-    end
-    assert_response :no_content
-    assert_equal [ [ 255, 122, 61 ] ], @calls
-  end
-
-  test "unknown mood returns 422" do
-    post light_command_url(light_key: @light.key), params: { command: "mood", mood: "nope" }
-    assert_response :unprocessable_entity
-  end
-
   test "broker failure responds 503" do
     failing = ->(*, **) { raise GoveeCommander::Error, "broker down" }
     GoveeCommander.stub :turn, failing do
