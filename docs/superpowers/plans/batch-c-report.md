@@ -183,4 +183,4 @@ Branch Coverage: 79.45% — above 71 gate
 
 ### Commit SHA
 
-(see git log below)
+`01a0480 fix(lights): convert mood/scene buttons to button_to, drop dead stimulus refs`
