@@ -161,7 +161,7 @@ aktive Szene nur falls je gefüllt. Danach `SYNCED`.
 ```json
 { "sku": "H60B0", "name": "Uplighter Floor Lamp",
   "supports_color": true, "supports_color_temp": true,
-  "zones": [{"key":"ripple","label":"Welle","role":"accent"}],
+  "zones": ["rippleLightToggle", "sideLightToggle", "bottomLightToggle"],
   "scenes": ["Sunset", "..."] }
 ```
 
@@ -184,7 +184,10 @@ stempelt `last_seen_at` beim Empfang selbst.
 ## Quirks — in der Bridge gelöst (nicht mehr im Consumer)
 
 1. Segment-Entities werden gar nicht erst emittiert.
-2. Zonen kuratiert (heutiges `Light::ZONE_META` wandert in `DeviceRegistry`).
+2. Zonen kuratiert: die Bridge entscheidet anhand `Light::ZONE_META.keys` (DRY,
+   eine Quelle), welche Toggles echte Zonen sind, und emittiert nur deren Keys.
+   Die deutschen Labels/Rollen bleiben app-seitig in `Light::ZONE_META` (UI-Copy,
+   kein Bridge-Belang) — der Vertrag trägt nur Zonen-Keys.
 3. Szenen als saubere Namensliste aus der Platform-API (kein `effect_list`-Parsing,
    keine `select`-Topic-Jagd).
 4. Kelvin nativ — keine Mired-Umrechnung mehr.
