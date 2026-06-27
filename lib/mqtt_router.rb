@@ -12,6 +12,7 @@ class MqttRouter
   end
 
   def run
+    @run_thread = Thread.current
     backoff = 1
     until @stopping
       begin
@@ -28,6 +29,9 @@ class MqttRouter
   def stop!
     @stopping = true
     begin; @client&.disconnect; rescue StandardError; nil; end
+    # The mqtt gem's blocking #get waits on an internal queue that disconnect
+    # doesn't wake, so kill the run thread to unblock it and exit promptly.
+    begin; @run_thread&.kill; rescue StandardError; nil; end
   end
 
   def dispatch(topic, payload)

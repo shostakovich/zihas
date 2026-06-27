@@ -12,10 +12,13 @@ module Govees
 
     BASE = "https://openapi.api.govee.com"
 
-    def initialize(api_key:, http: Net::HTTP, clock: -> { Process.clock_gettime(Process::CLOCK_MONOTONIC) })
-      @api_key = api_key
-      @http    = http
-      @clock   = clock
+    def initialize(api_key:, http: Net::HTTP, open_timeout: 5, read_timeout: 10,
+                   clock: -> { Process.clock_gettime(Process::CLOCK_MONOTONIC) })
+      @api_key      = api_key
+      @http         = http
+      @open_timeout = open_timeout
+      @read_timeout = read_timeout
+      @clock        = clock
     end
 
     def devices
@@ -56,7 +59,8 @@ module Govees
       req["Govee-API-Key"] = @api_key
       req["Content-Type"]  = "application/json"
       u = req.uri
-      res = @http.start(u.host, u.port, use_ssl: true) { |h| h.request(req) }
+      res = @http.start(u.host, u.port, use_ssl: true,
+                        open_timeout: @open_timeout, read_timeout: @read_timeout) { |h| h.request(req) }
       raise Error, "HTTP #{res.code}" unless res.is_a?(Net::HTTPSuccess)
       body = JSON.parse(res.body)
       raise Error, "code #{body['code']}: #{body['message'] || body['msg']}" unless body["code"].to_i == 200

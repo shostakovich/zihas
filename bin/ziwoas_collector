@@ -35,10 +35,12 @@ threads << Thread.new {
 }
 
 if config.govee && config.govee.api_key.present?
-  api    = Govees::PlatformApi.new(api_key: config.govee.api_key)
-  bridge = Govees::Bridge.new(mqtt_config: config.mqtt, govee_config: config.govee, api: api, logger: logger)
-  stoppables << bridge
-  threads << Thread.new { Thread.current.name = "govees_bridge"; bridge.run }
+  api          = Govees::PlatformApi.new(api_key: config.govee.api_key)
+  govee_bridge = Govees::Bridge.new(mqtt_config: config.mqtt, govee_config: config.govee, api: api, logger: logger)
+  stoppables << govee_bridge
+  # Pass the bridge as a block argument so the thread binds THIS value, not the
+  # shared `bridge`/closure variable (which a later reassignment could clobber).
+  threads << Thread.new(govee_bridge) { |b| Thread.current.name = "govees_bridge"; b.run }
 elsif config.govee
   logger.warn("Govees bridge disabled: missing govee.api_key in ziwoas.yml")
 end
@@ -51,25 +53,33 @@ if fritz_plugs.any?
     timeout:  config.fritz_poll.timeout_seconds,
   )
   fritz_plugs.each do |plug|
-    bridge = FritzMqttBridge.new(
+    fritz_bridge = FritzMqttBridge.new(
       fritz_client:   fritz_client,
       plug:           plug,
       mqtt_config:    config.mqtt,
       fritz_poll_cfg: config.fritz_poll,
       logger:         logger,
     )
-    stoppables << bridge
-    threads << Thread.new {
-      Thread.current.name = "fritz_bridge_#{plug.id}"
-      bridge.run
-    }
+    stoppables << fritz_bridge
+    # Block argument binds this iteration's bridge, so every plug's thread runs
+    # its own bridge instead of all sharing the last loop value.
+    threads << Thread.new(fritz_bridge) { |b| Thread.current.name = "fritz_bridge_#{plug.id}"; b.run }
   end
 end
 
-%w[INT TERM].each do |sig|
-  Signal.trap(sig) { stoppables.each(&:stop!) }
-end
+# Keep the signal handler minimal: just hand the request to the main thread.
+shutdown = Queue.new
+%w[INT TERM].each { |sig| Signal.trap(sig) { shutdown.push(sig) } }
 
 logger.info("ziwoas_collector: started #{threads.length} threads")
-threads.each(&:join)
+shutdown.pop # block here until a signal arrives
+logger.info("ziwoas_collector: stopping")
+stoppables.each(&:stop!)
+# Join with a grace period, then force-kill stragglers. Some blocking MQTT/IO
+# reads don't unwind on disconnect, so this guarantees the process actually exits.
+threads.each do |t|
+  next if t.join(5)
+  logger.warn("ziwoas_collector: force-killing #{t.name}")
+  t.kill
+end
 logger.info("ziwoas_collector: stopped")

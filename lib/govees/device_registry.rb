@@ -17,14 +17,20 @@ module Govees
 
     def self.normalize_mac(str) = str.to_s.gsub(/[^0-9A-Za-z]/, "").upcase
 
+    # Build the new map fully, then swap @by_key by reference. The swap is
+    # atomic under the GVL, so concurrent readers (listener/command/pollers)
+    # always see a complete map — never a half-built one. On failure the old
+    # map is kept, so a transient API hiccup never wipes the registry.
     def refresh!
+      built = {}
       @api.devices.each do |raw|
         device = build(raw)
         next unless device
         # Preserve a previously discovered LAN IP across refreshes.
         device.ip = @by_key[device.key]&.ip
-        @by_key[device.key] = device
+        built[device.key] = device
       end
+      @by_key = built
       all
     rescue => e
       @logger.warn("Govees::DeviceRegistry: refresh failed: #{e.class}: #{e.message}")

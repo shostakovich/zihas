@@ -67,11 +67,17 @@ module Govees
     end
 
     def run
-      @registry.refresh!
-      listener = listener_thread   # start listener FIRST so scan replies are caught
-      @lan.discover                # broadcast multicast scan after listener is up
-      @registry.all.each { |d| publish_config(d); @lan.request_status(d.ip) if d.ip }
-      threads = [ command_thread, listener, lan_poller_thread, api_poller_thread ]
+      @logger.info("Govees::Bridge: starting")
+      # Bring the local I/O paths up FIRST and unconditionally: the listener
+      # binds the UDP port + joins multicast, the command subscriber starts
+      # accepting govees/+/set. Neither depends on the (potentially slow or
+      # unreachable) Platform API, so lamp control + LAN status work immediately.
+      @listener_thread  = listener_thread
+      @command_thread   = command_thread
+      # The API refresh runs asynchronously so it can never block startup.
+      @bootstrap_thread = bootstrap_thread
+      threads = [ @command_thread, @listener_thread, @bootstrap_thread,
+                  lan_poller_thread, api_poller_thread ]
       threads.each(&:join)
     ensure
       begin; @publisher&.disconnect; rescue StandardError; nil; end
@@ -79,8 +85,13 @@ module Govees
 
     def stop!
       @stopping = true
-      begin; @listener_socket&.close; rescue StandardError; nil; end
-      begin; @command_client&.disconnect; rescue StandardError; nil; end
+      begin; @listener_socket&.close; rescue StandardError; nil; end       # unblocks recvfrom
+      begin; @command_client&.disconnect; rescue StandardError; nil; end   # close the command socket
+      # The mqtt gem's blocking #get never returns on disconnect (it waits on an
+      # internal queue), so kill the command thread outright; same for the
+      # in-flight async refresh. The pollers exit on their own via @stopping.
+      begin; @command_thread&.kill;   rescue StandardError; nil; end
+      begin; @bootstrap_thread&.kill; rescue StandardError; nil; end
     end
 
     private
@@ -100,6 +111,30 @@ module Govees
         @command_client.get { |topic, payload| on_set(topic.split("/")[1], payload) }
       rescue => e
         @logger.error("Govees::Bridge command: #{e.class}: #{e.message}")
+      end
+    end
+
+    # Async startup: load the device list + capabilities from the Platform API,
+    # publish each device's config and kick an initial LAN discovery. Runs in
+    # its own thread so a slow/rate-limited/unreachable API never delays the
+    # listener or command paths. Retries until the registry is populated (the
+    # lan/api pollers then keep it fresh) or we're stopping.
+    def bootstrap_thread
+      Thread.new do
+        Thread.current.name = "govees_bootstrap"
+        until @stopping
+          @registry.refresh!
+          if @registry.all.any?
+            @lan.discover
+            @registry.all.each { |d| publish_config(d); @lan.request_status(d.ip) if d.ip }
+            @logger.info("Govees::Bridge: bootstrapped #{@registry.all.size} devices")
+            break
+          end
+          @logger.warn("Govees::Bridge: no devices after refresh; retrying in #{@cfg.api_poll_seconds}s")
+          sleep_interruptible(@cfg.api_poll_seconds)
+        end
+      rescue => e
+        @logger.error("Govees::Bridge bootstrap: #{e.class}: #{e.message}")
       end
     end
 
