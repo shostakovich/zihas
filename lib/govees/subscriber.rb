@@ -7,7 +7,6 @@ module Govees
   # absent state fields are left untouched. Implements the MqttRouter contract.
   class Subscriber
     PREFIX = "govees/"
-    BROADCAST_FIELDS = %i[on brightness color_r color_g color_b color_temp_k reachable].freeze
 
     def initialize(logger:)
       @logger = logger
@@ -51,7 +50,6 @@ module Govees
       attrs = parse_state(data).merge(last_seen_at: Time.current)
       LightState.record_state(key, attrs)
       data["zone_states"].each { |inst, on| LightState.record_zone_state(key, inst, !!on) } if data["zone_states"].is_a?(Hash)
-      broadcast(key, attrs, data["zone_states"])
       broadcast_turbo(key)
     rescue JSON::ParserError => e
       @logger.warn("Govees::Subscriber: invalid state JSON on #{topic}: #{e.message}")
@@ -67,20 +65,18 @@ module Govees
       attrs
     end
 
-    def broadcast(key, attrs, zone_states)
-      payload = attrs.slice(*BROADCAST_FIELDS).merge(light_key: key)
-      payload[:zones] = zone_states if zone_states.is_a?(Hash)
-      ActionCable.server.broadcast("dashboard", { lights: [ payload ] })
-    rescue => e
-      @logger.warn("Govees::Subscriber: broadcast failed: #{e.message}")
-    end
-
+    # Reconcile both views from one MQTT state message: the detail page hero
+    # (#light_power on the per-light stream) and the /switches list card
+    # (#light_card_<key> on the shared "lights" stream). Both pages render
+    # server-side, so neither needs Stimulus/ActionCable JS.
     def broadcast_turbo(key)
       light = Light.find_by(key: key)
       return unless light
       row = LightRow.new(light: light, state: LightState.find_by(light_key: key))
       Turbo::StreamsChannel.broadcast_replace_to("light_#{key}",
         target: "light_power", partial: "lights/power", locals: { light: light, row: row })
+      Turbo::StreamsChannel.broadcast_replace_to("lights",
+        target: "light_card_#{key}", partial: "switches/light_card", locals: { row: row })
     rescue => e
       @logger.warn("Govees::Subscriber: turbo broadcast failed: #{e.message}")
     end

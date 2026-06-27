@@ -108,6 +108,16 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "turbo-stream[action=replace][target=light_power]"
   end
 
+  test "turn also replaces the switches list card so /switches updates without JS" do
+    @light = Light.create!(name: "Lampe", key: "S9", zones: [])
+    Govees::Commander.stub(:turn, ->(*, **) { }) do
+      post light_command_url(light_key: "S9"),
+           params: { command: "turn", on: "true" }, as: :turbo_stream
+    end
+    assert_response :success
+    assert_select "turbo-stream[action=replace][target=light_card_S9]"
+  end
+
   test "zone_undo restores the victim, turns off the added zone and clears the toast" do
     light = Light.create!(name: "Up", key: "UP4", zones: %w[rippleLightToggle sideLightToggle])
     LightState.record_zone_state("UP4", "sideLightToggle", true)

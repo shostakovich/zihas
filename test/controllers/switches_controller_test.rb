@@ -25,6 +25,17 @@ class SwitchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "button.sw-lamp-knob.plush-floorlamp"
   end
 
+  test "lamp knob is a turbo button_to form and the page streams lamp updates" do
+    get switches_url
+    assert_response :success
+    # Knob posts the toggle as a real form (Turbo-driven), no Stimulus needed.
+    assert_select "form[action=?] button.sw-knob", light_command_path(light_key: @light.key)
+    # @light is on -> the knob posts the opposite (off).
+    assert_select "form[action=?] input[name=on][value=false]", light_command_path(light_key: @light.key)
+    # Live MQTT reconcile arrives via a Turbo Stream subscription, not ActionCable JS.
+    assert_select "turbo-cable-stream-source"
+  end
+
   test "GET /switches lists only switchable plugs" do
     get "/switches"
     assert_response :success

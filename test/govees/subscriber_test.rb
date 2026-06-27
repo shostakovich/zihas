@@ -99,16 +99,16 @@ class GoveesSubscriberStateTest < ActiveSupport::TestCase
     assert_equal false, s.zone_states["sideLightToggle"]
   end
 
-  test "broadcasts on the dashboard stream" do
-    broadcasts = []
-    server = ActionCable.server
-    orig = server.method(:broadcast)
-    server.define_singleton_method(:broadcast) { |s, d| broadcasts << [ s, d ] }
-    @sub.handle(topic("K"), JSON.generate("on" => true, "brightness" => 55, "reachable" => true))
-    assert_equal "dashboard", broadcasts.first[0]
-    assert_equal 55, broadcasts.first[1][:lights].first[:brightness]
-  ensure
-    server.define_singleton_method(:broadcast, orig)
+  test "reconciles the list card and the detail hero via Turbo Streams" do
+    Light.create!(key: "K", name: "Lampe", zones: [])
+    streams = []
+    Turbo::StreamsChannel.stub(:broadcast_replace_to, ->(stream, **kw) { streams << [ stream, kw[:target] ] }) do
+      @sub.handle(topic("K"), JSON.generate("on" => true, "brightness" => 55, "reachable" => true))
+    end
+    # /switches list card on the shared "lights" stream...
+    assert_includes streams, [ "lights", "light_card_K" ]
+    # ...and the detail page hero on the per-light stream.
+    assert_includes streams, [ "light_K", "light_power" ]
   end
 
   test "state ignores invalid JSON" do

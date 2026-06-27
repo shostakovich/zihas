@@ -12,7 +12,9 @@
 
   <% if @light_rows.any? %>
     <h2 class="section-label">Lampen</h2>
-    <div data-controller="lights">
+    <%# Live MQTT state reconciles each card via Turbo Streams (see Govees::Subscriber). %>
+    <%= turbo_stream_from "lights" %>
+    <div class="sw-lights">
       <% @light_rows.each do |row| %>
         <%= render "switches/light_card", row: row %>
       <% end %>

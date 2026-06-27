@@ -62,9 +62,15 @@ class LightSwitchesController < ApplicationController
   def opts = { mqtt_config: app_config.mqtt }
   def cast_bool(v) = ActiveModel::Type::Boolean.new.cast(v)
 
+  # Render both targets: the detail page hero (#light_power) and the /switches
+  # list card (#light_card_<key>). Turbo only applies the action whose target
+  # exists in the current DOM, so one endpoint serves both pages without JS.
   def respond_power(light)
     row = LightRow.new(light: light, state: LightState.find_by(light_key: light.key))
-    render turbo_stream: turbo_stream.replace("light_power", partial: "lights/power", locals: { light: light, row: row })
+    render turbo_stream: [
+      turbo_stream.replace("light_power", partial: "lights/power", locals: { light: light, row: row }),
+      turbo_stream.replace("light_card_#{light.key}", partial: "switches/light_card", locals: { row: row })
+    ]
   end
 
   def evict_for(light, zone)
