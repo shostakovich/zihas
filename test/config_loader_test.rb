@@ -525,13 +525,14 @@ class ConfigLoaderTest < Minitest::Test
     assert_raises(ConfigLoader::Error) { load_yaml(yaml) }
   end
 
-  def test_govee_block_parses_intervals_and_device_name_map_api_key_from_env
+  def test_govee_block_parses_intervals_device_map_and_api_key_from_yml
     yaml = <<~YML
       electricity_price_eur_per_kwh: 0.3
       timezone: Europe/Berlin
       mqtt: { host: h, port: 1883, topic_prefix: shellies }
       plugs: []
       govee:
+        api_key: yml-secret-key
         lan_poll_seconds: 8
         api_poll_seconds: 180
         pending_window_seconds: 5
@@ -539,13 +540,12 @@ class ConfigLoaderTest < Minitest::Test
           - { key: 14ABDB4844064B60, name: "Uplighter", room: "Wohnzimmer" }
     YML
     file = Tempfile.new([ "z", ".yml" ]); file.write(yaml); file.flush
-    ENV["GOVEE_API_KEY"] = "secret-key"
     cfg = ConfigLoader.load(file.path)
-    assert_equal "secret-key", cfg.govee.api_key
+    assert_equal "yml-secret-key", cfg.govee.api_key
     assert_equal 8, cfg.govee.lan_poll_seconds
     assert_equal({ name: "Uplighter", room: "Wohnzimmer" }, cfg.govee.names["14ABDB4844064B60"])
   ensure
-    ENV.delete("GOVEE_API_KEY"); file&.close!
+    file&.close!
   end
 
   def test_absent_govee_block_yields_nil_bridge_off

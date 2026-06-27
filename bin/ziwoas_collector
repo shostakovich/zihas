@@ -40,7 +40,7 @@ if config.govee && config.govee.api_key.present?
   stoppables << bridge
   threads << Thread.new { Thread.current.name = "govees_bridge"; bridge.run }
 elsif config.govee
-  logger.warn("Govees bridge disabled: missing GOVEE_API_KEY")
+  logger.warn("Govees bridge disabled: missing govee.api_key in ziwoas.yml")
 end
 
 if fritz_plugs.any?

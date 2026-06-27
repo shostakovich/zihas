@@ -20,7 +20,7 @@ class ZiwoasCollectorSmokeTest < ActiveSupport::TestCase
 
   test "collector warns when govee section is present but api_key is blank" do
     src = File.read(Rails.root.join("bin/ziwoas_collector"))
-    assert_includes src, "Govees bridge disabled: missing GOVEE_API_KEY",
+    assert_includes src, "Govees bridge disabled: missing govee.api_key in ziwoas.yml",
       "expected a logger.warn when govee config exists but api_key is blank"
   end
 end

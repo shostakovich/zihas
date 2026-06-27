@@ -34,6 +34,7 @@ trmnl:
   sensors_webhook_url: https://example.test/sensors
 
 govee:
+  api_key: test-dummy-key
   lan_poll_seconds: 8
   api_poll_seconds: 180
   pending_window_seconds: 5

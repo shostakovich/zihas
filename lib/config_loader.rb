@@ -310,7 +310,8 @@ class ConfigLoader
       acc[key] = { name: d["name"].to_s, room: d["room"] }
     end
     GoveeCfg.new(
-      api_key:                ENV["GOVEE_API_KEY"].to_s,
+      # Secret lives in the gitignored ziwoas.yml (like fritz_box.password).
+      api_key:                h["api_key"].to_s,
       lan_poll_seconds:       (h["lan_poll_seconds"] || 8).to_i,
       api_poll_seconds:       (h["api_poll_seconds"] || 180).to_i,
       pending_window_seconds: (h["pending_window_seconds"] || 5).to_i,
