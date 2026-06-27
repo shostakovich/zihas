@@ -1,0 +1,12 @@
+<%# locals: light (Light), row (LightRow) %>
+<div id="light_power" class="ld-hero<%= ' is-off' unless row.on? %>">
+  <div class="ld-lamp plush-<%= light.plush_type %><%= ' off' unless row.on? %>"></div>
+  <div class="ld-power">
+    <%= button_to "An", light_command_path(light_key: light.key),
+          params: { command: "turn", on: "true" },
+          class: "ld-pill#{' on' if row.on?}", form_class: "ld-inline-form" %>
+    <%= button_to "Aus", light_command_path(light_key: light.key),
+          params: { command: "turn", on: "false" },
+          class: "ld-pill#{' on' unless row.on?}", form_class: "ld-inline-form" %>
+  </div>
+</div>

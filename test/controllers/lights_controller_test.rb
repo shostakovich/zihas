@@ -57,7 +57,7 @@ class LightsControllerTest < ActionDispatch::IntegrationTest
     LightState.record_state(@light.key, on: true, brightness: 60, color_temp_k: 2700)
     get light_url(@light.key)
     assert_response :success
-    assert_select "button[data-action='light-detail#on']"
+    assert_select "#light_power .ld-pill"
     assert_select "input[type=range][data-light-detail-target='brightness']"
     assert_select "input[type=range][data-light-detail-target='temp'][min='2700'][max='6500']"
     assert_select "button[data-light-detail-tab-param='white']"
@@ -130,5 +130,15 @@ class LightsControllerTest < ActionDispatch::IntegrationTest
     get light_url(key: "S1")
     assert_select "button.ld-tab[data-light-detail-tab-param=zones]", false
     assert_select ".ld-panel[data-tab=zones]", false
+  end
+
+  test "show renders a zone card with id and reflects persisted zone_states" do
+    light = Light.create!(name: "Up", key: "UP9", zones: %w[bottomLightToggle rippleLightToggle])
+    LightState.record_zone_state("UP9", "rippleLightToggle", true)
+    get light_url(key: "UP9")
+    assert_response :success
+    assert_select "#zone_rippleLightToggle"
+    assert_select "#zone_rippleLightToggle.ld-zone:not(.off)"
+    assert_select "#zone_bottomLightToggle.ld-zone.off"
   end
 end

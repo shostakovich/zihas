@@ -1,0 +1,9 @@
+<%# locals: message (String|nil), undo (Hash|nil) %>
+<div id="light_toast" class="ld-toast" data-controller="toast"<%= " hidden".html_safe unless message %>>
+  <% if message %>
+    <span><%= message %></span>
+    <%= button_to "Rückgängig", light_command_path(light_key: undo[:light_key]),
+          params: { command: "zone_undo", victim: undo[:victim], added: undo[:added] },
+          class: "ld-toast-undo", form_class: "ld-inline-form" %>
+  <% end %>
+</div>

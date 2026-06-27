@@ -1,0 +1,13 @@
+<%# locals: zone (LightRow::Zone), light_key (String) %>
+<div id="zone_<%= zone.key %>"
+     class="ld-zone<%= ' main' if zone.role == 'main' %><%= ' off' unless zone.on %>"
+     data-zone-key="<%= zone.key %>" data-zone-role="<%= zone.role %>">
+  <span class="ld-zone-dot"></span>
+  <span class="ld-zone-nm"><%= zone.label %></span>
+  <% if zone.role == "main" %><span class="ld-zone-badge">Haupt</span><% end %>
+  <span class="ld-zone-spacer"></span>
+  <%= button_to "".html_safe, light_command_path(light_key: light_key),
+        params: { command: "zone", zone: zone.key, on: (!zone.on).to_s },
+        class: "ld-zone-toggle#{' on' if zone.on}", form_class: "ld-inline-form",
+        "aria-label": "#{zone.label} an/aus" %>
+</div>

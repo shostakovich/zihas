@@ -11,13 +11,7 @@
     <span class="ld-title"><%= @light.name %></span>
   </div>
 
-  <div class="ld-hero<%= ' is-off' unless @row.on? %>">
-    <div class="ld-lamp plush-<%= @light.plush_type %><%= ' off' unless @row.on? %>" data-light-detail-target="lamp"></div>
-    <div class="ld-power">
-      <button class="ld-pill<%= ' on' if @row.on? %>" data-action="light-detail#on">An</button>
-      <button class="ld-pill<%= ' on' unless @row.on? %>" data-action="light-detail#off">Aus</button>
-    </div>
-  </div>
+  <%= render "lights/power", light: @light, row: @row %>
 
   <div class="ld-card">
     <p class="ld-label">Helligkeit</p>
@@ -40,18 +34,7 @@
   <% if @row.zone_lamp? %>
     <div class="ld-panel" data-light-detail-target="panel" data-tab="zones" hidden>
       <% @row.zones.each do |zone| %>
-        <div class="ld-zone<%= ' main' if zone.role == 'main' %><%= ' off' unless zone.on %>"
-             data-zone-key="<%= zone.key %>" data-zone-role="<%= zone.role %>">
-          <span class="ld-zone-dot"></span>
-          <span class="ld-zone-nm"><%= zone.label %></span>
-          <% if zone.role == "main" %><span class="ld-zone-badge">Haupt</span><% end %>
-          <span class="ld-zone-spacer"></span>
-          <button class="ld-zone-toggle<%= ' on' if zone.on %>"
-                  data-action="light-detail#zone"
-                  data-light-detail-zone-param="<%= zone.key %>"
-                  data-light-detail-role-param="<%= zone.role %>"
-                  aria-label="<%= zone.label %> an/aus"></button>
-        </div>
+        <%= render "lights/zone", zone: zone, light_key: @light.key %>
       <% end %>
       <p class="ld-zone-hint">Farbe &amp; Weiß gelten für die ganze Lampe (Tabs oben).</p>
     </div>
@@ -120,10 +103,7 @@
     </div>
   </div>
 
-  <div class="ld-toast" data-light-detail-target="toast" hidden>
-    <span data-light-detail-target="toastMsg"></span>
-    <button class="ld-toast-undo" data-action="light-detail#undoZone">Rückgängig</button>
-  </div>
+  <%= render "lights/toast", message: nil, undo: nil %>
 
   <div class="ld-error" data-light-detail-target="error"></div>
 </div>

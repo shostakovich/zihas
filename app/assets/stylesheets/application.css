@@ -1293,3 +1293,4 @@ body.page-light-detail { max-width: 560px; }
 .ld-toast[hidden] { display: none; }
 .ld-toast-undo { margin-left: auto; background: none; border: none; cursor: pointer;
                  color: var(--accent-bg, #ffe066); font-weight: 700; }
+.ld-inline-form { display: contents; }
