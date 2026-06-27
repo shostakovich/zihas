@@ -1,4 +1,4 @@
-require "govee_commander"
+require "govees/commander"
 
 class ScenesController < ApplicationController
   before_action :set_scene, only: %i[edit update destroy apply]
@@ -32,7 +32,7 @@ class ScenesController < ApplicationController
   def apply
     @scene.scene_entries.each { |entry| apply_entry(entry) }
     redirect_to scenes_url, notice: "Szene angewendet."
-  rescue GoveeCommander::Error
+  rescue Govees::Commander::Error
     redirect_to scenes_url, alert: "Bridge nicht erreichbar."
   end
 
@@ -43,13 +43,13 @@ class ScenesController < ApplicationController
 
   def apply_entry(entry)
     light, preset = entry.light, entry.preset
-    GoveeCommander.turn(light, on: preset.on, **opts)
+    Govees::Commander.turn(light, on: preset.on, **opts)
     return unless preset.on
-    GoveeCommander.set_brightness(light, value: preset.brightness, **opts) if preset.brightness
+    Govees::Commander.set_brightness(light, value: preset.brightness, **opts) if preset.brightness
     if preset.color_temp_k && preset.color_temp_k > 0
-      GoveeCommander.set_color_temp(light, kelvin: preset.color_temp_k, **opts)
+      Govees::Commander.set_color_temp(light, kelvin: preset.color_temp_k, **opts)
     elsif preset.color_r
-      GoveeCommander.set_color(light, r: preset.color_r, g: preset.color_g, b: preset.color_b, **opts)
+      Govees::Commander.set_color(light, r: preset.color_r, g: preset.color_g, b: preset.color_b, **opts)
     end
   end
 

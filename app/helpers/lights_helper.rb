@@ -1,5 +1,5 @@
 module LightsHelper
-  # govee2mqtt gives us only the scene NAME, not real colours, so derive a
+  # The bridge gives us only the scene NAME, not real colours, so derive a
   # stable two-stop gradient from the name for the preview swatch.
   def scene_gradient(name)
     sum = name.to_s.each_char.sum(&:ord)

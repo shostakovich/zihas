@@ -21,9 +21,9 @@ class ScenesControllerTest < ActionDispatch::IntegrationTest
     scene.scene_entries.create!(light: light, preset: preset)
 
     turns = []
-    GoveeCommander.stub :turn, ->(l, **kw) { turns << [ l.key, kw[:on] ] } do
-      GoveeCommander.stub :set_brightness, ->(*, **) { } do
-        GoveeCommander.stub :set_color_temp, ->(*, **) { } do
+    Govees::Commander.stub :turn, ->(l, **kw) { turns << [ l.key, kw[:on] ] } do
+      Govees::Commander.stub :set_brightness, ->(*, **) { } do
+        Govees::Commander.stub :set_color_temp, ->(*, **) { } do
           post apply_scene_url(scene)
         end
       end

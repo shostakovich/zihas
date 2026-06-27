@@ -36,7 +36,7 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
 
   test "brightness responds 204 no_content for fire-and-forget" do
     @light = Light.create!(name: "L", key: "S3", zones: [])
-    Govees::Commander.stub(:set_brightness, ->(*, **) {}) do
+    Govees::Commander.stub(:set_brightness, ->(*, **) { }) do
       post light_command_url(light_key: "S3"), params: { command: "brightness", value: "42" }
     end
     assert_response :no_content
@@ -99,7 +99,7 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
 
   test "turn optimistically persists on and replaces the power partial" do
     @light = Light.create!(name: "Lampe", key: "S2", zones: [])
-    Govees::Commander.stub(:turn, ->(*, **) {}) do
+    Govees::Commander.stub(:turn, ->(*, **) { }) do
       post light_command_url(light_key: "S2"),
            params: { command: "turn", on: "true" }, as: :turbo_stream
     end
@@ -128,7 +128,7 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
 
   test "zone command responds with a turbo stream replacing the card" do
     Light.create!(name: "Up", key: "UP2", zones: %w[bottomLightToggle rippleLightToggle])
-    Govees::Commander.stub(:set_zone, ->(*, **) {}) do
+    Govees::Commander.stub(:set_zone, ->(*, **) { }) do
       post light_command_url(light_key: "UP2"),
            params: { command: "zone", zone: "rippleLightToggle", on: "true" },
            as: :turbo_stream
@@ -140,7 +140,7 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
 
   test "zone command persists the zone state" do
     Light.create!(name: "Up", key: "UP1", zones: %w[bottomLightToggle rippleLightToggle])
-    Govees::Commander.stub(:set_zone, ->(*, **) {}) do
+    Govees::Commander.stub(:set_zone, ->(*, **) { }) do
       post light_command_url(light_key: "UP1"), params: { command: "zone", zone: "rippleLightToggle", on: "true" }
     end
     assert_response :success
