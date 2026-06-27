@@ -1,7 +1,7 @@
-# test/controllers/light_switches_controller_test.rb
+# test/controllers/lights_command_test.rb
 require "test_helper"
 
-class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
+class LightsCommandTest < ActionDispatch::IntegrationTest
   setup do
     Light.delete_all
     @light = Light.create!(name: "Stehlampe", key: "A1B2C3D4E5F60030")

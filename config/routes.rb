@@ -20,7 +20,7 @@ Rails.application.routes.draw do
   end
 
   scope "/lights/:light_key" do
-    post "command", to: "light_switches#create", as: :light_command
+    post "command", to: "lights#command", as: :light_command
   end
 
   get "/api/today", to: "api#today"
