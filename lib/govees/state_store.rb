@@ -35,34 +35,39 @@ module Govees
     def apply_telemetry(key, telemetry, source:)
       tel = normalize(telemetry)
       entry = (@entries[key] ||= Entry.new(published: {}, status: :synced, pending_until: 0.0))
+      before = entry.published
 
       if entry.status == :pending && @clock.call < entry.pending_until
         if matches?(entry.published, tel)
           entry.published = entry.published.merge(tel)
           entry.status = :synced
         end # else: not applied yet -> hold optimistic, ignore
-        return result(entry, false)
+        return result(entry, before, false)
       end
 
       if tel[:on] == false
         entry.published = entry.published.merge(tel)
         entry.status = :synced
-        return result(entry, false)
+        return result(entry, before, false)
       end
 
       if source == :lan && !matches?(entry.published, tel)
         entry.status = :reconciling
-        return result(entry, true)
+        return result(entry, before, true)
       end
 
       entry.published = entry.published.merge(tel)
       entry.status = :synced
-      result(entry, false)
+      result(entry, before, false)
     end
 
     private
 
-    def result(entry, needs_api) = { published: entry.published.dup, changed: true, needs_api_clarification: needs_api }
+    # changed reflects whether `published` actually moved, so callers can skip
+    # republishing unchanged retained state (e.g. ignored not-yet-applied reads).
+    def result(entry, before, needs_api)
+      { published: entry.published.dup, changed: entry.published != before, needs_api_clarification: needs_api }
+    end
 
     # Only the fields present in telemetry are compared; a field absent from the
     # reading never counts as a deviation.

@@ -58,4 +58,17 @@ class GoveesStateStoreTest < ActiveSupport::TestCase
     assert_equal :synced, @store.status("K")
     refute res[:needs_api_clarification]
   end
+
+  test "changed is false when an ignored pending read leaves published untouched" do
+    @store.record_command("K", on: true, brightness: 50)
+    res = @store.apply_telemetry("K", { on: true, brightness: 10, reachable: true }, source: :lan)
+    assert_equal false, res[:changed], "not-yet-applied read must not report a change"
+  end
+
+  test "changed is true when telemetry actually moves published state" do
+    @store.record_command("K", on: true, brightness: 50)
+    @now += 10
+    res = @store.apply_telemetry("K", { on: false, reachable: true }, source: :lan)
+    assert_equal true, res[:changed]
+  end
 end
