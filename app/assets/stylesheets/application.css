@@ -57,7 +57,8 @@ body {
   margin-right: auto;
 }
 
-body.page-dashboard { max-width: 760px; }
+body.page-dashboard,
+body.page-switches { max-width: 760px; }
 body.page-weather { max-width: 880px; }
 body.page-reports,
 body.page-sensors { max-width: 1040px; }
@@ -502,6 +503,7 @@ svg text[data-dashboard-target] {
   }
 
   body.page-dashboard,
+  body.page-switches,
   body.page-weather,
   body.page-reports,
   body.page-sensors {

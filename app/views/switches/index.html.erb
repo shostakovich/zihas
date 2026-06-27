@@ -10,6 +10,18 @@
     </section>
   <% end %>
 
+  <% if @light_rows.any? %>
+    <h2 class="section-label">Lampen</h2>
+    <div data-controller="lights">
+      <% @light_rows.each do |row| %>
+        <%= render "switches/light_card", row: row %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if @rows.any? %>
+    <h2 class="section-label">Steckdosen</h2>
+  <% end %>
   <% @rows.each do |row| %>
     <%= render "switches/plug_card", row: row %>
   <% end %>
@@ -25,14 +37,5 @@
                       "aria-label": "Zeitfenster löschen" %>
       </div>
     <% end %>
-  <% end %>
-
-  <% if @light_rows.any? %>
-    <h2 class="section-label">Lampen</h2>
-    <div data-controller="lights">
-      <% @light_rows.each do |row| %>
-        <%= render "switches/light_card", row: row %>
-      <% end %>
-    </div>
   <% end %>
 </div>
