@@ -5,9 +5,10 @@ require "govees/lan_client"
 class GoveesLanClientTest < ActiveSupport::TestCase
   # Fake UDP socket records what was sent instead of touching the network.
   class FakeSocket
-    attr_reader :sent
-    def initialize = @sent = []
+    attr_reader :sent, :sockopt_calls
+    def initialize = (@sent = []; @sockopt_calls = [])
     def send(data, _flags, host, port) = @sent << { data: data, host: host, port: port }
+    def setsockopt(*args) = @sockopt_calls << args
     def close = nil
   end
 
@@ -59,5 +60,22 @@ class GoveesLanClientTest < ActiveSupport::TestCase
       "ip" => "192.168.8.184", "device" => "14:AB:DB:48:44:06:4B:60", "sku" => "H60B0" } })
     assert_equal({ ip: "192.168.8.184", mac: "14:AB:DB:48:44:06:4B:60", sku: "H60B0" },
                  Govees::LanClient.parse_scan(payload))
+  end
+
+  test "discover sends scan_request to multicast 239.255.255.250 port 4001" do
+    @client.discover
+    msg = @sock.sent.first
+    assert_not_nil msg, "expected discover to send a datagram"
+    assert_equal "239.255.255.250", msg[:host]
+    assert_equal 4001, msg[:port]
+    assert_equal Govees::LanClient.scan_request, msg[:data]
+  end
+
+  test "discover sets IP_MULTICAST_TTL on the socket before sending" do
+    @client.discover
+    # Verify setsockopt was called with IPPROTO_IP + IP_MULTICAST_TTL
+    assert @sock.sockopt_calls.any? { |args|
+      args[0] == Socket::IPPROTO_IP && args[1] == Socket::IP_MULTICAST_TTL
+    }, "expected IP_MULTICAST_TTL to be set"
   end
 end

@@ -34,6 +34,17 @@ module Govees
 
     def self.scan_request = JSON.generate("msg" => { "cmd" => "scan", "data" => { "account_topic" => "reserve" } })
 
+    # Broadcast a LAN scan to the Govee multicast group so devices announce their IP.
+    # In production a real UDP socket is used; in tests the injectable socket factory
+    # supplies a fake so no actual multicast traffic is generated.
+    def discover
+      socket = @socket_factory.call
+      socket.setsockopt(Socket::IPPROTO_IP, Socket::IP_MULTICAST_TTL, [ 2 ].pack("C"))
+      socket.send(self.class.scan_request, 0, SCAN_MCAST, SCAN_PORT)
+    ensure
+      begin; socket&.close; rescue StandardError; nil; end
+    end
+
     def self.parse_status(payload)
       data = JSON.parse(payload).dig("msg", "data")
       return nil unless data.is_a?(Hash) && data.key?("onOff")

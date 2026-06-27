@@ -2,6 +2,7 @@
 require "mqtt"
 require "json"
 require "socket"
+require "ipaddr"
 require "govees/lan_client"
 require "govees/platform_api"
 require "govees/device_registry"
@@ -27,7 +28,7 @@ module Govees
       @clock       = clock
       @stopping    = false
       @lan        = lan        || LanClient.new
-      @registry   = registry   || DeviceRegistry.new(api: api, logger: logger)
+      @registry   = registry   || DeviceRegistry.new(api: api, logger: logger, names: govee_config.names)
       @store      = store      || StateStore.new(pending_window_s: govee_config.pending_window_seconds, clock: clock)
       @router     = router     || CommandRouter.new(registry: @registry, lan: @lan, api: api, store: @store, logger: logger)
       @reconciler = reconciler || Reconciler.new(registry: @registry, lan: @lan, api: api, store: @store, logger: logger)
@@ -41,6 +42,7 @@ module Govees
       payload = JSON.generate(
         "sku"                => device.sku,
         "name"               => device.name,
+        "room"               => device.room,
         "supports_color"     => device.supports_color,
         "supports_color_temp" => device.supports_color_temp,
         "zones"              => device.zones,
@@ -66,8 +68,10 @@ module Govees
 
     def run
       @registry.refresh!
+      listener = listener_thread   # start listener FIRST so scan replies are caught
+      @lan.discover                # broadcast multicast scan after listener is up
       @registry.all.each { |d| publish_config(d); @lan.request_status(d.ip) if d.ip }
-      threads = [ command_thread, listener_thread, lan_poller_thread, api_poller_thread ]
+      threads = [ command_thread, listener, lan_poller_thread, api_poller_thread ]
       threads.each(&:join)
     ensure
       begin; @publisher&.disconnect; rescue StandardError; nil; end
@@ -103,7 +107,17 @@ module Govees
       Thread.new do
         Thread.current.name = "govees_listener"
         @listener_socket = UDPSocket.new
+        # Set reuse options BEFORE bind so multiple processes can share the port.
+        @listener_socket.setsockopt(Socket::SOL_SOCKET, Socket::SO_REUSEADDR, true)
+        begin
+          @listener_socket.setsockopt(Socket::SOL_SOCKET, Socket::SO_REUSEPORT, true)
+        rescue Errno::ENOPROTOOPT
+          nil  # SO_REUSEPORT not available on all platforms; best-effort
+        end
         @listener_socket.bind("0.0.0.0", LanClient::LISTEN_PORT)
+        # Join the Govee multicast group so scan + devStatus replies are received.
+        mreq = IPAddr.new("239.255.255.250").hton + IPAddr.new("0.0.0.0").hton
+        @listener_socket.setsockopt(Socket::IPPROTO_IP, Socket::IP_ADD_MEMBERSHIP, mreq)
         until @stopping
           payload, addr = @listener_socket.recvfrom(2048)
           handle_datagram(payload, addr[3])
@@ -133,6 +147,7 @@ module Govees
       Thread.new do
         Thread.current.name = "govees_lan_poller"
         until @stopping
+          @lan.discover  # re-discover each tick to catch DHCP IP changes
           @registry.all.each { |d| @lan.request_status(d.ip) if d.ip }
           sleep_interruptible(@cfg.lan_poll_seconds)
         end
