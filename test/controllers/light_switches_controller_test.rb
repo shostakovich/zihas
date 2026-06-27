@@ -96,6 +96,28 @@ class LightSwitchesControllerTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
   end
 
+  test "turning on a side zone over the limit evicts an on side and shows a toast" do
+    light = Light.create!(name: "Up", key: "UP3", sku: "H60B0",
+                          zones: %w[bottomLightToggle rippleLightToggle sideLightToggle])
+    LightState.record_zone_state("UP3", "bottomLightToggle", true) # Haupt an
+    LightState.record_zone_state("UP3", "rippleLightToggle", true) # eine Seite an -> 2 an == Limit
+    calls = []
+    GoveeCommander.stub(:set_zone, ->(l, zone:, on:, **) { calls << [ zone, on ] }) do
+      post light_command_url(light_key: "UP3"),
+           params: { command: "zone", zone: "sideLightToggle", on: "true" }, as: :turbo_stream
+    end
+    assert_response :success
+    state = LightState.find_by(light_key: "UP3")
+    assert_equal false, state.zone_states["rippleLightToggle"], "old side switched off"
+    assert_equal true,  state.zone_states["sideLightToggle"],   "new side switched on"
+    assert_equal true,  state.zone_states["bottomLightToggle"], "main untouched"
+    assert_includes calls, [ "rippleLightToggle", false ]
+    assert_includes calls, [ "sideLightToggle", true ]
+    assert_select "turbo-stream[action=replace][target=zone_rippleLightToggle]"
+    assert_select "turbo-stream[action=replace][target=zone_sideLightToggle]"
+    assert_select "turbo-stream[action=replace][target=light_toast]"
+  end
+
   test "zone command responds with a turbo stream replacing the card" do
     Light.create!(name: "Up", key: "UP2", zones: %w[bottomLightToggle rippleLightToggle])
     GoveeCommander.stub(:set_zone, ->(*, **) {}) do
