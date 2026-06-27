@@ -87,7 +87,11 @@ module Govees
       on   = spec["on"] ? true : false
       @api.control(sku: device.sku, device: device.api_id, type: TOGGLE, instance: name, value: on ? 1 : 0)
       bits = (@store.published(device.key) || {})[:zone_states] || {}
-      { zone_states: bits.merge(name => on) }
+      changes = { zone_states: bits.merge(name => on) }
+      # powerSwitch IS the power capability (reconciler derives on:=powerSwitch==1);
+      # keep the canonical `on` field in sync so optimistic state isn't stale.
+      changes[:on] = on if name == "powerSwitch"
+      changes
     end
 
     def scene(device, name)

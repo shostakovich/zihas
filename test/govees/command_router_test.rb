@@ -71,6 +71,17 @@ class GoveesCommandRouterTest < ActiveSupport::TestCase
     assert_nil router.handle("X", { "power" => "on" })
   end
 
+  test "powerSwitch zone toggle also updates the canonical on state" do
+    router = build(device(ip: nil, power_only: true))
+    on = router.handle("K", { "zone" => { "name" => "powerSwitch", "on" => true } })
+    assert_equal true, on[:on], "powerSwitch on must set canonical on:true"
+    assert_equal true, on[:zone_states]["powerSwitch"]
+
+    off = router.handle("K", { "zone" => { "name" => "powerSwitch", "on" => false } })
+    assert_equal false, off[:on], "powerSwitch off must set canonical on:false"
+    assert_equal false, off[:zone_states]["powerSwitch"]
+  end
+
   test "zone command preserves other zone bits" do
     router = build(device(ip: "1.2.3.4"))
     @store.record_command("K", zone_states: { "sideLightToggle" => true })
