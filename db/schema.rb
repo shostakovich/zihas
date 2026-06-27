@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_21_111500) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_26_161512) do
   create_table "daily_energy_summary", primary_key: "date", id: :string, force: :cascade do |t|
     t.float "consumed_wh", null: false
     t.float "produced_wh", null: false
@@ -18,9 +18,39 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_21_111500) do
   end
 
   create_table "daily_totals", primary_key: [ "plug_id", "date" ], force: :cascade do |t|
-    t.string "date", limit: 255, null: false
+    t.string "date", null: false
     t.float "energy_wh", null: false
-    t.string "plug_id", limit: 255, null: false
+    t.string "plug_id", null: false
+  end
+
+  create_table "light_states", force: :cascade do |t|
+    t.integer "brightness"
+    t.integer "color_b"
+    t.integer "color_g"
+    t.integer "color_r"
+    t.integer "color_temp_k"
+    t.datetime "created_at", null: false
+    t.datetime "last_seen_at"
+    t.string "light_key", null: false
+    t.boolean "on"
+    t.boolean "reachable"
+    t.datetime "updated_at", null: false
+    t.text "zone_states"
+    t.index [ "light_key" ], name: "index_light_states_on_light_key", unique: true
+  end
+
+  create_table "lights", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "firmware_scenes"
+    t.string "key", null: false
+    t.string "name", null: false
+    t.string "shelly_plug_id"
+    t.string "sku"
+    t.boolean "supports_color", default: false, null: false
+    t.boolean "supports_color_temp", default: false, null: false
+    t.datetime "updated_at", null: false
+    t.text "zones"
+    t.index [ "key" ], name: "index_lights_on_key", unique: true
   end
 
   create_table "plug_states", force: :cascade do |t|
@@ -34,16 +64,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_21_111500) do
   create_table "samples", primary_key: [ "plug_id", "ts" ], force: :cascade do |t|
     t.float "aenergy_wh", null: false
     t.float "apower_w", null: false
-    t.string "plug_id", limit: 255, null: false
+    t.string "plug_id", null: false
     t.bigint "ts", null: false
-    t.index [ "ts" ], name: "idx_samples_ts"
+    t.index [ "ts" ], name: "index_samples_on_ts"
   end
 
   create_table "samples_5min", primary_key: [ "plug_id", "bucket_ts" ], force: :cascade do |t|
     t.float "avg_power_w", null: false
     t.bigint "bucket_ts", null: false
     t.float "energy_delta_wh", null: false
-    t.string "plug_id", limit: 255, null: false
+    t.string "plug_id", null: false
     t.integer "sample_count", null: false
   end
 

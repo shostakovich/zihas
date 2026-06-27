@@ -1,0 +1,9 @@
+<%# locals: zone (LightRow::Zone), light_key (String) %>
+<%# Standalone toggle pill inside the hero tile. Form id stays "zone_<key>" so
+    the per-zone Turbo Stream replace (see LightSwitchesController#respond_zone)
+    keeps targeting the outermost element. %>
+<%= button_to zone.label, light_command_path(light_key: light_key),
+      params: { command: "zone", zone: zone.key, on: (!zone.on).to_s },
+      class: "ld-zone-btn#{' on' if zone.on}",
+      form: { id: "zone_#{zone.key}", class: "ld-inline-form" },
+      "aria-pressed": zone.on.to_s, "aria-label": "#{zone.label} an/aus" %>

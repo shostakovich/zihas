@@ -1,0 +1,14 @@
+<%# app/views/lights/index.html.erb %>
+<% content_for :title, "Lampen" %>
+<h1>Lampen</h1>
+<ul>
+  <% @lights.each do |light| %>
+    <li>
+      <%= light.name %>
+      <span class="light-key"><%= light.key %></span>
+      <%= link_to "Bearbeiten", edit_light_path(light) %>
+      <%= button_to "Löschen", light_path(light), method: :delete,
+                    form: { data: { turbo_confirm: "Lampe wirklich löschen?" } } %>
+    </li>
+  <% end %>
+</ul>

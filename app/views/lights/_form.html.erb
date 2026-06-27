@@ -1,0 +1,21 @@
+<%# app/views/lights/_form.html.erb %>
+<%= form_with model: light do |f| %>
+  <% if light.errors.any? %>
+    <ul class="form-errors">
+      <% light.errors.full_messages.each do |m| %><li><%= m %></li><% end %>
+    </ul>
+  <% end %>
+  <%= f.label :name, "Name" %>
+  <%= f.text_field :name %>
+
+  <%= f.label :shelly_plug_id, "Shelly-Plug (optional)" %>
+  <%= f.text_field :shelly_plug_id %>
+
+  <%= f.label :supports_color, "Farbe" %>
+  <%= f.check_box :supports_color %>
+
+  <%= f.label :supports_color_temp, "Farbtemperatur" %>
+  <%= f.check_box :supports_color_temp %>
+
+  <%= f.submit "Speichern" %>
+<% end %>

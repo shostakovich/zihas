@@ -45,3 +45,6 @@
 /coverage/
 /.superpowers/*
 /.worktrees/
+
+# ruby-lsp local tooling
+/.ruby-lsp/

@@ -1,0 +1,28 @@
+<%# app/views/switches/_light_card.html.erb %>
+<div class="sw-card sw-light-card<%= ' sw-offline' unless row.on? %>"
+     id="light_card_<%= row.light.key %>" data-light-key="<%= row.light.key %>">
+  <%= link_to light_path(row.light.key), class: "sw-light-link", "aria-label": "#{row.light.name} Details" do %>
+    <div class="sw-info">
+      <span class="sw-name"><%= row.light.name %></span>
+      <div class="sw-state"><%= row.summary %></div>
+      <div class="sw-error" id="light_error_<%= row.light.key %>"></div>
+    </div>
+  <% end %>
+
+  <%# Pure Turbo: the knob posts the opposite of the current state; the command
+      response replaces this card (#light_card_<key>) and live MQTT reconciles via
+      the "lights" Turbo Stream — no Stimulus/optimistic-JS needed. %>
+  <%= button_to "", light_command_path(light_key: row.light.key),
+        params: { command: "turn", on: (!row.on?).to_s },
+        class: "sw-knob sw-lamp-knob plush-#{row.light.plush_type}#{' off' unless row.on?}",
+        form_class: "sw-inline-form sw-knob-form",
+        aria: { label: "#{row.light.name} umschalten" } %>
+
+  <%= link_to "Anpassen ›", light_path(row.light.key), class: "sw-light-sub" %>
+
+  <% if (chip = row.chip) %>
+    <span class="sw-watt-chip">
+      <span class="sw-swatch" style="background: <%= chip[:swatch] %>"></span><%= chip[:label] %>
+    </span>
+  <% end %>
+</div>
