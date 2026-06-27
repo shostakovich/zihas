@@ -6,6 +6,8 @@
      data-light-detail-tab-value="<%= @row.default_tab %>"
      data-light-detail-max-zones-value="<%= @light.max_active_zones || 0 %>">
 
+  <%= turbo_stream_from "light_#{@light.key}" %>
+
   <div class="ld-topbar">
     <%= link_to "←", switches_path, class: "ld-back", "aria-label": "Zurück" %>
     <span class="ld-title"><%= @light.name %></span>

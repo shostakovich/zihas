@@ -31,6 +31,7 @@ class GoveeStatusHandler
     attrs = parse_state(data).merge(last_seen_at: Time.current)
     LightState.record_state(key, attrs)
     broadcast(key, attrs)
+    broadcast_turbo(key)
   rescue JSON::ParserError => e
     @logger.warn("GoveeStatusHandler: invalid JSON on #{topic}: #{e.message}")
   end
@@ -70,5 +71,15 @@ class GoveeStatusHandler
     ActionCable.server.broadcast("dashboard", { lights: lights }) if lights.any?
   rescue => e
     @logger.warn("GoveeStatusHandler: ActionCable broadcast failed: #{e.message}")
+  end
+
+  def broadcast_turbo(key)
+    light = Light.find_by(key: key)
+    return unless light
+    row = LightRow.new(light: light, state: LightState.find_by(light_key: key))
+    Turbo::StreamsChannel.broadcast_replace_to("light_#{key}",
+      target: "light_power", partial: "lights/power", locals: { light: light, row: row })
+  rescue => e
+    @logger.warn("GoveeStatusHandler: turbo broadcast failed: #{e.message}")
   end
 end

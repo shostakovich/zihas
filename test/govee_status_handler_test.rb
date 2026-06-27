@@ -97,4 +97,14 @@ class GoveeStatusHandlerTest < ActiveSupport::TestCase
     assert_equal 0, LightState.count
     assert_match(/invalid json/i, @log_io.string)
   end
+
+  test "broadcasts a turbo stream replacing the power partial for the light" do
+    Light.create!(name: "Lampe", key: "BCAST1", zones: [])
+    handler = GoveeStatusHandler.new(logger: Logger.new(IO::NULL))
+    streams = []
+    Turbo::StreamsChannel.stub(:broadcast_replace_to, ->(stream, **kw) { streams << [ stream, kw[:target] ] }) do
+      handler.handle("gv2mqtt/light/BCAST1/state", %({"state":"ON","brightness":50}))
+    end
+    assert_includes streams, [ "light_BCAST1", "light_power" ]
+  end
 end
