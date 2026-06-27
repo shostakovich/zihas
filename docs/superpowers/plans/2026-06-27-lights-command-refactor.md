@@ -4,7 +4,7 @@
 
 **Goal:** Den fetten `LightSwitchesController#create`-`case`-Block durch typisierte, isoliert testbare dry-rb Command-Operations ersetzen; der Controller wird zu einem schlanken `LightsController#command`, der nur dispatcht und das Result rendert.
 
-**Architecture:** Pro Command eine `Dry::Operation` (Railway/Result) unter `Lights::Operations::*`. Param-Coercion über `Dry::Struct` (einfache Commands) bzw. `Dry::Validation::Contract` (Zone-Commands mit `light`-Kontext), beide gebaut auf einem `Lights::Types`-Modul. Operations sind View-frei und liefern ein `Lights::Results::*`-Wertobjekt; der Controller mappt es auf Turbo-Streams. Ein `Lights::Registry`-Hash dispatcht command-Name → Operation.
+**Architecture:** Pro Command eine `Dry::Operation` (Railway/Result) unter `Lights::Operations::*`. Param-Coercion über `Dry::Struct` (einfache Commands) bzw. `Dry::Validation::Contract` (Zone-Commands mit `light`-Kontext), beide gebaut auf einem `Lights::Types`-Modul. Operations sind View-frei und liefern ein `Lights::Results::*`-Wertobjekt; der Controller mappt es auf Turbo-Streams. Eine Dispatch-Tabelle direkt am `Lights::Operations`-Modul (`Lights::Operations[name]`) bildet command-Name → Operation ab.
 
 **Tech Stack:** Ruby 4.0, Rails 8.1, Minitest, dry-types/dry-struct/dry-validation/dry-operation (dry-monads kommt transitiv über dry-operation). Govee-Befehle gehen weiterhin über `Govees::Commander` (MQTT, unverändert).
 
@@ -889,60 +889,67 @@ git commit -m "feat(lights): add zone set/undo operations with eviction"
 
 ---
 
-### Task 7: `Lights::Registry`
+### Task 7: Dispatch-Tabelle am `Lights::Operations`-Modul
+
+Statt einer separaten `Lights::Registry` lebt die command-Name → Operation-Tabelle
+direkt am `Lights::Operations`-Modul. Dazu wird der bisher *implizite* Zeitwerk-Namespace
+(aus dem Verzeichnis `operations/`) zu einem *expliziten*: die Datei
+`app/models/lights/operations.rb` definiert das Modul samt Tabelle, die Kind-Dateien
+`operations/*.rb` bleiben unverändert und werden bei Bedarf autogeladen.
 
 **Files:**
-- Create: `app/models/lights/registry.rb`
-- Test: `test/models/lights/registry_test.rb`
+- Create: `app/models/lights/operations.rb`
+- Test: `test/models/lights/operations_test.rb`
 
 **Interfaces:**
-- Consumes: alle `Lights::Operations::*`-Klassen.
-- Produces: `Lights::Registry[name]` → Operation-Klasse oder `nil`. Keys: `turn`, `zone`, `brightness`, `color`, `color_temp`, `effect`, `scene`, `zone_undo` (`effect` und `scene` mappen beide auf `SetScene`).
+- Consumes: alle `Lights::Operations::*`-Klassen (Tasks 5–6).
+- Produces: `Lights::Operations[name]` → Operation-Klasse oder `nil`. Keys: `turn`, `zone`, `brightness`, `color`, `color_temp`, `effect`, `scene`, `zone_undo` (`effect` und `scene` mappen beide auf `SetScene`).
 
 - [ ] **Step 1: Failing test schreiben**
 
 ```ruby
-# test/models/lights/registry_test.rb
+# test/models/lights/operations_test.rb
 require "test_helper"
 
-class Lights::RegistryTest < ActiveSupport::TestCase
+class Lights::OperationsTest < ActiveSupport::TestCase
   test "maps command names to operation classes" do
-    assert_equal Lights::Operations::Turn,          Lights::Registry["turn"]
-    assert_equal Lights::Operations::SetZone,       Lights::Registry["zone"]
-    assert_equal Lights::Operations::SetBrightness, Lights::Registry["brightness"]
-    assert_equal Lights::Operations::SetColor,      Lights::Registry["color"]
-    assert_equal Lights::Operations::SetColorTemp,  Lights::Registry["color_temp"]
-    assert_equal Lights::Operations::SetScene,      Lights::Registry["effect"]
-    assert_equal Lights::Operations::SetScene,      Lights::Registry["scene"]
-    assert_equal Lights::Operations::UndoZone,      Lights::Registry["zone_undo"]
+    assert_equal Lights::Operations::Turn,          Lights::Operations["turn"]
+    assert_equal Lights::Operations::SetZone,       Lights::Operations["zone"]
+    assert_equal Lights::Operations::SetBrightness, Lights::Operations["brightness"]
+    assert_equal Lights::Operations::SetColor,      Lights::Operations["color"]
+    assert_equal Lights::Operations::SetColorTemp,  Lights::Operations["color_temp"]
+    assert_equal Lights::Operations::SetScene,      Lights::Operations["effect"]
+    assert_equal Lights::Operations::SetScene,      Lights::Operations["scene"]
+    assert_equal Lights::Operations::UndoZone,      Lights::Operations["zone_undo"]
   end
 
   test "returns nil for an unknown command" do
-    assert_nil Lights::Registry["explode"]
+    assert_nil Lights::Operations["explode"]
   end
 end
 ```
 
 - [ ] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
 
-Run: `bin/rails test test/models/lights/registry_test.rb`
-Expected: FAIL — `uninitialized constant Lights::Registry`.
+Run: `bin/rails test test/models/lights/operations_test.rb`
+Expected: FAIL — `undefined method '[]' for module Lights::Operations` (der implizite Namespace hat noch keine `[]`-Methode).
 
-- [ ] **Step 3: Registry implementieren**
+- [ ] **Step 3: Explizite Namespace-Datei mit Dispatch-Tabelle anlegen**
 
 ```ruby
-# app/models/lights/registry.rb
+# app/models/lights/operations.rb
 module Lights
-  module Registry
+  module Operations
+    # command name (param) -> operation class
     ALL = {
-      "turn"       => Operations::Turn,
-      "zone"       => Operations::SetZone,
-      "brightness" => Operations::SetBrightness,
-      "color"      => Operations::SetColor,
-      "color_temp" => Operations::SetColorTemp,
-      "effect"     => Operations::SetScene,
-      "scene"      => Operations::SetScene,
-      "zone_undo"  => Operations::UndoZone
+      "turn"       => Turn,
+      "zone"       => SetZone,
+      "brightness" => SetBrightness,
+      "color"      => SetColor,
+      "color_temp" => SetColorTemp,
+      "effect"     => SetScene,
+      "scene"      => SetScene,
+      "zone_undo"  => UndoZone
     }.freeze
 
     def self.[](name) = ALL[name]
@@ -952,14 +959,14 @@ end
 
 - [ ] **Step 4: Test laufen lassen, grün bestätigen**
 
-Run: `bin/rails test test/models/lights/registry_test.rb`
+Run: `bin/rails test test/models/lights/operations_test.rb`
 Expected: PASS (2 runs).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add app/models/lights/registry.rb test/models/lights/registry_test.rb
-git commit -m "feat(lights): add command registry dispatch hash"
+git add app/models/lights/operations.rb test/models/lights/operations_test.rb
+git commit -m "feat(lights): add command dispatch table on the operations module"
 ```
 
 ---
@@ -977,7 +984,7 @@ muss grün bleiben, was beweist, dass sich das Verhalten 1:1 nicht ändert.
 - Modify (umbenennen): `test/controllers/light_switches_controller_test.rb` → `test/controllers/lights_command_test.rb`
 
 **Interfaces:**
-- Consumes: `Lights::Registry`, `Lights::Results::*`, `LightRow`, `Light::ZONE_META`, `app_config.mqtt`.
+- Consumes: `Lights::Operations[]`, `Lights::Results::*`, `LightRow`, `Light::ZONE_META`, `app_config.mqtt`.
 - Produces: `POST /lights/:light_key/command` → `LightsController#command`. Antworten unverändert: Turbo-Streams (Power-Dual-Target / Zonen + Toast) bzw. `head :no_content`; `404` (unbekannte Lampe), `422` (unbekannter Command / ungültige Params), `503` (Broker-Fehler).
 
 - [ ] **Step 1: Bestehende Suite gegen den ALTEN Controller laufen lassen (Baseline grün)**
@@ -995,7 +1002,7 @@ In `app/controllers/lights_controller.rb` die `command`-Action (öffentlich, vor
     light = Light.find_by(key: params[:light_key])
     return head :not_found unless light
 
-    operation = Lights::Registry[params[:command]]
+    operation = Lights::Operations[params[:command]]
     return head :unprocessable_entity unless operation
 
     result = operation.new.call(light: light, params: params, mqtt_config: app_config.mqtt)
@@ -1124,7 +1131,7 @@ controller is removed and the endpoint stays POST /lights/:key/command."
 - Typ-Schicht (`Lights::Types`) → Task 2. ✔ (Bool, Brightness 1..100, Kelvin 2700..6500, RgbComponent 0..255, SceneName)
 - Param-Strukturen (`Dry::Struct`) → Task 2 (`Lights::Params::*`). ✔ Ersetzen die im Spec genannten Param-Structs; `dry-struct` deckt die einfachen Commands ab.
 - Contracts (`dry-validation`) → Task 3 (Zone, ZoneUndo). ✔ `BrightnessContract` aus dem Spec entfällt bewusst — der Range sitzt auf Typ-Ebene (`Lights::Types::Brightness`), wie der Spec bereits andeutete („großteils schon auf Typ-Ebene").
-- Operations (`dry-operation`) + Registry → Tasks 5–7. ✔
+- Operations (`dry-operation`) + Dispatch-Tabelle → Tasks 5–7. ✔ (Tabelle sitzt direkt am `Lights::Operations`-Modul via expliziter Namespace-Datei, statt einer separaten `Lights::Registry`)
 - Result-Wertobjekte → Task 4. ✔ (Power, Zones, NoContent; Toast-Copy im Controller, Result trägt nur Daten)
 - Schlanker Controller, Pattern-Match-Mapping → Task 8. ✔ (statt Pattern-Matching auf dry-monads-Konstanten bewusst robustes `success?`/`failure?` + `case/when` auf Result-Klassen — versionssicher)
 - Routing: ein Command-Endpoint → Task 8. ✔ **Abweichung vom Spec:** POST statt PATCH (hält Views + Test-Sicherheitsnetz unverändert, konsistent mit `plug_switches`). Spec-Routing-Abschnitt entsprechend angepasst.
@@ -1133,4 +1140,4 @@ controller is removed and the endpoint stays POST /lights/:key/command."
 
 **Placeholder scan:** Keine TBD/TODO/„später"-Stellen; jeder Code-Step enthält vollständigen Code, jeder Test-Step echten Test-Code.
 
-**Type consistency:** `Lights::Types::*`, `Lights::Params::*`, `Lights::Contracts::{Zone,ZoneUndo}`, `Lights::Results::{Power,Zones,NoContent}`, `Lights::Operations::{Base,Turn,SetBrightness,SetColor,SetColorTemp,SetScene,SetZone,UndoZone}`, `Lights::Registry` — Namen durchgängig identisch über alle Tasks. Failure-Tags `:invalid`/`:commander` einheitlich. `Results::Zones#toast` ∈ `{nil, {evicted:, added:}, :clear}` konsistent zwischen Task 4, 6 und 8.
+**Type consistency:** `Lights::Types::*`, `Lights::Params::*`, `Lights::Contracts::{Zone,ZoneUndo}`, `Lights::Results::{Power,Zones,NoContent}`, `Lights::Operations::{Base,Turn,SetBrightness,SetColor,SetColorTemp,SetScene,SetZone,UndoZone}` plus `Lights::Operations[]` (Dispatch) — Namen durchgängig identisch über alle Tasks. Failure-Tags `:invalid`/`:commander` einheitlich. `Results::Zones#toast` ∈ `{nil, {evicted:, added:}, :clear}` konsistent zwischen Task 4, 6 und 8.
