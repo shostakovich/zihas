@@ -46,8 +46,8 @@ den Controller laufen:
 | Typ | Definition |
 |---|---|
 | `Bool` | String/Int → bool (ersetzt `cast_bool`) |
-| `Brightness` | Integer, constrained `0..100` |
-| `Kelvin` | Integer, constrained (Bereich beim Plan festnageln, z.B. `2000..9000`) |
+| `Brightness` | Integer, constrained `1..100` (aus dem Slider `min=1 max=100`) |
+| `Kelvin` | Integer, constrained `2700..6500` (aus dem Slider `min=2700 max=6500`; `step=100` nur Slider-seitig, **nicht** als Modulo-Regel erzwingen) |
 | `RgbComponent` | Integer, constrained `0..255` |
 | `ZoneRole` | Enum `"main" \| "side"` (für `Light::ZONE_META`) |
 | `CommandName` | Enum der Registry-Keys |
@@ -69,7 +69,7 @@ kontextuelle Regeln, die das `light` brauchen (via `option :light`):
 
 - `ZoneContract`: `zone` ∈ `light.zones`
 - `ZoneUndoContract`: `victim` & `added` ∈ `light.zones`
-- `BrightnessContract`: `value` 0..100 (großteils schon auf Typ-Ebene)
+- `BrightnessContract`: `value` 1..100 (großteils schon auf Typ-Ebene)
 
 Der Contract liefert ein `dry-validation`-Result, das in der Operation per `.to_monad`
 zu `Success(attrs)` / `Failure(errors)` wird.
@@ -208,7 +208,7 @@ button_to (View)
   gestubbt, `LightState` real (DB). Pflichtpfade: Turn (Lampe vs. zone_lamp), SetZone
   mit/ohne Eviction, UndoZone, Commander-Error → Failure.
 - **Contracts** (Unit): valide/invalide Params, Kontextregeln (`zone ∈ light.zones`).
-- **Types** (Unit): Coercion + Constraints (Brightness 0..100, RgbComponent 0..255, Bool).
+- **Types** (Unit): Coercion + Constraints (Brightness 1..100, Kelvin 2700..6500, RgbComponent 0..255, Bool).
 - **Controller** (Request-Spec): die drei Response-Formen (Power-Dual-Target,
   Zonen+Toast, no_content), 404/422/503.
 
