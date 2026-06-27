@@ -22,7 +22,8 @@ module Govees
     end
 
     def self.api_to_telemetry(state, device)
-      t = { on: state["powerSwitch"].to_i == 1, reachable: state.fetch("online", true) ? true : false }
+      online = state.fetch("online", true)
+      t = { on: state["powerSwitch"].to_i == 1, reachable: (online == true || online == 1) }
       t[:brightness] = state["brightness"] if state.key?("brightness")
       if state["colorRgb"].to_i.positive?
         rgb = state["colorRgb"].to_i

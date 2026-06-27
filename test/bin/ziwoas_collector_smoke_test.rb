@@ -11,4 +11,16 @@ class ZiwoasCollectorSmokeTest < ActiveSupport::TestCase
     refute_includes src, %(require "govee_status_handler")
     refute_includes src, %(require "govee_zone_state_handler")
   end
+
+  test "collector guards the govee bridge behind a non-blank api_key check" do
+    src = File.read(Rails.root.join("bin/ziwoas_collector"))
+    assert_includes src, "config.govee.api_key.present?",
+      "expected an api_key presence guard before starting the Govee bridge"
+  end
+
+  test "collector warns when govee section is present but api_key is blank" do
+    src = File.read(Rails.root.join("bin/ziwoas_collector"))
+    assert_includes src, "Govees bridge disabled: missing GOVEE_API_KEY",
+      "expected a logger.warn when govee config exists but api_key is blank"
+  end
 end

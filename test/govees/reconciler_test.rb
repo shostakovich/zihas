@@ -32,6 +32,24 @@ class GoveesReconcilerTest < ActiveSupport::TestCase
     assert_equal({ "rippleLightToggle" => true }, t[:zone_states])
   end
 
+  test "api_to_telemetry: online:0 (integer) yields reachable:false" do
+    state = { "powerSwitch" => 0, "online" => 0 }
+    t = Govees::Reconciler.api_to_telemetry(state, device)
+    assert_equal false, t[:reachable]
+  end
+
+  test "api_to_telemetry: online:1 (integer) yields reachable:true" do
+    state = { "powerSwitch" => 1, "online" => 1 }
+    t = Govees::Reconciler.api_to_telemetry(state, device)
+    assert_equal true, t[:reachable]
+  end
+
+  test "api_to_telemetry: online absent defaults to reachable:true" do
+    state = { "powerSwitch" => 1 }
+    t = Govees::Reconciler.api_to_telemetry(state, device)
+    assert_equal true, t[:reachable]
+  end
+
   test "apply_lan that needs clarification triggers an immediate api state call" do
     store = Govees::StateStore.new(pending_window_s: 0.0, clock: -> { 100.0 })
     store.record_command("K", on: true, brightness: 50)

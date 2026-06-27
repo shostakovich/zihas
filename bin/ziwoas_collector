@@ -34,11 +34,13 @@ threads << Thread.new {
   router.run
 }
 
-if config.govee
+if config.govee && config.govee.api_key.present?
   api    = Govees::PlatformApi.new(api_key: config.govee.api_key)
   bridge = Govees::Bridge.new(mqtt_config: config.mqtt, govee_config: config.govee, api: api, logger: logger)
   stoppables << bridge
   threads << Thread.new { Thread.current.name = "govees_bridge"; bridge.run }
+elsif config.govee
+  logger.warn("Govees bridge disabled: missing GOVEE_API_KEY")
 end
 
 if fritz_plugs.any?
