@@ -68,7 +68,6 @@ module Govees
       Device.new(
         key: key, api_id: api_id, sku: raw["sku"].to_s,
         name: (override && override[:name].presence) || raw["deviceName"].to_s,
-        room: override&.fetch(:room, nil),
         ip: nil,
         supports_color:      instances.include?("colorRgb"),
         supports_color_temp: instances.include?("colorTemperatureK"),

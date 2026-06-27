@@ -543,7 +543,8 @@ class ConfigLoaderTest < Minitest::Test
     cfg = ConfigLoader.load(file.path)
     assert_equal "yml-secret-key", cfg.govee.api_key
     assert_equal 8, cfg.govee.lan_poll_seconds
-    assert_equal({ name: "Uplighter", room: "Wohnzimmer" }, cfg.govee.names["14ABDB4844064B60"])
+    # room in the yml is tolerated but ignored (rooms feature removed)
+    assert_equal({ name: "Uplighter" }, cfg.govee.names["14ABDB4844064B60"])
   ensure
     file&.close!
   end

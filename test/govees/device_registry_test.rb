@@ -68,26 +68,16 @@ class GoveesDeviceRegistryTest < ActiveSupport::TestCase
     assert_equal "192.168.8.184", @reg.find("14ABDB4844064B60").ip
   end
 
-  test "names map overrides device name and sets room, key normalised" do
-    names = { "14:AB:DB:48:44:06:4B:60" => { name: "Wohnzimmer Uplighter", room: "Wohnzimmer" } }
+  test "names map overrides device name, key normalised" do
+    names = { "14:AB:DB:48:44:06:4B:60" => { name: "Wohnzimmer Uplighter" } }
     reg = Govees::DeviceRegistry.new(api: FakeApi.new, logger: Logger.new(IO::NULL), names: names)
     reg.refresh!
     d = reg.find("14ABDB4844064B60")
     assert_equal "Wohnzimmer Uplighter", d.name
-    assert_equal "Wohnzimmer", d.room
-  end
-
-  test "names without room leaves room nil" do
-    names = { "14ABDB4844064B60" => { name: "My Lamp", room: nil } }
-    reg = Govees::DeviceRegistry.new(api: FakeApi.new, logger: Logger.new(IO::NULL), names: names)
-    reg.refresh!
-    d = reg.find("14ABDB4844064B60")
-    assert_equal "My Lamp", d.name
-    assert_nil d.room
   end
 
   test "empty name override falls back to API deviceName" do
-    names = { "14ABDB4844064B60" => { name: "", room: nil } }
+    names = { "14ABDB4844064B60" => { name: "" } }
     reg = Govees::DeviceRegistry.new(api: FakeApi.new, logger: Logger.new(IO::NULL), names: names)
     reg.refresh!
     d = reg.find("14ABDB4844064B60")

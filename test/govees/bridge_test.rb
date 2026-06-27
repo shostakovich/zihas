@@ -135,14 +135,4 @@ class GoveesBridgeTest < ActiveSupport::TestCase
       runner.join(2)
     end
   end
-
-  test "publish_config includes room in the payload" do
-    bridge = build
-    d_with_room = Govees::Device.new(key: "K", api_id: "14:AB", sku: "H60B0", name: "Uplighter",
-      ip: "1.2.3.4", room: "Wohnzimmer",
-      supports_color: true, supports_color_temp: true, zones: [], scenes: [], scene_index: {}, power_only: false)
-    bridge.publish_config(d_with_room)
-    msg = @pub.published.find { |m| m[:topic] == "govees/K/config" }
-    assert_equal "Wohnzimmer", JSON.parse(msg[:payload])["room"]
-  end
 end

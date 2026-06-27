@@ -307,7 +307,7 @@ class ConfigLoader
     h = require_hash(h, "govee")
     names = Array(h["devices"]).each_with_object({}) do |d, acc|
       key = require_string(d["key"], "govee.devices[].key")
-      acc[key] = { name: d["name"].to_s, room: d["room"] }
+      acc[key] = { name: d["name"].to_s }
     end
     GoveeCfg.new(
       # Secret lives in the gitignored ziwoas.yml (like fritz_box.password).

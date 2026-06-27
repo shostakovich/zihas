@@ -42,7 +42,6 @@ module Govees
       payload = JSON.generate(
         "sku"                => device.sku,
         "name"               => device.name,
-        "room"               => device.room,
         "supports_color"     => device.supports_color,
         "supports_color_temp" => device.supports_color_temp,
         "zones"              => device.zones,
