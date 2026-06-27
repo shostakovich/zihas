@@ -51,6 +51,7 @@ class GoveesDeviceRegistryTest < ActiveSupport::TestCase
     d = @reg.find("13955275")
     assert d.power_only
     assert_empty d.zones
+    assert_empty d.scenes
   end
 
   test "record_lan_ip matches by colon-insensitive mac" do
