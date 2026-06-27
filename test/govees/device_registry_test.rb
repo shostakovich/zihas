@@ -13,6 +13,8 @@ class GoveesDeviceRegistryTest < ActiveSupport::TestCase
             { "type" => "devices.capabilities.toggle",         "instance" => "rippleLightToggle" },
             { "type" => "devices.capabilities.toggle",         "instance" => "dreamViewToggle" },
             { "type" => "devices.capabilities.segment_color_setting", "instance" => "segmentedColorRgb" } ] },
+        { "sku" => "H6038", "device" => "AA:BB:CC:DD:EE:FF:00:11", "deviceName" => "Sockellicht",
+          "capabilities" => [ { "type" => "devices.capabilities.on_off", "instance" => "powerSwitch" } ] },
         { "sku" => "DreamViewScenic", "device" => "13955275", "deviceName" => "Abendrot",
           "capabilities" => [ { "type" => "devices.capabilities.on_off", "instance" => "powerSwitch" } ] } ]
     end
@@ -48,10 +50,16 @@ class GoveesDeviceRegistryTest < ActiveSupport::TestCase
 
   test "power_only device is flagged and gets no zones or scenes" do
     @reg.refresh!
-    d = @reg.find("13955275")
+    d = @reg.find("AABBCCDDEEFF0011")
     assert d.power_only
     assert_empty d.zones
     assert_empty d.scenes
+  end
+
+  test "virtual scene devices (DreamViewScenic) are excluded from the registry" do
+    @reg.refresh!
+    assert_nil @reg.find("13955275"), "Abendrot is a virtual scene, not a lamp"
+    assert_equal 2, @reg.all.size
   end
 
   test "record_lan_ip matches by colon-insensitive mac" do

@@ -17,6 +17,11 @@ module Govees
 
     def self.normalize_mac(str) = str.to_s.gsub(/[^0-9A-Za-z]/, "").upcase
 
+    # Govee exposes DreamView scene groups as virtual "devices" (only a
+    # powerSwitch, no LAN presence). They are scenes, not lamps — never publish
+    # them as lights.
+    VIRTUAL_SKUS = %w[DreamViewScenic].freeze
+
     # Build the new map fully, then swap @by_key by reference. The swap is
     # atomic under the GVL, so concurrent readers (listener/command/pollers)
     # always see a complete map — never a half-built one. On failure the old
@@ -51,6 +56,7 @@ module Govees
     def build(raw)
       api_id = raw["device"].to_s
       return nil if api_id.empty?
+      return nil if VIRTUAL_SKUS.include?(raw["sku"].to_s)
       key        = self.class.normalize_mac(api_id)
       override   = @names[key]
       caps       = Array(raw["capabilities"])
