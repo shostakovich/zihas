@@ -7,6 +7,7 @@ Rails.application.routes.draw do
   get "/sensors/series", to: "sensors#series", as: :sensors_series
 
   get "/switches", to: "switches#index", as: :switches
+  resources :lights, param: :key, only: %i[show edit update]
 
   get "/solakon", to: "solakon#index", as: :solakon
   get "/solakon/history", to: "solakon#history", as: :solakon_history
@@ -16,6 +17,10 @@ Rails.application.routes.draw do
   scope "/plugs/:plug_id" do
     post "switch", to: "plug_switches#create", as: :plug_switch
     resources :switch_windows, only: %i[new create edit update destroy]
+  end
+
+  scope "/lights/:light_key" do
+    post "command", to: "lights#command", as: :light_command
   end
 
   get "/api/today", to: "api#today"

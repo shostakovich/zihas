@@ -1,0 +1,23 @@
+<%# app/components/lights/power_component.html.erb %>
+<div id="light_power" class="ld-hero<%= ' is-off' unless snapshot.on? %>">
+  <div class="ld-lamp plush-<%= light.plush_type %><%= ' off' unless snapshot.on? %>"></div>
+  <div class="ld-hero-main">
+    <div class="ld-power">
+      <%= button_to "An", light_command_path(light_key: light.key),
+            params: { command: "turn", on: "true" },
+            class: "ld-pill#{' on' if snapshot.on?}", form_class: "ld-inline-form" %>
+      <%= button_to "Aus", light_command_path(light_key: light.key),
+            params: { command: "turn", on: "false" },
+            class: "ld-pill#{' on' unless snapshot.on?}", form_class: "ld-inline-form" %>
+    </div>
+    <% if snapshot.zone_lamp? %>
+      <%# Zones belong to the lamp's power: hidden while off, shown while on.
+          CSS-driven so visibility tracks on? in every render. %>
+      <div class="ld-zones-row<%= ' is-off' unless snapshot.on? %>">
+        <% snapshot.zones.each do |zone| %>
+          <%= render Lights::ZoneComponent.new(zone: zone, light_key: light.key) %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,64 @@
+<% content_for :title, @light.name %>
+<% content_for :body_class, "page-light-detail" %>
+
+<div class="ld" data-controller="light-detail"
+     data-light-detail-key-value="<%= @light.key %>"
+     data-light-detail-tab-value="white">
+
+  <%= turbo_stream_from "light_#{@light.key}" %>
+
+  <div class="ld-topbar">
+    <%= link_to "←", switches_path, class: "ld-back", "aria-label": "Zurück" %>
+    <span class="ld-title"><%= @light.name %></span>
+    <%= link_to edit_light_path(@light.key), class: "ld-gear",
+                data: { turbo_stream: true }, "aria-label": "Einstellungen" do %>
+      <%= image_tag "settings_plush.webp", class: "ld-gear-icon", alt: "",
+                    aria: { hidden: true } %>
+    <% end %>
+  </div>
+
+  <%= render Lights::PowerComponent.new(snapshot: @snapshot) %>
+
+  <div class="ld-card">
+    <p class="ld-label">Helligkeit</p>
+    <input class="ld-range" type="range" min="1" max="100" value="<%= [@snapshot.brightness, 1].max %>"
+           data-action="light-detail#brightness"
+           aria-label="Helligkeit">
+  </div>
+
+  <div class="ld-tabs">
+    <button class="ld-tab" data-action="light-detail#tab" data-light-detail-tab-param="white">Weiß</button>
+    <% if @light.supports_color %>
+      <button class="ld-tab" data-action="light-detail#tab" data-light-detail-tab-param="color">Farbe</button>
+    <% end %>
+    <button class="ld-tab" data-action="light-detail#tab" data-light-detail-tab-param="scenes">Szenen</button>
+  </div>
+
+  <div class="ld-panel" data-light-detail-target="panel" data-tab="white">
+    <div class="ld-card">
+      <p class="ld-label">Lichtfarbe</p>
+      <input class="ld-range ld-white" type="range" min="2700" max="6500" step="100"
+             value="<%= @snapshot.color_temp_k || 2700 %>"
+             data-light-detail-target="temp" data-action="light-detail#temp"
+             aria-label="Lichtfarbe (Kelvin)">
+      <div class="ld-scale"><span>2700 K · warm</span><span>6500 K · kalt</span></div>
+      <div class="ld-presets">
+        <button class="ld-preset" data-action="light-detail#temp" data-light-detail-temp-param="2700">Gemütlich</button>
+        <button class="ld-preset" data-action="light-detail#temp" data-light-detail-temp-param="4000">Neutral</button>
+        <button class="ld-preset" data-action="light-detail#temp" data-light-detail-temp-param="6000">Arbeiten</button>
+      </div>
+    </div>
+  </div>
+
+  <% if @light.supports_color %>
+    <%= render Lights::ColorPanelComponent.new(snapshot: @snapshot) %>
+  <% end %>
+
+  <%= render Lights::ScenesComponent.new(light: @light) %>
+
+  <%= render Lights::ToastComponent.new(message: nil, undo: nil) %>
+
+  <%# Edit-Sheet wird hierher per Turbo-Stream injiziert. %>
+  <div id="light_settings"></div>
+
+</div>

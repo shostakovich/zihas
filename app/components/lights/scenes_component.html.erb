@@ -1,0 +1,21 @@
+<%# app/components/lights/scenes_component.html.erb %>
+<div class="ld-panel" data-light-detail-target="panel" data-tab="scenes" hidden>
+  <div class="ld-card">
+    <% if light.firmware_scenes.any? %>
+      <p class="ld-label">Govee-Szenen</p>
+      <div class="ld-scenes ld-scenes-scroll">
+        <% light.firmware_scenes.each do |scene| %>
+          <%= button_to light_command_path(light_key: light.key),
+                params: { command: "effect", effect: scene },
+                class: "ld-scene", form_class: "ld-inline-form" do %>
+            <span class="ld-scene-prev" style="background: <%= scene_gradient(scene) %>"></span>
+            <span class="ld-scene-nm"><%= scene %></span>
+          <% end %>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="ld-label">Szenen</p>
+      <p class="ld-zone-hint">Diese Lampe meldet keine Govee-Szenen.</p>
+    <% end %>
+  </div>
+</div>

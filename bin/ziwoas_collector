@@ -4,7 +4,11 @@
 $stdout.sync = true
 
 require_relative "../config/environment"
-require "mqtt_subscriber"
+require "mqtt_router"
+require "shelly_status_handler"
+require "govees/subscriber"
+require "govees/bridge"
+require "govees/platform_api"
 require "fritz_mqtt_bridge"
 require "config_loader"
 require "fritz_dect_client"
@@ -20,16 +24,26 @@ fritz_plugs = config.plugs.select { |p| p.driver == :fritz_dect }
 threads    = []
 stoppables = []
 
-subscriber = MqttSubscriber.new(
-  mqtt_config: config.mqtt,
-  plugs:       config.plugs,
-  logger:      logger,
-)
-stoppables << subscriber
+handlers = [ ShellyStatusHandler.new(mqtt_config: config.mqtt, plugs: config.plugs, logger: logger) ]
+handlers << Govees::Subscriber.new(logger: logger)
+
+router = MqttRouter.new(mqtt_config: config.mqtt, handlers: handlers, logger: logger)
+stoppables << router
 threads << Thread.new {
-  Thread.current.name = "mqtt_subscriber"
-  subscriber.run
+  Thread.current.name = "mqtt_router"
+  router.run
 }
+
+if config.govee && config.govee.api_key.present?
+  api          = Govees::PlatformApi.new(api_key: config.govee.api_key)
+  govee_bridge = Govees::Bridge.new(mqtt_config: config.mqtt, govee_config: config.govee, api: api, logger: logger)
+  stoppables << govee_bridge
+  # Pass the bridge as a block argument so the thread binds THIS value, not the
+  # shared `bridge`/closure variable (which a later reassignment could clobber).
+  threads << Thread.new(govee_bridge) { |b| Thread.current.name = "govees_bridge"; b.run }
+elsif config.govee
+  logger.warn("Govees bridge disabled: missing govee.api_key in ziwoas.yml")
+end
 
 if fritz_plugs.any?
   fritz_client = FritzDectClient.new(
@@ -39,25 +53,33 @@ if fritz_plugs.any?
     timeout:  config.fritz_poll.timeout_seconds,
   )
   fritz_plugs.each do |plug|
-    bridge = FritzMqttBridge.new(
+    fritz_bridge = FritzMqttBridge.new(
       fritz_client:   fritz_client,
       plug:           plug,
       mqtt_config:    config.mqtt,
       fritz_poll_cfg: config.fritz_poll,
       logger:         logger,
     )
-    stoppables << bridge
-    threads << Thread.new {
-      Thread.current.name = "fritz_bridge_#{plug.id}"
-      bridge.run
-    }
+    stoppables << fritz_bridge
+    # Block argument binds this iteration's bridge, so every plug's thread runs
+    # its own bridge instead of all sharing the last loop value.
+    threads << Thread.new(fritz_bridge) { |b| Thread.current.name = "fritz_bridge_#{plug.id}"; b.run }
   end
 end
 
-%w[INT TERM].each do |sig|
-  Signal.trap(sig) { stoppables.each(&:stop!) }
-end
+# Keep the signal handler minimal: just hand the request to the main thread.
+shutdown = Queue.new
+%w[INT TERM].each { |sig| Signal.trap(sig) { shutdown.push(sig) } }
 
 logger.info("ziwoas_collector: started #{threads.length} threads")
-threads.each(&:join)
+shutdown.pop # block here until a signal arrives
+logger.info("ziwoas_collector: stopping")
+stoppables.each(&:stop!)
+# Join with a grace period, then force-kill stragglers. Some blocking MQTT/IO
+# reads don't unwind on disconnect, so this guarantees the process actually exits.
+threads.each do |t|
+  next if t.join(5)
+  logger.warn("ziwoas_collector: force-killing #{t.name}")
+  t.kill
+end
 logger.info("ziwoas_collector: stopped")

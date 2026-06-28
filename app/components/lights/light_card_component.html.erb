@@ -1,0 +1,27 @@
+<%# app/components/lights/light_card_component.html.erb %>
+<div class="sw-card sw-light-card<%= ' sw-offline' unless snapshot.on? %>"
+     id="light_card_<%= light.key %>" data-light-key="<%= light.key %>">
+  <%= link_to light_path(light.key), class: "sw-light-link", "aria-label": "#{light.name} Details" do %>
+    <div class="sw-info">
+      <span class="sw-name"><%= light.name %></span>
+      <div class="sw-state"><%= summary %></div>
+      <div class="sw-error" id="light_error_<%= light.key %>"></div>
+    </div>
+  <% end %>
+
+  <%# Pure Turbo: the knob posts the opposite of the current state; the command
+      response replaces this card and live MQTT reconciles via the "lights" stream. %>
+  <%= button_to "", light_command_path(light_key: light.key),
+        params: { command: "turn", on: (!snapshot.on?).to_s },
+        class: "sw-knob sw-lamp-knob plush-#{light.plush_type}#{' off' unless snapshot.on?}",
+        form_class: "sw-inline-form sw-knob-form",
+        aria: { label: "#{light.name} umschalten" } %>
+
+  <%= link_to "Anpassen ›", light_path(light.key), class: "sw-light-sub" %>
+
+  <% if (current_chip = chip) %>
+    <span class="sw-watt-chip">
+      <span class="sw-swatch" style="background: <%= current_chip[:swatch] %>"></span><%= current_chip[:label] %>
+    </span>
+  <% end %>
+</div>

@@ -1,0 +1,14 @@
+<%# app/views/lights/_settings_sheet.html.erb %>
+<%# Zentriertes Einstellungs-Overlay, per Turbo-Stream in #light_settings injiziert. %>
+<div class="ld-modal-wrap" role="dialog" aria-modal="true" aria-labelledby="ld-modal-title">
+  <%= link_to "", light_path(light.key), class: "ld-modal-scrim", tabindex: "-1", "aria-label": "Schließen" %>
+  <div class="ld-modal">
+    <div class="ld-modal-head">
+      <h2 id="ld-modal-title" class="ld-modal-title">Einstellungen</h2>
+      <%= link_to "✕", light_path(light.key), class: "ld-modal-x", "aria-label": "Schließen" %>
+    </div>
+    <div class="ld-modal-body">
+      <%= render "form", light: light, plugs: plugs %>
+    </div>
+  </div>
+</div>
