@@ -36,6 +36,18 @@ class Lights::WhitePanelComponentTest < ViewComponent::TestCase
     assert_equal "5400", preset_param(rendered, "Arbeiten")
   end
 
+  test "presets stay within a lamp whose range tops out below PRESET_MAX_K" do
+    light = Light.new(key: "K4", name: "Warm only", color_temp_min_k: 2200, color_temp_max_k: 4000, zones: [])
+    rendered = render_inline(panel(light: light))
+    assert_equal "2200", preset_param(rendered, "Gemütlich")
+    assert_equal "3100", preset_param(rendered, "Neutral")
+    assert_equal "4000", preset_param(rendered, "Arbeiten")
+    # no preset may exceed the slider's own max
+    rendered.css("button.ld-preset").each do |b|
+      assert_operator b["data-light-detail-temp-param"].to_i, :<=, 4000
+    end
+  end
+
   test "the preset matching the current colour temperature is marked active" do
     light = Light.new(key: "K3", name: "Ceiling", color_temp_min_k: 2700, color_temp_max_k: 6500, zones: [])
     state = LightState.new(light_key: "K3", color_temp_k: 5400)
