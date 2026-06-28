@@ -11,6 +11,18 @@ require "minitest/mock"
 require "webmock/minitest"
 WebMock.disable_net_connect!(allow_localhost: true)
 
+require "vcr"
+require "govees/cassette_scrubber"
+
+VCR.configure do |c|
+  c.cassette_library_dir = "test/vcr_cassettes"
+  c.hook_into :webmock
+  c.default_cassette_options = { record: :none }              # CI/normal: nur abspielen
+  c.allow_http_connections_when_no_cassette = false
+  c.filter_sensitive_data("<GOVEE_API_KEY>") { Govees::CassetteScrubber.api_key }
+  c.before_record { |i| Govees::CassetteScrubber.scrub!(i) }
+end
+
 module ActiveSupport
   class TestCase
     parallelize(workers: 1)
