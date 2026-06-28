@@ -78,6 +78,30 @@ class GoveesMessagesStateTest < ActiveSupport::TestCase
   end
 end
 
+class GoveesMessagesDeviceStateTest < ActiveSupport::TestCase
+  M = Govees::Messages
+
+  test "DeviceState maps a raw capability map to telemetry" do
+    map = { "powerSwitch" => 1, "online" => true, "brightness" => 70,
+            "colorRgb" => (10 << 16) | (20 << 8) | 30, "rippleLightToggle" => 1 }
+    ds = M::DeviceState.from_capabilities(map, zone_keys: %w[rippleLightToggle sideLightToggle])
+    t = ds.to_telemetry
+    assert_equal true, t[:on]
+    assert_equal true, t[:reachable]
+    assert_equal 70, t[:brightness]
+    assert_equal({ r: 10, g: 20, b: 30 }, t[:color])
+    assert_equal({ "rippleLightToggle" => true }, t[:zone_states])
+  end
+
+  test "DeviceState prefers color_temp_k when colorRgb is absent" do
+    ds = M::DeviceState.from_capabilities({ "powerSwitch" => 0, "colorTemperatureK" => 3000 }, zone_keys: [])
+    t = ds.to_telemetry
+    assert_equal false, t[:on]
+    assert_equal 3000, t[:color_temp_k]
+    assert_not t.key?(:color)
+  end
+end
+
 class GoveesMessagesConfigTest < ActiveSupport::TestCase
   M = Govees::Messages
 

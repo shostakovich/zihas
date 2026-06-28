@@ -1,5 +1,6 @@
 # lib/govees/reconciler.rb
 require "govees/state_store"
+require "govees/messages"
 
 module Govees
   # Drives reconcile: LAN devStatus readings (fast) and API polls (slow, richer).
@@ -22,21 +23,7 @@ module Govees
     end
 
     def self.api_to_telemetry(state, device)
-      online = state.fetch("online", true)
-      t = { on: state["powerSwitch"].to_i == 1, reachable: (online == true || online == 1) }
-      t[:brightness] = state["brightness"] if state.key?("brightness")
-      if state["colorRgb"].to_i.positive?
-        rgb = state["colorRgb"].to_i
-        t[:color] = { r: (rgb >> 16) & 0xFF, g: (rgb >> 8) & 0xFF, b: rgb & 0xFF }
-      elsif state["colorTemperatureK"].to_i.positive?
-        t[:color_temp_k] = state["colorTemperatureK"]
-      end
-      zones = device.zones.each_with_object({}) do |z, h|
-        v = state[z]
-        h[z] = (v.to_i == 1) unless v.nil? || v == ""
-      end
-      t[:zone_states] = zones unless zones.empty?
-      t
+      Messages::DeviceState.from_capabilities(state, zone_keys: device.zones).to_telemetry
     end
 
     # Called when a LAN devStatus reply for `key` arrives (via the Bridge listener).

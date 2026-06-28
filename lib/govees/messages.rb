@@ -70,6 +70,44 @@ module Govees
       end
     end
 
+    # Typisierte Sicht auf die rohe Platform-API-Capability-Map
+    # ({instance => value}). Kapselt die Konvertierung in Telemetrie.
+    class DeviceState < Base
+      attribute  :on,           Types::Bool.default(false)
+      attribute  :reachable,    Types::Bool.default(true)
+      attribute? :brightness,   Types::Brightness
+      attribute? :color,        Rgb
+      attribute? :color_temp_k, Types::Kelvin
+      attribute? :zone_states,  Types::Hash.map(Types::ZoneName, Types::Bool)
+
+      def self.from_capabilities(map, zone_keys:)
+        online = map.fetch("online", true)
+        attrs = { on: map["powerSwitch"].to_i == 1, reachable: (online == true || online == 1) }
+        attrs[:brightness] = map["brightness"] if map.key?("brightness")
+        if map["colorRgb"].to_i.positive?
+          rgb = map["colorRgb"].to_i
+          attrs[:color] = { r: (rgb >> 16) & 0xFF, g: (rgb >> 8) & 0xFF, b: rgb & 0xFF }
+        elsif map["colorTemperatureK"].to_i.positive?
+          attrs[:color_temp_k] = map["colorTemperatureK"]
+        end
+        zones = zone_keys.each_with_object({}) do |z, h|
+          v = map[z]
+          h[z] = (v.to_i == 1) unless v.nil? || v == ""
+        end
+        attrs[:zone_states] = zones unless zones.empty?
+        new(attrs)
+      end
+
+      def to_telemetry
+        t = { on: on, reachable: reachable }
+        t[:brightness]   = brightness    if attributes.key?(:brightness)
+        t[:color]        = { r: color.r, g: color.g, b: color.b } if attributes.key?(:color)
+        t[:color_temp_k] = color_temp_k  if attributes.key?(:color_temp_k)
+        t[:zone_states]  = zone_states   if attributes.key?(:zone_states)
+        t
+      end
+    end
+
     module Set
       class Power < Base
         attribute :on, Types::Bool
