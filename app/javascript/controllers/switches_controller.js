@@ -3,7 +3,7 @@ import consumer from "channels/consumer"
 
 // Connects to data-controller="switches" on the Schalten tab.
 // Applies live wattage and output state from the existing "dashboard"
-// ActionCable broadcasts (see MqttSubscriber) to the plug cards.
+// ActionCable broadcasts (see ShellyStatusHandler) to the plug cards.
 export default class extends Controller {
   connect() {
     this.subscription = consumer.subscriptions.create("DashboardChannel", {

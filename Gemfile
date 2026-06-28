@@ -12,6 +12,13 @@ gem "stimulus-rails"
 gem "jbuilder"
 gem "rack-attack"
 
+# Typisierte, komponierbare Command-Operations für den Lights-Endpoint
+gem "dry-types"
+gem "dry-struct"
+gem "dry-validation"
+gem "dry-operation"
+gem "view_component"
+
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 # gem "bcrypt", "~> 3.1.7"
 
@@ -23,7 +30,6 @@ gem "solid_queue"
 gem "solid_cable"
 
 gem "bootsnap", require: false
-gem "kamal", require: false
 gem "thruster", require: false
 
 group :development, :test do

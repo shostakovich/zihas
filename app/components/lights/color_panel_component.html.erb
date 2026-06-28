@@ -1,0 +1,17 @@
+<%# app/components/lights/color_panel_component.html.erb %>
+<div class="ld-panel" data-light-detail-target="panel" data-tab="color" hidden>
+  <div class="ld-card">
+    <p class="ld-label"><%= snapshot.zone_lamp? ? "Farbe · Welle + Seite" : "Farbe" %></p>
+    <div class="ld-swatches">
+      <% SWATCHES.each do |hex| %>
+        <button class="ld-sw" style="background: <%= hex %>"
+                data-action="light-detail#swatch" data-light-detail-color-param="<%= hex %>"
+                aria-label="Farbe <%= hex %>"></button>
+      <% end %>
+      <label class="ld-sw ld-more" aria-label="Weitere Farbe">⊕
+        <input type="color"
+               data-action="light-detail#wheel" value="<%= snapshot.color_hex || '#ff7a3d' %>">
+      </label>
+    </div>
+  </div>
+</div>

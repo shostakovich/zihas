@@ -38,6 +38,19 @@ mqtt:
 #   energy_webhook_url:  https://trmnl.com/api/custom_plugins/<energy-uuid>
 #   sensors_webhook_url: https://trmnl.com/api/custom_plugins/<sensors-uuid>
 
+# Govee lights bridge (LAN-first + Platform API). Omit to disable.
+# api_key is your Govee developer key; it lives here in the gitignored
+# ziwoas.yml (like fritz_box.password), not in any other file.
+# govee:
+#   api_key: "your-govee-api-key"
+#   lan_poll_seconds: 8
+#   api_poll_seconds: 180
+#   pending_window_seconds: 5
+#   devices:
+#     - key: 14ABDB4844064B60   # MAC, colons stripped, uppercase
+#       name: Uplighter
+#       room: Wohnzimmer
+
 plugs:
   - id: bkw
     name: Balkonkraftwerk
