@@ -37,6 +37,16 @@ class GoveesSubscriberConfigTest < ActiveSupport::TestCase
     assert_equal 0, Light.count
   end
 
+  test "config survives an ActiveRecord error instead of propagating" do
+    bad = Light.new(key: "K1")
+    def bad.save! = raise(ActiveRecord::RecordInvalid.new(self))
+    Light.stub :find_or_initialize_by, bad do
+      assert_nothing_raised do
+        @sub.handle("govees/K1/config", JSON.generate("sku" => "H60B0", "zones" => [], "scenes" => []))
+      end
+    end
+  end
+
   test "config ignores the room field (rooms feature removed)" do
     @sub.handle("govees/K1/config", JSON.generate(
       "sku" => "H60B0", "name" => "Uplighter", "room" => "Wohnzimmer",
@@ -124,5 +134,13 @@ class GoveesSubscriberStateTest < ActiveSupport::TestCase
   test "state ignores invalid JSON" do
     assert_nothing_raised { @sub.handle(topic("K"), "x{") }
     assert_equal 0, LightState.count
+  end
+
+  test "state survives an ActiveRecord error instead of propagating" do
+    LightState.stub :record_state, ->(*) { raise ActiveRecord::StatementInvalid, "database is locked" } do
+      assert_nothing_raised do
+        @sub.handle(topic("K"), JSON.generate("on" => true, "reachable" => true))
+      end
+    end
   end
 end

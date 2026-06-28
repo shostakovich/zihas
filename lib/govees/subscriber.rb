@@ -38,7 +38,7 @@ module Govees
       light.zones           = cfg.zones
       light.firmware_scenes = cfg.scenes
       light.save!
-    rescue JSON::ParserError, Dry::Struct::Error => e
+    rescue JSON::ParserError, Dry::Struct::Error, ActiveRecord::ActiveRecordError => e
       @logger.warn("Govees::Subscriber: invalid config on #{topic}: #{e.message}")
     end
 
@@ -48,7 +48,7 @@ module Govees
       LightState.record_state(key, state_attrs(msg).merge(last_seen_at: Time.current))
       msg.zone_states.each { |inst, on| LightState.record_zone_state(key, inst, on) } if msg.attributes.key?(:zone_states)
       broadcast_turbo(key)
-    rescue JSON::ParserError, Dry::Struct::Error => e
+    rescue JSON::ParserError, Dry::Struct::Error, ActiveRecord::ActiveRecordError => e
       @logger.warn("Govees::Subscriber: invalid state on #{topic}: #{e.message}")
     end
 
