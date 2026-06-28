@@ -82,6 +82,14 @@ class GoveesCommandRouterTest < ActiveSupport::TestCase
     assert_equal false, off[:zone_states]["powerSwitch"]
   end
 
+  test "unknown scene returns nil and does not enter pending state" do
+    router = build(device(ip: nil))
+    result = router.handle("K", { "scene" => "Gibt-Es-Nicht" })
+    assert_nil result
+    assert_nil @store.status("K"), "unbekannte Szene darf kein PENDING-Fenster öffnen"
+    assert_empty @api.calls
+  end
+
   test "zone command preserves other zone bits" do
     router = build(device(ip: "1.2.3.4"))
     @store.record_command("K", zone_states: { "sideLightToggle" => true })

@@ -38,6 +38,8 @@ module Govees
         when Messages::Set::Scene      then scene(device, cmd.name)
         end
 
+      return nil if changes.nil? || changes.empty?
+
       @store.record_command(key, changes)
     end
 
@@ -98,7 +100,10 @@ module Govees
 
     def scene(device, name)
       entry = device.scene_index[name]
-      return {} unless entry
+      unless entry
+        @logger.warn("Govees::CommandRouter: unknown scene '#{name}' for #{device.key}")
+        return {}
+      end
       @api.control(sku: device.sku, device: device.api_id, type: SCENE, instance: "lightScene",
                    value: { "id" => entry[:id], "paramId" => entry[:param_id] })
       { on: true }
