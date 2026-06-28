@@ -18,14 +18,15 @@ class LightState < ApplicationRecord
     changed
   end
 
-  # Upserts one zone's on/off bit. Returns true when the stored value changed.
+  # Upserts one zone's on/off bit atomically. Returns true when the stored value changed.
   def self.record_zone_state(light_key, instance, on)
-    state = find_or_initialize_by(light_key: light_key)
-    current = state.zone_states
-    changed = current[instance] != on
-    state.zone_states = current.merge(instance => on)
-    state.save!
-    changed
+    state = find_or_create_by(light_key: light_key)
+    state.with_lock do
+      current = state.zone_states
+      changed = current[instance] != on
+      state.update!(zone_states: current.merge(instance => on))
+      return changed
+    end
   end
 
   # Loads the states for the given light keys, indexed by key.

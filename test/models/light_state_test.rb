@@ -55,6 +55,19 @@ class LightStateTest < ActiveSupport::TestCase
                  LightState.find_by(light_key: "UP1").zone_states)
   end
 
+  test "concurrent zone writes do not lose updates" do
+    LightState.create!(light_key: "K", zone_states: {})
+    # zwei echte Threads mit eigener DB-Verbindung; ohne Lock geht ein Bit verloren
+    threads = [
+      Thread.new { ActiveRecord::Base.connection_pool.with_connection { LightState.record_zone_state("K", "rippleLightToggle", true) } },
+      Thread.new { ActiveRecord::Base.connection_pool.with_connection { LightState.record_zone_state("K", "sideLightToggle", true) } }
+    ]
+    threads.each(&:join)
+    bits = LightState.find_by(light_key: "K").zone_states
+    assert_equal true, bits["rippleLightToggle"]
+    assert_equal true, bits["sideLightToggle"]
+  end
+
   test "for_lights indexes states by light_key" do
     LightState.record_state("A1B2C3D4E5F60010", on: true)
     LightState.record_state("A1B2C3D4E5F60011", on: false)
